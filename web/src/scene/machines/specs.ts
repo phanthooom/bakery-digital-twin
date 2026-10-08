@@ -20,6 +20,7 @@ export const SPECS: Record<MachineKind, MachineSpec> = {
   icemaker: { depth: 0.7, height: 1.2, ringRadius: 0.7, tower: [0.25, 1.2, 0.2] },
   blastfreezer: { depth: 1.05, height: 2.35, ringRadius: 0.9, tower: [-0.3, 2.35, 0.3] },
   coldroom: { depth: 2.0, height: 2.92, ringRadius: 1.75, tower: [-1.15, 2.5, 0.85] },
+  packer: { depth: 0.72, height: 1.8, ringRadius: 1.6, tower: [0.55, 1.48, -0.25] },
   generic: { depth: 0.8, height: 1.2, ringRadius: 0.8, tower: [0.3, 1.2, 0.3] },
 };
 

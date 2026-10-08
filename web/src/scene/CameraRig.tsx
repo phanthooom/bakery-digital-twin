@@ -6,7 +6,7 @@ import type { SiteConfig } from '@bakery/shared';
 import { createWheelInterpreter, zoomAboutPoint } from './gestures';
 
 const OVERVIEW_DIR = new THREE.Vector3(-0.14, 0.7, 0.7).normalize();
-const OVERVIEW_TARGET = new THREE.Vector3(0, 0.6, -1.2);
+const OVERVIEW_TARGET = new THREE.Vector3(0, 0.6, 0.6);
 
 /**
  * Камера: общий вид, облёт к выбранному станку, сдвиг кадра влево,
@@ -36,7 +36,8 @@ export function CameraRig({ config, focus, viewToken, cardOffset }: { config: Si
     const cam = camera as THREE.PerspectiveCamera;
     const vfov = THREE.MathUtils.degToRad(cam.fov);
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
-    const dist = Math.max((W / 2 + 3.5) / Math.tan(hfov / 2), 11 / Math.tan(vfov / 2));
+    // запас по краям: косой ракурс и машины у рамп перед цехом
+    const dist = Math.max((W / 2 + 3.5) * 1.12 / Math.tan(hfov / 2), 11 / Math.tan(vfov / 2));
     const pos = OVERVIEW_DIR.clone().multiplyScalar(dist).add(OVERVIEW_TARGET);
     void c.setLookAt(pos.x, pos.y, pos.z, OVERVIEW_TARGET.x, OVERVIEW_TARGET.y, OVERVIEW_TARGET.z, smooth);
   };
@@ -83,7 +84,7 @@ export function CameraRig({ config, focus, viewToken, cardOffset }: { config: Si
     const el = gl.domElement;
     const { width: W, depth: D } = config.site.hall;
     c.mouseButtons.wheel = CameraControlsImpl.ACTION.NONE;
-    c.setBoundary(new THREE.Box3(new THREE.Vector3(-W / 2 - 3, 0, -D / 2 - 3), new THREE.Vector3(W / 2 + 3, 4, D / 2 + 6)));
+    c.setBoundary(new THREE.Box3(new THREE.Vector3(-W / 2 - 3, 0, -D / 2 - 3), new THREE.Vector3(W / 2 + 3, 4, D / 2 + 9)));
 
     const interpret = createWheelInterpreter();
     const raycaster = new THREE.Raycaster();

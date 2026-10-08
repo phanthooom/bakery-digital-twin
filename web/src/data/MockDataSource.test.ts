@@ -85,4 +85,20 @@ describe('MockDataSource (то, что видит фронт)', () => {
     expect(after).toBeGreaterThan(before);
     ds.stop();
   });
+
+  it('цепочка: сырьё на складе, выпуск списал сырьё, сегодня есть рейсы, дрожжи заканчиваются', () => {
+    const ds = createSource();
+    const snap = ds.getSupply!(NOW)!;
+    const inv = snap.inventory;
+    expect(inv.stock('flour')).toBeGreaterThan(0);
+    expect(snap.production.length).toBeGreaterThan(50);
+    // каждая партия продукции знает свои партии сырья
+    const lot = inv.lot(snap.production.at(-1)!.lotId)!;
+    expect(inv.trace(lot.id).inputs.length).toBeGreaterThan(0);
+    const today = snap.trips.filter((t) => t.departAt > NOW - 12 * 3_600_000 && t.departAt < NOW + 12 * 3_600_000);
+    expect(today.length).toBeGreaterThanOrEqual(3);
+    expect(inv.daysOfCover('yeast', NOW)!).toBeLessThan(3);
+    // снимок воспроизводим
+    expect(ds.getSupply!(NOW)!.inventory.stock('flour')).toBe(inv.stock('flour'));
+  });
 });

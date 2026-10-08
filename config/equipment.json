@@ -3,7 +3,7 @@
     "name": "ABC Trend Bakery — цех",
     "timezone": "Asia/Tashkent",
     "hall": {
-      "width": 40,
+      "width": 72,
       "depth": 10,
       "height": 5
     },
@@ -82,6 +82,14 @@
   },
   "stages": [
     {
+      "id": "receiving",
+      "order": 0,
+      "label": "00 ПРИЁМКА · СЫРЬЁ",
+      "name": "Приёмка и склад сырья",
+      "xFrom": -35.5,
+      "xTo": -20.0
+    },
+    {
       "id": "mixing",
       "order": 1,
       "label": "01 ЗАМЕС",
@@ -119,10 +127,43 @@
       "label": "05 ЗАМОРОЗКА",
       "name": "Заморозка",
       "xFrom": 12.0,
-      "xTo": 19.5
+      "xTo": 16.5
+    },
+    {
+      "id": "packing",
+      "order": 6,
+      "label": "06 УПАКОВКА",
+      "name": "Упаковка",
+      "xFrom": 17.0,
+      "xTo": 23.0
+    },
+    {
+      "id": "shipping",
+      "order": 7,
+      "label": "07 СКЛАД · ОТГРУЗКА",
+      "name": "Склад готовой продукции и отгрузка",
+      "xFrom": 23.5,
+      "xTo": 35.5
     }
   ],
   "equipment": [
+    {
+      "id": "coldraw-1",
+      "name": "Холодильная камера сырья",
+      "vendorModel": "Камера +2…+6 °C: масло, дрожжи, меланж",
+      "kind": "coldroom",
+      "stage": "receiving",
+      "nominalKw": 2.2,
+      "phases": 3,
+      "position": {
+        "x": -33.4,
+        "y": 0,
+        "z": -2.9
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_CLR1",
+      "model": null
+    },
     {
       "id": "mixer-1",
       "name": "Тестомес 1",
@@ -277,15 +318,32 @@
       "model": "/models/blastfreezer.glb"
     },
     {
+      "id": "packer-1",
+      "name": "Упаковочная машина",
+      "vendorModel": "Горизонтальная flow-pack с датером",
+      "kind": "packer",
+      "stage": "packing",
+      "nominalKw": 3.5,
+      "phases": 3,
+      "position": {
+        "x": 20.0,
+        "y": 0,
+        "z": -2.7
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_PCK1",
+      "model": null
+    },
+    {
       "id": "coldroom-1",
-      "name": "Морозильная камера 1",
+      "name": "Морозильная камера готовой продукции",
       "vendorModel": "Камера хранения −18 °C с моноблоком",
       "kind": "coldroom",
-      "stage": "freezing",
+      "stage": "shipping",
       "nominalKw": 3.0,
       "phases": 3,
       "position": {
-        "x": 17.2,
+        "x": 26.0,
         "y": 0,
         "z": -2.9
       },
@@ -293,5 +351,189 @@
       "meterId": "ESP32_SIM_CLD1",
       "model": null
     }
-  ]
+  ],
+  "supply": {
+    "materials": [
+      {
+        "id": "flour",
+        "name": "Мука пшеничная в/с",
+        "unit": "кг",
+        "storage": "dry",
+        "minStock": 2000,
+        "shelfLifeDays": 180,
+        "packSize": 50
+      },
+      {
+        "id": "sugar",
+        "name": "Сахар",
+        "unit": "кг",
+        "storage": "dry",
+        "minStock": 300,
+        "shelfLifeDays": 365,
+        "packSize": 50
+      },
+      {
+        "id": "salt",
+        "name": "Соль",
+        "unit": "кг",
+        "storage": "dry",
+        "minStock": 80,
+        "shelfLifeDays": 720,
+        "packSize": 25
+      },
+      {
+        "id": "milk",
+        "name": "Молоко сухое",
+        "unit": "кг",
+        "storage": "dry",
+        "minStock": 60,
+        "shelfLifeDays": 180,
+        "packSize": 25
+      },
+      {
+        "id": "butter",
+        "name": "Масло сливочное 82 %",
+        "unit": "кг",
+        "storage": "cold",
+        "minStock": 150,
+        "shelfLifeDays": 30,
+        "packSize": 10
+      },
+      {
+        "id": "yeast",
+        "name": "Дрожжи прессованные",
+        "unit": "кг",
+        "storage": "cold",
+        "minStock": 40,
+        "shelfLifeDays": 14,
+        "packSize": 1
+      },
+      {
+        "id": "eggs",
+        "name": "Меланж яичный",
+        "unit": "кг",
+        "storage": "cold",
+        "minStock": 60,
+        "shelfLifeDays": 10,
+        "packSize": 5
+      }
+    ],
+    "products": [
+      {
+        "id": "baguette",
+        "name": "Багет",
+        "shelfLifeDays": 1,
+        "frozen": false,
+        "recipe": {
+          "flour": 0.6,
+          "yeast": 0.012,
+          "salt": 0.012
+        }
+      },
+      {
+        "id": "ciabatta",
+        "name": "Чиабатта",
+        "shelfLifeDays": 2,
+        "frozen": false,
+        "recipe": {
+          "flour": 0.55,
+          "yeast": 0.01,
+          "salt": 0.012
+        }
+      },
+      {
+        "id": "burger-bun",
+        "name": "Булочка для бургера",
+        "shelfLifeDays": 3,
+        "frozen": false,
+        "recipe": {
+          "flour": 0.5,
+          "sugar": 0.06,
+          "butter": 0.05,
+          "eggs": 0.04,
+          "milk": 0.03,
+          "yeast": 0.02,
+          "salt": 0.01
+        }
+      },
+      {
+        "id": "toast",
+        "name": "Хлеб тостовый",
+        "shelfLifeDays": 5,
+        "frozen": false,
+        "recipe": {
+          "flour": 0.55,
+          "sugar": 0.05,
+          "butter": 0.04,
+          "milk": 0.03,
+          "yeast": 0.015,
+          "salt": 0.011
+        }
+      },
+      {
+        "id": "croissant",
+        "name": "Круассан (заморозка)",
+        "shelfLifeDays": 180,
+        "frozen": true,
+        "recipe": {
+          "flour": 0.45,
+          "butter": 0.28,
+          "sugar": 0.08,
+          "eggs": 0.05,
+          "milk": 0.02,
+          "yeast": 0.02,
+          "salt": 0.009
+        }
+      }
+    ],
+    "suppliers": {
+      "flour": "ООО «Демо-Мука»",
+      "sugar": "ООО «Демо-Бакалея»",
+      "salt": "ООО «Демо-Бакалея»",
+      "milk": "ООО «Демо-Молоко»",
+      "butter": "ООО «Демо-Молоко»",
+      "yeast": "ООО «Демо-Дрожжи»",
+      "eggs": "ООО «Демо-Яйцо»"
+    },
+    "vehicles": [
+      {
+        "id": "van-1",
+        "name": "Рефрижератор 1",
+        "plate": "01 D 101 TB",
+        "capacityKg": 800,
+        "refrigerated": true
+      },
+      {
+        "id": "van-2",
+        "name": "Рефрижератор 2",
+        "plate": "01 D 102 TB",
+        "capacityKg": 800,
+        "refrigerated": true
+      },
+      {
+        "id": "van-3",
+        "name": "Фургон 3",
+        "plate": "01 D 103 TB",
+        "capacityKg": 500,
+        "refrigerated": false
+      }
+    ],
+    "layout": {
+      "receivingDockX": -27.0,
+      "shippingDockXs": [
+        29.0,
+        31.8,
+        34.6
+      ],
+      "dryRacks": {
+        "xFrom": -31.0,
+        "xTo": -21.0
+      },
+      "goodsRacks": {
+        "xFrom": 28.6,
+        "xTo": 35.0
+      },
+      "packingQueueX": 22.4
+    }
+  }
 }

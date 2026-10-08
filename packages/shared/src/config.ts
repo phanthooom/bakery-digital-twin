@@ -21,6 +21,8 @@ export function validateSiteConfig(raw: unknown): { config: SiteConfig | null; e
   }
   const energy = (c as { energy?: Record<string, unknown> }).energy;
   if (energy !== undefined) errors.push(...validateEnergy(energy));
+  const supply = (c as { supply?: Record<string, unknown> }).supply;
+  if (supply !== undefined) errors.push(...validateSupply(supply));
   if (brand && brand.logo != null && typeof brand.logo !== 'string') errors.push('site.brand.logo — путь к файлу логотипа или null');
   if (!Array.isArray(c.stages) || c.stages.length === 0) errors.push('stages: нужен хотя бы один этап');
   if (!Array.isArray(c.equipment)) errors.push('equipment должен быть массивом');
@@ -80,5 +82,25 @@ function validateEnergy(energy: Record<string, unknown>): string[] {
     for (let m = a!; m !== b; m = (m + 1) % 1440) covered[m]!++;
   }
   if (!ok || covered.some((n) => n !== 1)) errors.push('energy.shifts: смены должны покрывать все 24 часа без наложений');
+  return errors;
+}
+
+function validateSupply(supply: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const materials = (supply.materials as Array<Record<string, unknown>> | undefined) ?? [];
+  const products = (supply.products as Array<Record<string, unknown>> | undefined) ?? [];
+  const ids = new Set(materials.map((m) => m.id));
+  if (!materials.length) errors.push('supply.materials: нужно хотя бы одно сырьё');
+  materials.forEach((m, i) => {
+    if (!isNum(m.shelfLifeDays) || m.shelfLifeDays <= 0 || !isNum(m.minStock)) errors.push(`supply.materials[${i}]: нужны shelfLifeDays > 0 и minStock`);
+  });
+  products.forEach((p, i) => {
+    const recipe = (p.recipe as Record<string, unknown> | undefined) ?? {};
+    for (const [id, v] of Object.entries(recipe)) {
+      if (!ids.has(id)) errors.push(`supply.products[${i}] (${String(p.id)}): в рецептуре неизвестное сырьё "${id}"`);
+      else if (!isNum(v) || v <= 0) errors.push(`supply.products[${i}] (${String(p.id)}): расход "${id}" должен быть > 0`);
+    }
+  });
+  if (!Array.isArray(supply.vehicles)) errors.push('supply.vehicles должен быть массивом');
   return errors;
 }

@@ -27,16 +27,16 @@ describe('validateSiteConfig', () => {
 
   it('находит дубли id, неизвестный этап, неверные фазы и мощность', () => {
     const bad = structuredClone(realConfig);
-    bad.equipment[1].id = 'mixer-1';
-    bad.equipment[2].stage = 'packing';
+    bad.equipment[2].id = bad.equipment[1].id;
+    bad.equipment[2].stage = 'no-such-stage';
     bad.equipment[3].phases = 2;
     bad.equipment[4].nominalKw = 0;
     const { errors, config } = validateSiteConfig(bad);
     expect(config).toBeNull();
     expect(errors).toEqual(
       expect.arrayContaining([
-        expect.stringContaining('дублируется id "mixer-1"'),
-        expect.stringContaining('неизвестный этап "packing"'),
+        expect.stringContaining(`дублируется id "${bad.equipment[1].id}"`),
+        expect.stringContaining('неизвестный этап "no-such-stage"'),
         expect.stringContaining('phases'),
         expect.stringContaining('nominalKw'),
       ]),
@@ -65,6 +65,12 @@ describe('validateSiteConfig', () => {
       'energy.shifts[0]: from и to — время HH:MM',
       'energy.shifts: смены должны покрывать все 24 часа без наложений',
     ]);
+  });
+
+  it('цепочка: в рецептуре только известное сырьё', () => {
+    const bad = structuredClone(realConfig);
+    bad.supply.products[0].recipe.rye = 0.2;
+    expect(validateSiteConfig(bad).errors).toEqual([`supply.products[0] (${bad.supply.products[0].id}): в рецептуре неизвестное сырьё "rye"`]);
   });
 
   it('не объект → ошибка', () => {

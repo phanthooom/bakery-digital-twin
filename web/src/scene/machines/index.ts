@@ -8,6 +8,7 @@ import { IceMaker } from './IceMaker';
 import { Mixer } from './Mixer';
 import { Moulder } from './Moulder';
 import { Oven } from './Oven';
+import { Packer } from './Packer';
 import { Proofer } from './Proofer';
 import type { BodyProps } from './specs';
 
@@ -21,6 +22,7 @@ export const BODIES: Record<MachineKind, ComponentType<BodyProps>> = {
   icemaker: IceMaker,
   blastfreezer: BlastFreezer,
   coldroom: ColdRoom,
+  packer: Packer,
   generic: Generic,
 };
 

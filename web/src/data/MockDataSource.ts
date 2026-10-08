@@ -1,5 +1,6 @@
 import { EnergyLedger, FAULTS, MachineSim, TwinEngine, type EnergyEntry, type EquipmentState, type FaultType, type SiteConfig } from '@bakery/shared';
 import type { DataSource, HistoryResult } from './DataSource';
+import { SupplySim, type SupplySnapshot } from './mockSupply';
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -35,6 +36,7 @@ export class MockDataSource implements DataSource {
   private readonly ledger = new EnergyLedger();
   private warmupFrom = 0;
   private archived = false;
+  private supply: SupplySim | null = null;
   private dirty = false;
 
   constructor(readonly config: SiteConfig, private readonly opts: MockOptions = {}) {
@@ -131,6 +133,15 @@ export class MockDataSource implements DataSource {
         if (r) this.ledger.add(r.equipmentId, t, Math.min(t + ARCHIVE_STEP, this.warmupFrom), r.powerKw);
       }
     }
+  }
+
+  getSupply(now: number): SupplySnapshot | null {
+    if (!this.config.supply) return null;
+    if (!this.supply) {
+      const days = 10;
+      this.supply = new SupplySim(this.config, SupplySim.localMidnight(Date.now() - days * 24 * HOUR, this.config.site.timezone), days);
+    }
+    return this.supply.snapshot(now);
   }
 
   async getEnergy(fromMs: number, toMs: number): Promise<EnergyEntry[]> {

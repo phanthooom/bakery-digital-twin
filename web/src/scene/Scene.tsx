@@ -7,6 +7,8 @@ import { PowerLines } from './PowerLines';
 import { BrandSign } from './BrandSign';
 import { Hall } from './Hall';
 import { Machine } from './Machine';
+import { SupplyScene } from './SupplyScene';
+import type { SupplyTab } from '../ui/supplyView';
 
 export interface SceneProps {
   config: SiteConfig;
@@ -23,6 +25,8 @@ export interface SceneProps {
   cardOffset: [number, number];
   onSelect: (id: string) => void;
   onDeselect: () => void;
+  /** Клик по складу, рампе или машине — открыть панель цепочки на нужной вкладке. */
+  onOpenSupply?: (tab: SupplyTab) => void;
   /** Первый кадр сцены отрисован. */
   onReady?: () => void;
 }
@@ -39,19 +43,19 @@ function Lights() {
         shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0008}
         shadow-normalBias={0.04}
-        shadow-camera-left={-24}
-        shadow-camera-right={24}
-        shadow-camera-top={16}
-        shadow-camera-bottom={-16}
+        shadow-camera-left={-40}
+        shadow-camera-right={40}
+        shadow-camera-top={22}
+        shadow-camera-bottom={-22}
         shadow-camera-near={1}
-        shadow-camera-far={60}
+        shadow-camera-far={80}
       />
       <directionalLight position={[-12, 9, 6]} intensity={0.45} />
     </>
   );
 }
 
-export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady }: SceneProps) {
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
@@ -93,6 +97,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           </EffectComposer>
           <Hall config={config} />
           <BrandSign config={config} />
+          {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} />}
           {showLines && (
             <PowerLines
               config={config}

@@ -10,6 +10,8 @@ import { EquipmentCard } from './ui/EquipmentCard';
 import { EquipmentList } from './ui/EquipmentList';
 import { Header } from './ui/Header';
 import { EnergyPanel } from './ui/EnergyPanel';
+import { SupplyPanel } from './ui/SupplyPanel';
+import type { SupplyTab } from './ui/supplyView';
 import { STATUS_LABEL, STATUS_ORDER, applyStatusCssVars } from './ui/statusMeta';
 import { StatusIcon } from './ui/StatusIcon';
 import { GestureHint } from './ui/GestureHint';
@@ -29,6 +31,7 @@ export function App() {
   });
   const [showLines, setShowLines] = useState(true);
   const [energyOpen, setEnergyOpen] = useState(false);
+  const [supplyTab, setSupplyTab] = useState<SupplyTab | null>(null);
   const selectedId = selection?.kind === 'machine' ? selection.id : null;
   const selectedLineId = selection?.kind === 'line' ? selection.id : null;
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? { kind: 'machine', id } : null), []);
@@ -112,6 +115,8 @@ export function App() {
           onToggleList={() => setListOpen((v) => !v)}
           energyOpen={energyOpen}
           onOpenEnergy={() => setEnergyOpen(true)}
+          supplyOpen={supplyTab !== null}
+          onOpenSupply={ds.config.supply ? () => setSupplyTab('overview') : undefined}
           linesVisible={showLines}
           onToggleLines={() => setShowLines((v) => !v)}
           onResetView={() => {
@@ -134,8 +139,10 @@ export function App() {
           onSelect={select}
           onDeselect={deselect}
           onReady={() => setSceneReady(true)}
+          onOpenSupply={ds.config.supply ? setSupplyTab : undefined}
         />
         {energyOpen && <EnergyPanel onClose={() => setEnergyOpen(false)} />}
+        {supplyTab && <SupplyPanel initialTab={supplyTab} onClose={() => setSupplyTab(null)} />}
         {!loaderGone && <LoadingScreen leaving={sceneReady} />}
         {selected && <EquipmentCard key={selected.id} eq={selected} onClose={deselect} />}
         {selectedLineEq && <LineCard key={`line-${selectedLineEq.id}`} eq={selectedLineEq} onClose={deselect} onOpenMachine={() => select(selectedLineEq.id)} />}

@@ -25,6 +25,13 @@ export function fmtAxis(v: number): string {
   return fmtNum(v, 2).replace(/,?0+$/, '') || '0';
 }
 
+/** Масса: до тонны — кг, дальше — тонны: 34 кг · 340 кг · 4,2 т */
+export function fmtMass(kg: number): string {
+  const a = Math.abs(kg);
+  if (a >= 1000) return `${fmtNum(kg / 1000, a >= 10_000 ? 0 : 1)}${NB}т`;
+  return `${fmtNum(kg, a < 10 ? 1 : 0)}${NB}кг`;
+}
+
 export function fmtPct(v: number, digits = 0): string {
   return `${fmtNum(v, digits)}${NB}%`;
 }

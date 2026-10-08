@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtNum, fmtPct, fmtTime, fmtAxis } from './format';
+import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtNum, fmtPct, fmtTime, fmtAxis, fmtMass } from './format';
 
 const NB = ' ';
 
@@ -66,5 +66,14 @@ describe('fmtAxis (деления оси графика)', () => {
     expect(fmtAxis(0.4)).toBe('0,4');
     expect(fmtAxis(1.25)).toBe('1,25');
     expect(fmtAxis(40)).toBe('40');
+  });
+});
+
+describe('fmtMass (остатки на складе)', () => {
+  it('кг до тонны, дальше тонны', () => {
+    expect(fmtMass(3.4)).toBe('3,4\u00a0кг');
+    expect(fmtMass(340)).toBe('340\u00a0кг');
+    expect(fmtMass(4180)).toBe('4,2\u00a0т');
+    expect(fmtMass(12_400)).toBe('12\u00a0т');
   });
 });

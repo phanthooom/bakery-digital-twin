@@ -13,12 +13,14 @@ export interface HeaderProps {
   onToggleList: () => void;
   onResetView: () => void;
   energyOpen: boolean;
+  supplyOpen?: boolean;
+  onOpenSupply?: () => void;
   onOpenEnergy: () => void;
   linesVisible: boolean;
   onToggleLines: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, linesVisible, onToggleLines }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines }: HeaderProps) {
   const ds = useDataSource();
   const states = useStates();
   const now = useNow(1000);
@@ -60,6 +62,16 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
           <span className="pulse" aria-hidden />
           {ds.kind === 'mock' ? 'Демо-данные' : 'Онлайн'} · {lastTs ? fmtAgo(now - lastTs) : '—'}
         </span>
+        {onOpenSupply && (
+          <button className="btn" aria-pressed={supplyOpen} onClick={onOpenSupply} title="Сырьё, склад, упаковка, рейсы и партии">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z" />
+              <circle cx="7" cy="18" r="1.6" />
+              <circle cx="17" cy="18" r="1.6" />
+            </svg>
+            Цепочка
+          </button>
+        )}
         {ds.config.energy && (
           <button className="btn btn-energy" aria-pressed={energyOpen} onClick={onOpenEnergy} title="кВт·ч и сумма по тарифу за смены, дни, месяцы; выгрузка в Excel">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

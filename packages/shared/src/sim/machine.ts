@@ -161,6 +161,11 @@ export class MachineSim {
         if (prev === 'freeze') return { mode: 'hold', until: d(10, 20), level: 0.55, alt: { level: 0.08, onMs: [90_000, 180_000], offMs: [60_000, 150_000] } };
         if (prev === 'load') return { mode: 'freeze', until: d(35, 60), level: 0.96, pulse: 0.015, order: this.product() };
         return { mode: 'load', until: d(2, 5), level: 0.05 };
+      case 'packer':
+        // губки запайки держат температуру и в простое, мотор и протяжка плёнки — рывками
+        return prev === 'work'
+          ? { mode: 'idle', until: d(4, 12), level: 0.22, pulse: 0.01 }
+          : { mode: 'work', until: d(12, 30), level: this.between(0.6, 0.75), pulse: 0.12, order: this.product() };
       case 'icemaker':
         return prev === 'on'
           ? { mode: 'standby', until: d(8, 15), level: 0.03 }

@@ -1,4 +1,6 @@
-import { createContext, useCallback, useContext, useSyncExternalStore } from 'react';
+import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
+import { useNow } from '../ui/useNow';
+import type { SupplySnapshot } from './mockSupply';
 import { validateSiteConfig, type EquipmentState } from '@bakery/shared';
 import rawConfig from '../../../config/equipment.json';
 import type { DataSource } from './DataSource';
@@ -35,4 +37,11 @@ export function useEquipmentState(id: string): EquipmentState | undefined {
     useCallback((cb) => ds.subscribe(cb), [ds]),
     () => ds.getStates().get(id),
   );
+}
+
+/** Снимок цепочки поставок; обновляется раз в 30 с (склад и рейсы меняются медленно). */
+export function useSupply(): SupplySnapshot | null {
+  const ds = useDataSource();
+  const now = useNow(30_000);
+  return useMemo(() => ds.getSupply?.(now) ?? null, [ds, now]);
 }

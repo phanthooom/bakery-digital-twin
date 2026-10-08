@@ -1,8 +1,10 @@
 /** Типы, общие для симулятора, API и web. */
+import type { MaterialConfig, ProductConfig } from './inventory';
+import type { VehicleConfig } from './logistics';
 
 export type StageId = string;
 
-export type MachineKind = 'mixer' | 'moulder' | 'conveyor' | 'proofer' | 'oven' | 'icemaker' | 'blastfreezer' | 'coldroom' | 'generic';
+export type MachineKind = 'mixer' | 'moulder' | 'conveyor' | 'proofer' | 'oven' | 'icemaker' | 'blastfreezer' | 'coldroom' | 'packer' | 'generic';
 
 export interface Vec3 {
   x: number;
@@ -95,6 +97,27 @@ export interface EnergyConfig {
   shifts: ShiftConfig[];
 }
 
+/** Цепочка поставок: сырьё, продукция с рецептурами, поставщики, машины, где что стоит в цехе. */
+export interface SupplyConfig {
+  materials: MaterialConfig[];
+  products: ProductConfig[];
+  /** Поставщик по id сырья (для партий прихода). */
+  suppliers: Record<string, string>;
+  vehicles: VehicleConfig[];
+  layout: {
+    /** Центр места разгрузки поставщика у переднего края цеха, x. */
+    receivingDockX: number;
+    /** Места отгрузки (по одному на машину), x. */
+    shippingDockXs: number[];
+    /** Стеллажи сухого сырья вдоль задней стены: от x до x. */
+    dryRacks: { xFrom: number; xTo: number };
+    /** Стеллажи готовой продукции: от x до x. */
+    goodsRacks: { xFrom: number; xTo: number };
+    /** Тележки с продукцией, ждущей упаковки (у упаковочной машины), x. */
+    packingQueueX: number;
+  };
+}
+
 export interface SiteConfig {
   site: {
     name: string;
@@ -107,6 +130,8 @@ export interface SiteConfig {
   power?: { panel: { id: string; name: string; inputBreakerA: number; position: { x: number; z: number } } };
   /** Учёт энергии в деньгах. */
   energy?: EnergyConfig;
+  /** Цепочка: приёмка сырья → производство → упаковка → склад готовой продукции → доставка. */
+  supply?: SupplyConfig;
   thresholds: Thresholds;
   stages: StageConfig[];
   equipment: EquipmentConfig[];

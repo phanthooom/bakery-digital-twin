@@ -11,3 +11,5 @@ export * from './engine';
 export * from './feeder';
 export * from './lineHealth';
 export * from './energy';
+export * from './inventory';
+export * from './logistics';
