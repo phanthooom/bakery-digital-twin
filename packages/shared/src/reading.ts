@@ -12,22 +12,34 @@ export interface ParseOptions {
 }
 
 const DEFAULT_PREFIX = 'bakery';
+const ID_RE = /^[a-zA-Z0-9_-]{1,64}$/;
+
+export const MAX_POWER_KW = 10_000;
+export const MAX_CURRENT_A = 50_000;
+export const MAX_VOLTAGE_V = 1_000;
+export const MAX_ENERGY_KWH = 1e9;
 
 /** `bakery/{equipmentId}/power` → equipmentId, иначе null. */
 export function parseTopic(topic: string, prefix: string = DEFAULT_PREFIX): string | null {
   const head = `${prefix}/`;
   if (!topic.startsWith(head) || !topic.endsWith('/power')) return null;
   const id = topic.slice(head.length, -'/power'.length);
-  if (!id || id.includes('/') || id.includes('+') || id.includes('#')) return null;
+  if (!ID_RE.test(id)) return null;
   return id;
 }
 
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
-const isNonNegNum = (v: unknown): v is number => isNum(v) && v >= 0;
+const isNonNegNum = (v: unknown, max = Number.POSITIVE_INFINITY): v is number => isNum(v) && v >= 0 && v <= max;
 
-function numArray(v: unknown, lengths: number[]): number[] | undefined {
+function numArray(v: unknown, lengths: number[], max = Number.POSITIVE_INFINITY): number[] | undefined {
   if (!Array.isArray(v) || !lengths.includes(v.length)) return undefined;
-  return v.every(isNonNegNum) ? (v as number[]) : undefined;
+  return v.every((n) => isNonNegNum(n, max)) ? (v as number[]) : undefined;
+}
+
+function sanitizeStr(raw: unknown, maxLen: number): string | undefined {
+  if (typeof raw !== 'string') return undefined;
+  const clean = raw.replace(/[\x00-\x1F\x7F]/g, '').trim().slice(0, maxLen);
+  return clean || undefined;
 }
 
 function parseTs(raw: unknown, nowMs: number): number | null {
@@ -64,16 +76,16 @@ export function parseReading(topic: string, payload: string | Uint8Array, opts: 
 
   let powerKw: number;
   if (d.powerKw !== undefined) {
-    if (!isNonNegNum(d.powerKw)) return { ok: false, error: 'bad_power' };
+    if (!isNonNegNum(d.powerKw, MAX_POWER_KW)) return { ok: false, error: 'bad_power' };
     powerKw = d.powerKw;
   } else if (d.powerW !== undefined) {
-    if (!isNonNegNum(d.powerW)) return { ok: false, error: 'bad_power' };
+    if (!isNonNegNum(d.powerW, MAX_POWER_KW * 1000)) return { ok: false, error: 'bad_power' };
     powerKw = d.powerW / 1000;
   } else {
     return { ok: false, error: 'bad_power' };
   }
 
-  const currentsA = numArray(d.currentsA, [1, 3]);
+  const currentsA = numArray(d.currentsA, [1, 3], MAX_CURRENT_A);
   if (!currentsA) return { ok: false, error: 'bad_currents' };
 
   const ts = parseTs(d.ts, nowMs);
@@ -81,11 +93,13 @@ export function parseReading(topic: string, payload: string | Uint8Array, opts: 
   if (ts === null || ts > nowMs + maxSkew || ts < Date.UTC(2020, 0, 1)) return { ok: false, error: 'bad_ts' };
 
   const reading: Reading = { equipmentId, ts, powerKw, currentsA };
-  if (typeof d.meterId === 'string' && d.meterId) reading.meterId = d.meterId;
-  const voltageV = numArray(d.voltageV, [1, 3]);
+  const meterId = sanitizeStr(d.meterId, 64);
+  if (meterId) reading.meterId = meterId;
+  const voltageV = numArray(d.voltageV, [1, 3], MAX_VOLTAGE_V);
   if (voltageV) reading.voltageV = voltageV;
-  if (isNonNegNum(d.energyKwh)) reading.energyKwh = d.energyKwh;
+  if (isNonNegNum(d.energyKwh, MAX_ENERGY_KWH)) reading.energyKwh = d.energyKwh;
   if (isNum(d.powerFactor) && d.powerFactor >= 0 && d.powerFactor <= 1) reading.powerFactor = d.powerFactor;
-  if (typeof d.order === 'string' && d.order.trim()) reading.order = d.order.trim().slice(0, 120);
+  const order = sanitizeStr(d.order, 120);
+  if (order) reading.order = order;
   return { ok: true, reading };
 }

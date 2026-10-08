@@ -86,7 +86,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_MIX1",
-      "model": null
+      "model": "/models/mixer.glb"
     },
     {
       "id": "mixer-2",
@@ -103,7 +103,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_MIX2",
-      "model": null
+      "model": "/models/mixer.glb"
     },
     {
       "id": "icemaker-1",
@@ -137,7 +137,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_FRM1",
-      "model": null
+      "model": "/models/moulder.glb"
     },
     {
       "id": "conveyor-1",
@@ -171,7 +171,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_PRF1",
-      "model": null
+      "model": "/models/proofer.glb"
     },
     {
       "id": "oven-1",
@@ -188,7 +188,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_OVN1",
-      "model": null
+      "model": "/models/oven.glb"
     },
     {
       "id": "oven-2",
@@ -205,7 +205,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_OVN2",
-      "model": null
+      "model": "/models/oven.glb"
     },
     {
       "id": "blastfreezer-1",
@@ -222,7 +222,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_BLF1",
-      "model": null
+      "model": "/models/blastfreezer.glb"
     },
     {
       "id": "coldroom-1",

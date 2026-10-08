@@ -6,10 +6,10 @@ import type { MachineStatus } from '@bakery/shared';
 import { M } from './materials';
 
 /** Цвета свечения ламп — физические (ярче статусной палитры интерфейса), поэтому отдельно. */
-const LAMPS: { status: MachineStatus; color: string; y: number }[] = [
-  { status: 'alarm', color: '#ff2a2a', y: 0.36 },
-  { status: 'idle', color: '#ffb000', y: 0.27 },
-  { status: 'running', color: '#2bff3a', y: 0.18 },
+const LAMPS = [
+  { status: 'alarm' as const, color: '#ff2a2a', baseColor: new THREE.Color('#ff2a2a').multiplyScalar(0.45), y: 0.36 },
+  { status: 'idle' as const, color: '#ffb000', baseColor: new THREE.Color('#ffb000').multiplyScalar(0.45), y: 0.27 },
+  { status: 'running' as const, color: '#2bff3a', baseColor: new THREE.Color('#2bff3a').multiplyScalar(0.45), y: 0.18 },
 ];
 
 /**
@@ -44,7 +44,7 @@ export function SignalTower({ status, ...rest }: { status: MachineStatus } & Thr
             ref={(m) => {
               mats.current[i] = m;
             }}
-            color={new THREE.Color(l.color).multiplyScalar(0.45)}
+            color={l.baseColor}
             emissive={l.color}
             emissiveIntensity={0}
             roughness={0.25}

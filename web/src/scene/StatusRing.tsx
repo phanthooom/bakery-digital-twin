@@ -9,8 +9,12 @@ export function StatusRing({ status, color, radius, highlighted }: { status: Mac
   useFrame((state) => {
     const m = wave.current;
     if (!m) return;
+    if (status !== 'alarm') {
+      if (m.visible) m.visible = false;
+      return;
+    }
     const p = (state.clock.elapsedTime * 0.7) % 1;
-    m.visible = status === 'alarm';
+    m.visible = true;
     m.scale.setScalar(1 + p * 0.6);
     (m.material as THREE.MeshBasicMaterial).opacity = (1 - p) * 0.5;
   });

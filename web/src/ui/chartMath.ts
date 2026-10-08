@@ -1,9 +1,9 @@
 import type { PowerPoint } from '@bakery/shared';
 
 /** Делит ряд на отрезки, если между точками разрыв больше gapMs (нет связи — линия не рисуется). */
-export function splitByGaps(points: readonly PowerPoint[], gapMs: number): PowerPoint[][] {
-  const out: PowerPoint[][] = [];
-  let cur: PowerPoint[] = [];
+export function splitByGaps<T extends PowerPoint = PowerPoint>(points: readonly T[], gapMs: number): T[][] {
+  const out: T[][] = [];
+  let cur: T[] = [];
   for (const p of points) {
     const prev = cur[cur.length - 1];
     if (prev && p.t - prev.t > gapMs) {

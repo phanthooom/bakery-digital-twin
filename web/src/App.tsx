@@ -4,7 +4,7 @@ import { Scene } from './scene/Scene';
 import { EquipmentCard } from './ui/EquipmentCard';
 import { EquipmentList } from './ui/EquipmentList';
 import { Header } from './ui/Header';
-import { STATUS_LABEL, STATUS_ORDER } from './ui/statusMeta';
+import { STATUS_LABEL, STATUS_ORDER, applyStatusCssVars } from './ui/statusMeta';
 import { StatusIcon } from './ui/StatusIcon';
 import { GestureHint } from './ui/GestureHint';
 import { LoadingScreen } from './ui/LoadingScreen';
@@ -22,6 +22,10 @@ export function App() {
   const [wide, setWide] = useState(() => window.innerWidth > 760);
   const [sceneReady, setSceneReady] = useState(false);
   const [loaderGone, setLoaderGone] = useState(false);
+
+  useEffect(() => {
+    applyStatusCssVars();
+  }, []);
 
   useEffect(() => {
     if (!sceneReady) return;

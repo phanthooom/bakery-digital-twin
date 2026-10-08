@@ -17,6 +17,8 @@ describe('parseTopic', () => {
     expect(parseTopic('other/oven-1/power')).toBeNull();
     expect(parseTopic('bakery//power')).toBeNull();
     expect(parseTopic('bakery/a/b/power')).toBeNull();
+    expect(parseTopic('bakery/../power')).toBeNull();
+    expect(parseTopic('bakery/oven<script>/power')).toBeNull();
   });
 });
 
@@ -115,5 +117,23 @@ describe('parseReading', () => {
   it('пропускает поле order (заказ)', () => {
     const r = parseReading(topic, '{"powerKw":1,"currentsA":[1],"order":"Батон нарезной ×120"}', { nowMs: NOW });
     expect(r.ok && r.reading.order).toBe('Батон нарезной ×120');
+  });
+
+  it('отклоняет физически невозможные выбросы мощности и токов', () => {
+    expect(parseReading(topic, '{"powerKw":100000,"currentsA":[1]}', { nowMs: NOW })).toEqual({ ok: false, error: 'bad_power' });
+    expect(parseReading(topic, '{"powerKw":1,"currentsA":[60000]}', { nowMs: NOW })).toEqual({ ok: false, error: 'bad_currents' });
+  });
+
+  it('санирует и ограничивает длину meterId и order, удаляя управляющие символы', () => {
+    const r = parseReading(topic, JSON.stringify({
+      powerKw: 1,
+      currentsA: [1],
+      meterId: 'ESP32\x00_Meter\x1F_01' + 'A'.repeat(100),
+      order: 'Партия\x07 №1' + 'B'.repeat(200),
+    }), { nowMs: NOW });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.reading.meterId).toBe(('ESP32_Meter_01' + 'A'.repeat(100)).slice(0, 64));
+    expect(r.reading.order).toBe(('Партия №1' + 'B'.repeat(200)).slice(0, 120));
   });
 });
