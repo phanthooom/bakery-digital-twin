@@ -12,10 +12,7 @@
   --border: rgba(11, 11, 11, 0.1);
   --series-1: #2a78d6;
   --series-1-track: #cde2fb;
-  --status-good: #0ca30c;
-  --status-warning: #fab219;
-  --status-critical: #d03b3b;
-  --status-offline: #898781;
+  /* --status-* задаются из web/src/ui/statusMeta.ts (applyStatusCssVars) */
   --focus: #2f7bff;
   --shadow: 0 12px 32px rgba(20, 20, 18, 0.14), 0 2px 6px rgba(20, 20, 18, 0.08);
   --radius: 14px;
@@ -48,7 +45,6 @@ button { font: inherit; color: inherit; }
 .brand-mark { width: 28px; height: 28px; flex: none; }
 .brand-title { font-size: 16px; font-weight: 650; white-space: nowrap; }
 .brand-sub { color: var(--text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.crumbs { color: var(--text-muted); font-size: 12px; }
 .topbar-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .stat-total { display: flex; align-items: baseline; gap: 6px; padding-right: 8px; margin-right: 4px; border-right: 1px solid var(--grid); }
 .stat-total .label { color: var(--text-secondary); font-size: 12px; }
@@ -71,8 +67,8 @@ button { font: inherit; color: inherit; }
 .btn[aria-pressed='true'] { background: #eaf2fd; border-color: rgba(42, 120, 214, 0.35); color: #1c5cab; }
 .btn-ghost { border-color: transparent; background: transparent; }
 .source-badge { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); font-size: 12px; white-space: nowrap; }
-.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--status-good); box-shadow: 0 0 0 0 rgba(12, 163, 12, 0.5); animation: pulse 2s infinite; }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(12,163,12,.45); } 70% { box-shadow: 0 0 0 7px rgba(12,163,12,0); } 100% { box-shadow: 0 0 0 0 rgba(12,163,12,0); } }
+.pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--series-1); animation: pulse 2s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(42,120,214,.45); } 70% { box-shadow: 0 0 0 7px rgba(42,120,214,0); } 100% { box-shadow: 0 0 0 0 rgba(42,120,214,0); } }
 
 .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex: none; }
 .status-icon { flex: none; }
@@ -178,7 +174,7 @@ details.table-view th { color: var(--text-muted); font-weight: 500; }
 @media (max-width: 760px) {
   .topbar { gap: 8px; }
   .topbar-stats { margin-left: 0; width: 100%; }
-  .brand-sub, .crumbs { display: none; }
+  .brand-sub { display: none; }
   .topbar-actions { width: 100%; }
   .source-badge { width: 100%; }
   .btn { height: 28px; padding: 0 10px; }

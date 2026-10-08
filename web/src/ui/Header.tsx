@@ -33,10 +33,9 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
           <rect x="3" y="11" width="26" height="18" rx="3" fill="#52514e" />
           <rect x="7" y="16" width="8" height="9" rx="1.5" fill="#efa21f" />
           <rect x="18" y="16" width="7" height="4" rx="1" fill="#cde2fb" />
-          <rect x="13" y="3" width="6" height="9" rx="2" fill="#0ca30c" />
+          <rect x="13" y="3" width="6" height="9" rx="2" fill="#2a78d6" />
         </svg>
         <div style={{ minWidth: 0 }}>
-          <div className="crumbs">Главная › Дашборды</div>
           <div className="brand-title">3D Пекарня</div>
         </div>
         <span className="brand-sub">{ds.config.site.name}</span>

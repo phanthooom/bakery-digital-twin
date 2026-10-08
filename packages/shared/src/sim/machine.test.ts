@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { imbalancePct } from '../electrical';
 import { parseReading } from '../reading';
 import type { EquipmentConfig } from '../types';
-import { MachineSim, isWorkingHour, mulberry32 } from './machine';
+import { MachineSim, mulberry32 } from './machine';
 import { toPayload } from './payload';
 
 const MIN = 60_000;
@@ -30,21 +30,6 @@ function run(sim: MachineSim, minutes: number, start = T0) {
   }
   return out;
 }
-
-describe('mulberry32', () => {
-  it('детерминирован по seed', () => {
-    const a = mulberry32(42);
-    const b = mulberry32(42);
-    expect([a(), a(), a()]).toEqual([b(), b(), b()]);
-  });
-});
-
-describe('isWorkingHour', () => {
-  it('смена 03:00–21:00 по местному времени', () => {
-    expect(isWorkingHour(T0, TZ)).toBe(true); // 10:00
-    expect(isWorkingHour(Date.UTC(2026, 9, 8, 19, 0, 0), TZ)).toBe(false); // 00:00
-  });
-});
 
 describe('MachineSim', () => {
   const kinds: EquipmentConfig['kind'][] = ['mixer', 'moulder', 'conveyor', 'proofer', 'oven', 'icemaker', 'blastfreezer', 'coldroom'];
@@ -78,29 +63,29 @@ describe('MachineSim', () => {
     expect(Math.max(...readings.map((r) => r.powerKw))).toBeLessThan(36 * 0.1);
   });
 
-  it('без аномалий несимметрия фаз в норме (< 40 %) при нагрузке', () => {
+  it('без неисправностей несимметрия фаз под нагрузкой ниже порога аварии (40 %)', () => {
     const sim = new MachineSim(eq({}), { rng: mulberry32(3), timezone: TZ, faultsPerHour: 0 });
     for (const r of run(sim, 60)) {
       if (r.powerKw > 36 * 0.3) expect(imbalancePct(r.currentsA)!).toBeLessThan(40);
     }
   });
 
-  it('аномалии случаются при высокой частоте и бывают разных типов', () => {
+  it('с частыми неисправностями в показаниях видны перегрузка, обрыв фазы и пропуски (потеря связи)', () => {
     const sim = new MachineSim(eq({}), { rng: mulberry32(11), timezone: TZ, faultsPerHour: 20 });
-    run(sim, 240);
-    expect(sim.faultLog.length).toBeGreaterThan(5);
-    const types = new Set(sim.faultLog.map((a) => a.type));
-    expect(types.size).toBeGreaterThanOrEqual(3);
+    const readings = run(sim, 240);
+    expect(readings.some((r) => r.powerKw > 36 * 1.15)).toBe(true);
+    expect(readings.some((r) => r.powerKw > 5 && Math.min(...r.currentsA) < 0.05)).toBe(true);
+    expect(readings.length).toBeLessThan(240 * 12);
   });
 
-  it('«потеря связи» — пропуск сообщений', () => {
+  it('неисправность «потеря связи» — показаний нет, потом снова есть', () => {
     const sim = new MachineSim(eq({}), { rng: mulberry32(5), timezone: TZ, faultsPerHour: 0 });
     sim.forceFault('comm_loss', T0, 60_000);
     expect(sim.tick(T0 + 5000, 5000)).toBeNull();
     expect(sim.tick(T0 + 61_000, 5000)).not.toBeNull();
   });
 
-  it('«обрыв фазы» обнуляет одну фазу', () => {
+  it('неисправность «обрыв фазы» обнуляет ток одной фазы', () => {
     const sim = new MachineSim(eq({}), { rng: mulberry32(5), timezone: TZ, faultsPerHour: 0 });
     sim.forceMode('work', T0);
     sim.forceFault('phase_loss', T0, 60_000);

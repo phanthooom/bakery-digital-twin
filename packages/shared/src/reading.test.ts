@@ -112,7 +112,7 @@ describe('parseReading', () => {
     expect(r.reading.meterId).toBeUndefined();
   });
 
-  it('пропускает поле order (заказ/партия)', () => {
+  it('пропускает поле order (заказ)', () => {
     const r = parseReading(topic, '{"powerKw":1,"currentsA":[1],"order":"Батон нарезной ×120"}', { nowMs: NOW });
     expect(r.ok && r.reading.order).toBe('Батон нарезной ×120');
   });

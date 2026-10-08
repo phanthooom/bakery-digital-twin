@@ -1,0 +1,15 @@
+# Источник данных InfluxDB 2 (Flux). Дашборд «3D Пекарня» — тикет .scratch/next-steps/issues/04.
+apiVersion: 1
+datasources:
+  - name: InfluxDB
+    uid: bakery-influx
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: bakery
+      defaultBucket: bakery
+    secureJsonData:
+      token: $INFLUX_TOKEN

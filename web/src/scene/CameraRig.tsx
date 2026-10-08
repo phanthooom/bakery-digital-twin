@@ -24,7 +24,7 @@ export function CameraRig({ config, selectedId, viewToken, cardOffset }: { confi
     const cam = camera as THREE.PerspectiveCamera;
     const vfov = THREE.MathUtils.degToRad(cam.fov);
     const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
-    const dist = Math.max((W / 2 + 2.2) / Math.tan(hfov / 2), 11 / Math.tan(vfov / 2));
+    const dist = Math.max((W / 2 + 3.5) / Math.tan(hfov / 2), 11 / Math.tan(vfov / 2));
     const pos = OVERVIEW_DIR.clone().multiplyScalar(dist).add(OVERVIEW_TARGET);
     void c.setLookAt(pos.x, pos.y, pos.z, OVERVIEW_TARGET.x, OVERVIEW_TARGET.y, OVERVIEW_TARGET.z, smooth);
   };

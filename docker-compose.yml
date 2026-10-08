@@ -50,7 +50,6 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
       GF_DEFAULT_LOCALE: ru-RU
       GF_USERS_DEFAULT_LANGUAGE: ru-RU
-      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/bakery-3d.json
       INFLUX_TOKEN: bakery-dev-token
     volumes:
       - ./infra/grafana/provisioning:/etc/grafana/provisioning:ro

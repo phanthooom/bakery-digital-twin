@@ -16,7 +16,7 @@ export interface PowerChartProps {
 }
 
 const PLOT_H = 76;
-const PAD_TOP = 8;
+const PAD_TOP = 16;
 
 const SERIES = 'var(--series-1)';
 

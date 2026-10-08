@@ -25,7 +25,6 @@
     "infra:down": "docker compose down"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1",
     "typescript": "~5.9.3",
     "vitest": "^3.2.7",
     "@types/node": "^22.10.0"

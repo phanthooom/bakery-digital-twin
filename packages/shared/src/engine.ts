@@ -29,6 +29,7 @@ export class TwinEngine {
   private readonly listeners = new Set<StateListener>();
   private readonly historyMs: number;
   private readonly aiEveryMs: number;
+  private lastPruneAt = 0;
 
   constructor(readonly config: SiteConfig, opts: EngineOptions = {}) {
     this.historyMs = (opts.historyHours ?? 6.5) * 3_600_000;
@@ -91,7 +92,10 @@ export class TwinEngine {
     let ai = prev.ai_check;
     if (nowMs - ai.checkedAt >= this.aiEveryMs) {
       ai = this.runAi(slot, nowMs);
-      if (ai.checkedAt % 3_600_000 < this.aiEveryMs) slot.baseline.prune(nowMs);
+    }
+    if (nowMs - this.lastPruneAt >= 3_600_000) {
+      this.lastPruneAt = nowMs;
+      for (const s of this.slots.values()) s.baseline.prune(nowMs);
     }
 
     const next = this.buildState(slot, last, ai, nowMs);

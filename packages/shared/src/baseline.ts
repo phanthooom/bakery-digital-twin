@@ -79,16 +79,6 @@ export class HourlyBaseline {
     }
   }
 
-  /** Добавить уже агрегированное минутное среднее (например, из InfluxDB). */
-  addMinuteMean(minuteStartMs: number, meanKw: number): void {
-    if (!Number.isFinite(meanKw)) return;
-    const key = Math.floor(minuteStartMs / MIN_MS) * MIN_MS;
-    const bucket = this.byHour[hourOfDay(key, this.opts.timezone)]!;
-    if (!bucket.has(key)) this.count++;
-    const nb = { sum: meanKw, count: 1 };
-    bucket.set(key, nb);
-    this.flat.set(key, nb);
-  }
 
   /**
    * Норма для часа суток момента tsMs: медиана и MAD (медиана абсолютных отклонений).

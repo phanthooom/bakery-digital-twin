@@ -5,6 +5,7 @@ import type { ThreeElements } from '@react-three/fiber';
 import type { MachineStatus } from '@bakery/shared';
 import { M } from './materials';
 
+/** Цвета свечения ламп — физические (ярче статусной палитры интерфейса), поэтому отдельно. */
 const LAMPS: { status: MachineStatus; color: string; y: number }[] = [
   { status: 'alarm', color: '#ff2a2a', y: 0.36 },
   { status: 'idle', color: '#ffb000', y: 0.27 },

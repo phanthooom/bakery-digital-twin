@@ -40,7 +40,7 @@ export function StatusIcon({ status, size = 14 }: { status: MachineStatus; size?
 }
 
 export function WarnIcon({ level }: { level: 'warning' | 'critical' }) {
-  const c = level === 'critical' ? '#d03b3b' : '#fab219';
+  const c = level === 'critical' ? STATUS_COLOR.alarm : STATUS_COLOR.idle;
   return (
     <svg width="14" height="14" viewBox="0 0 16 16" className="status-icon" aria-hidden>
       <path d="M8 1.2l7 13H1z" fill={c} />

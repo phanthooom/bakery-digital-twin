@@ -2,6 +2,9 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import './styles.css';
+import { applyStatusCssVars } from './ui/statusMeta';
+
+applyStatusCssVars();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -6,6 +6,7 @@ import type { EquipmentConfig } from '@bakery/shared';
 import { useEquipmentState } from '../data/store';
 import { fmtKw } from '../ui/format';
 import { STATUS_COLOR, STATUS_LABEL } from '../ui/statusMeta';
+import { StatusIcon } from '../ui/StatusIcon';
 import { GltfModel } from './GltfModel';
 import { BODIES, SPECS, type MachineLive } from './machines';
 import { SignalTower } from './SignalTower';
@@ -61,7 +62,7 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
       {(showLabel || (hovered && !selected)) && (
         <Html position={[0, top + 0.25, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
           <div className={`scene-tag${hovered ? ' is-hovered' : ''}`}>
-            <span className="dot" style={{ background: color }} aria-hidden />
+            <StatusIcon status={status} size={12} />
             <span className="scene-tag-name">{eq.name}</span>
             <span className="scene-tag-value">{status === 'offline' ? STATUS_LABEL.offline : `${fmtKw(powerKw)} кВт`}</span>
           </div>

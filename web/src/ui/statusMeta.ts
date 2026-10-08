@@ -25,3 +25,11 @@ export const REASON_LABEL: Record<StatusReason, string> = {
 
 
 export const STATUS_ORDER: MachineStatus[] = ['running', 'idle', 'alarm', 'offline'];
+
+/** CSS-переменные статусов берутся отсюда же — один источник правды для 3D, SVG и CSS. */
+export function applyStatusCssVars(root: HTMLElement = document.documentElement): void {
+  root.style.setProperty('--status-good', STATUS_COLOR.running);
+  root.style.setProperty('--status-warning', STATUS_COLOR.idle);
+  root.style.setProperty('--status-critical', STATUS_COLOR.alarm);
+  root.style.setProperty('--status-offline', STATUS_COLOR.offline);
+}

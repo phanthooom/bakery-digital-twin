@@ -28,8 +28,8 @@ describe('nearestIndex', () => {
 
 describe('niceMax', () => {
   it('верх шкалы покрывает пик и номинал с запасом', () => {
-    expect(niceMax(1.08, 1)).toBeCloseTo(1.08 * 1.1);
-    expect(niceMax(20, 36)).toBeCloseTo(36 * 1.1);
+    expect(niceMax(1.08, 1)).toBeCloseTo(1.188);
+    expect(niceMax(20, 36)).toBeCloseTo(39.6);
     expect(niceMax(0, 0)).toBe(1);
   });
 });
