@@ -283,14 +283,14 @@ function ShippingDocks({ config, view, onOpen, showLabels }: { config: SiteConfi
               </mesh>
             )}
             {(showLabels || hover === v.vehicle.id) && (
-              <Tag position={[x, present ? 3.35 : 0.8, FRONT_Z + (present ? 2.2 : 3)]} title={`${v.vehicle.name} · ${VEHICLE_LABEL[v.status]}`} value={when} onClick={() => onOpen('trips')} />
+              <Tag position={[x, present ? 3.7 : 0.8, FRONT_Z + (present ? 2.2 : 3)]} title={`${v.vehicle.name} · ${VEHICLE_LABEL[v.status]}`} value={when} onClick={() => onOpen('trips')} />
             )}
           </group>
         );
       })}
       {!showLabels && !hover && (
         <Tag
-          position={[(xs[0]! + xs[xs.length - 1]!) / 2, 3.6, FRONT_Z + 2.2]}
+          position={[(xs[0]! + xs[xs.length - 1]!) / 2, 3.9, FRONT_Z + 2.2]}
           title="Отгрузка"
           value={`у рампы ${view.vehicles.filter((v) => v.status === 'at_dock').length} · погрузка ${view.vehicles.filter((v) => v.status === 'loading').length} · в рейсе ${view.vehicles.filter((v) => v.status === 'en_route').length}`}
           onClick={() => onOpen('trips')}
@@ -317,7 +317,7 @@ function ReceivingDock({ config, view, now, onOpen }: { config: SiteConfig; view
       </mesh>
       {atDock && <DockedTruck x={x} color="#7c8a7b" plate="01 X 555 SA" onClick={() => onOpen('raw')} />}
       <Tag
-        position={[x, atDock ? 3.35 : 0.8, FRONT_Z + (atDock ? 2.2 : 3)]}
+        position={[x, atDock ? 3.7 : 0.8, FRONT_Z + (atDock ? 2.2 : 3)]}
         title={atDock ? `Приёмка: ${atDock.name.split(' ')[0]}` : 'Приёмка сырья'}
         value={atDock ? 'разгрузка' : next ? `${next.name.split(' ')[0]} · ${localParts(next.t, tz).date === today ? '' : 'завтра '}${fmtTime(next.t, tz)}` : 'поставок нет'}
         onClick={() => onOpen('raw')}

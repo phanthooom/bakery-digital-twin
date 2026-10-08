@@ -14,12 +14,20 @@ import { makeGrilleTexture } from './textures';
 
 const W = 2.1; // ширина кузова
 const BODY_L = 3.5;
-const BODY_Y0 = 0.68;
-const BODY_H = 2.2;
+// будка стоит на подрамнике выше колёс
+const BODY_Y0 = 0.98;
+const BODY_H = 2.1;
 const CAB_Z0 = BODY_L + 0.06;
 const CAB_W = 2.0;
 const WHEEL_R = 0.42;
+/** Колёса по длине: заднее под будкой, переднее под кабиной. */
+const REAR_WHEEL_Z = 0.95;
+const FRONT_WHEEL_LOCAL = 0.95; // от начала кабины
+const ARCH_R = 0.53;
 
+const tireMat = new THREE.MeshStandardMaterial({ color: '#1d1f21', roughness: 0.92 });
+const rimInner = new THREE.MeshStandardMaterial({ color: '#8f959b', roughness: 0.35, metalness: 0.7 });
+const linerMat = new THREE.MeshStandardMaterial({ color: '#141516', roughness: 0.95, side: THREE.DoubleSide });
 const paint = new THREE.MeshStandardMaterial({ color: '#f7f7f5', roughness: 0.35, metalness: 0.15 });
 const tarpMat = new THREE.MeshStandardMaterial({ color: '#7f8d7e', roughness: 0.95 });
 const tarpRib = new THREE.MeshStandardMaterial({ color: '#6c796b', roughness: 0.9 });
@@ -34,9 +42,17 @@ const tailMat = new THREE.MeshStandardMaterial({ color: '#c8242b', emissive: '#a
 const seamMat = new THREE.MeshStandardMaterial({ color: '#c4c6c6', roughness: 0.6 });
 
 /** Боковой профиль кабины (z вперёд, y вверх): крыша, наклонное лобовое, короткий капот. */
-const CAB_PROFILE: [number, number][] = [
-  [0, 0.58], [0, 2.42], [0.62, 2.42], [1.12, 1.58], [1.5, 1.44], [1.6, 1.22], [1.6, 0.58],
-];
+const CAB_PROFILE: [number, number][] = (() => {
+  const top: [number, number][] = [[0, 0.58], [0, 2.42], [0.62, 2.42], [1.12, 1.58], [1.5, 1.44], [1.6, 1.22], [1.6, 0.58]];
+  // вырез арки переднего колеса снизу (от переда к заду)
+  const a0 = Math.asin((0.58 - WHEEL_R) / ARCH_R);
+  const arch: [number, number][] = [];
+  for (let i = 0; i <= 16; i++) {
+    const t = a0 + ((Math.PI - 2 * a0) * i) / 16;
+    arch.push([FRONT_WHEEL_LOCAL + ARCH_R * Math.cos(t), WHEEL_R + ARCH_R * Math.sin(t)]);
+  }
+  return [...top, ...arch];
+})();
 
 function useCabGeometry() {
   return useMemo(() => {
@@ -152,21 +168,63 @@ function liveryTexture(brand: string, tagline: string, color: string, mirror: bo
   return t;
 }
 
+/** Колесо: шина со скруглённой боковиной, стальной диск с выемкой, ступица и 6 гаек — снаружи. */
 function Wheel({ z, side }: { z: number; side: 1 | -1 }) {
+  const lugs = Array.from({ length: 6 }, (_, i) => (i / 6) * Math.PI * 2);
   return (
-    <group position={[side * (W / 2 - 0.2), WHEEL_R, z]} rotation={[0, 0, Math.PI / 2]}>
-      <mesh material={M.rubber} castShadow>
-        <cylinderGeometry args={[WHEEL_R, WHEEL_R, 0.3, 28]} />
+    <group position={[side * (W / 2 - 0.2), WHEEL_R, z]}>
+      <mesh rotation={[0, 0, Math.PI / 2]} material={tireMat} castShadow>
+        <cylinderGeometry args={[WHEEL_R - 0.02, WHEEL_R - 0.02, 0.26, 40]} />
       </mesh>
-      <mesh position={[0, side * 0.152, 0]} material={rimMat}>
-        <cylinderGeometry args={[0.25, 0.25, 0.02, 24]} />
+      {[-1, 1].map((f) => (
+        <mesh key={f} position={[f * 0.115, 0, 0]} rotation={[0, Math.PI / 2, 0]} material={tireMat}>
+          <torusGeometry args={[WHEEL_R - 0.06, 0.055, 12, 40]} />
+        </mesh>
+      ))}
+      <group position={[side * 0.145, 0, 0]} rotation={[0, side * (Math.PI / 2), 0]}>
+        <mesh material={rimMat}>
+          <ringGeometry args={[0.15, 0.25, 36]} />
+        </mesh>
+        <mesh position={[0, 0, -0.025]} material={rimInner}>
+          <circleGeometry args={[0.16, 32]} />
+        </mesh>
+        <mesh position={[0, 0, 0.012]} rotation={[Math.PI / 2, 0, 0]} material={M.chrome}>
+          <cylinderGeometry args={[0.065, 0.075, 0.04, 16]} />
+        </mesh>
+        {lugs.map((a) => (
+          <mesh key={a} position={[Math.cos(a) * 0.11, Math.sin(a) * 0.11, 0.0]} rotation={[Math.PI / 2, 0, 0]} material={M.chrome}>
+            <cylinderGeometry args={[0.014, 0.014, 0.03, 6]} />
+          </mesh>
+        ))}
+      </group>
+    </group>
+  );
+}
+
+/** Тёмный подкрылок арки переднего колеса (внутренняя поверхность выреза). */
+function ArchLiner() {
+  const geo = useMemo(() => {
+    const g = new THREE.CylinderGeometry(ARCH_R - 0.01, ARCH_R - 0.01, CAB_W - 0.04, 24, 1, true, 0, Math.PI);
+    g.rotateZ(Math.PI / 2);
+    return g;
+  }, []);
+  return <mesh geometry={geo} position={[0, WHEEL_R, CAB_Z0 + FRONT_WHEEL_LOCAL]} material={linerMat} />;
+}
+
+/** Заднее крыло над колесом и брызговик за ним. */
+function RearFender({ side }: { side: 1 | -1 }) {
+  return (
+    <group position={[side * (W / 2 - 0.2), 0, REAR_WHEEL_Z]}>
+      <mesh position={[0, WHEEL_R * 2 + 0.08, 0]} material={trimMat} castShadow>
+        <boxGeometry args={[0.34, 0.04, 1.05]} />
       </mesh>
-      <mesh position={[0, side * 0.165, 0]} material={trimMat}>
-        <cylinderGeometry args={[0.07, 0.07, 0.03, 12]} />
-      </mesh>
-      {/* крыло над колесом */}
-      <mesh position={[0, side * 0.02, 0]} rotation={[Math.PI / 2, 0, -Math.PI / 2]} material={trimMat}>
-        <torusGeometry args={[WHEEL_R + 0.07, 0.05, 6, 20, Math.PI]} />
+      {[-1, 1].map((e) => (
+        <mesh key={e} position={[0, WHEEL_R * 2 - 0.02, e * 0.5]} rotation={[e * 0.6, 0, 0]} material={trimMat}>
+          <boxGeometry args={[0.34, 0.2, 0.03]} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.34, -0.52]} material={M.rubber}>
+        <boxGeometry args={[0.32, 0.46, 0.02]} />
       </mesh>
     </group>
   );
@@ -206,11 +264,25 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, hi
       <mesh position={[0, 0.5, total / 2]} material={trimMat} castShadow>
         <boxGeometry args={[W - 0.5, 0.2, total - 0.1]} />
       </mesh>
+      {/* подрамник под будкой и поперечины */}
       {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (W / 2 - 0.06), 0.48, BODY_L / 2 + 0.2]} material={rimMat}>
-          <boxGeometry args={[0.05, 0.06, 1.6]} />
+        <mesh key={s} position={[s * 0.52, 0.8, BODY_L / 2]} material={trimMat} castShadow>
+          <boxGeometry args={[0.12, 0.34, BODY_L - 0.1]} />
         </mesh>
       ))}
+      {[0.3, 1.6, 2.4, 3.3].map((z) => (
+        <mesh key={z} position={[0, 0.9, z]} material={trimMat}>
+          <boxGeometry args={[W - 0.1, 0.12, 0.1]} />
+        </mesh>
+      ))}
+      {/* боковая защита между колёсами */}
+      {[-1, 1].map((s) =>
+        [0.56, 0.78].map((y) => (
+          <mesh key={`${s}${y}`} position={[s * (W / 2 - 0.05), y, (REAR_WHEEL_Z + 0.55 + CAB_Z0 + FRONT_WHEEL_LOCAL - 0.6) / 2]} material={rimMat}>
+            <boxGeometry args={[0.04, 0.07, CAB_Z0 + FRONT_WHEEL_LOCAL - 0.6 - REAR_WHEEL_Z - 0.55]} />
+          </mesh>
+        )),
+      )}
 
       {/* кузов */}
       <RoundedBox args={[W, BODY_H, BODY_L]} radius={0.05} smoothness={3} position={[0, BODY_Y0 + BODY_H / 2, BODY_L / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow />
@@ -349,7 +421,10 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, hi
       </group>
 
       {/* колёса */}
-      {[0.85, CAB_Z0 + 0.95].map((z) => [1, -1].map((s) => <Wheel key={`${z}${s}`} z={z} side={s as 1 | -1} />))}
+      {[REAR_WHEEL_Z, CAB_Z0 + FRONT_WHEEL_LOCAL].map((z) => [1, -1].map((s) => <Wheel key={`${z}${s}`} z={z} side={s as 1 | -1} />))}
+      <ArchLiner />
+      <RearFender side={1} />
+      <RearFender side={-1} />
 
       {highlighted && (
         <mesh position={[0, 1.45, total / 2]}>
