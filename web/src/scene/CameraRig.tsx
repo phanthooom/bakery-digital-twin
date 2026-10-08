@@ -4,7 +4,6 @@ import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SiteConfig } from '@bakery/shared';
 import { createWheelInterpreter, zoomAboutPoint } from './gestures';
-import { SPECS } from './machines';
 
 const OVERVIEW_DIR = new THREE.Vector3(-0.14, 0.7, 0.7).normalize();
 const OVERVIEW_TARGET = new THREE.Vector3(0, 0.6, -1.2);
@@ -13,7 +12,16 @@ const OVERVIEW_TARGET = new THREE.Vector3(0, 0.6, -1.2);
  * Камера: общий вид, облёт к выбранному станку, сдвиг кадра влево,
  * когда справа открыта карточка (чтобы станок не прятался под ней).
  */
-export function CameraRig({ config, selectedId, viewToken, cardOffset }: { config: SiteConfig; selectedId: string | null; viewToken: number; cardOffset: [number, number] }) {
+/** Куда подлететь: точка на полу (x, z), высота, на которую смотрим, и дистанция. */
+export interface CameraFocus {
+  key: string;
+  x: number;
+  z: number;
+  lookY: number;
+  dist: number;
+}
+
+export function CameraRig({ config, focus, viewToken, cardOffset }: { config: SiteConfig; focus: CameraFocus | null; viewToken: number; cardOffset: [number, number] }) {
   const ref = useRef<CameraControls>(null);
   const { size, camera, gl } = useThree();
   const firstRun = useRef(true);
@@ -43,9 +51,9 @@ export function CameraRig({ config, selectedId, viewToken, cardOffset }: { confi
   useEffect(() => {
     const c = ref.current;
     const prev = prevSelected.current;
-    prevSelected.current = selectedId;
+    prevSelected.current = focus?.key ?? null;
     if (!c) return;
-    if (!selectedId) {
+    if (!focus) {
       // карточку закрыли (повторный клик, ×, Esc, клик мимо) — плавно назад, как подлетали
       const pose = savedPose.current;
       savedPose.current = null;
@@ -53,18 +61,15 @@ export function CameraRig({ config, selectedId, viewToken, cardOffset }: { confi
       return;
     }
     if (!prev) savedPose.current = { position: c.getPosition(new THREE.Vector3()), target: c.getTarget(new THREE.Vector3()) };
-    const eq = config.equipment.find((e) => e.id === selectedId);
-    if (!eq) return;
-    const h = (SPECS[eq.kind] ?? SPECS.generic).height;
-    const { x, z } = eq.position;
+    const { x, z, lookY } = focus;
     const narrow = size.width < size.height;
-    const d = (4.6 + h * 1.6) * (narrow ? 1.5 : 1);
+    const d = focus.dist * (narrow ? 1.5 : 1);
     // смотрим спереди и чуть со стороны центра цеха, чтобы у стен камера не упиралась в стену
     const side = x > 0 ? -1 : 1;
     const dir = new THREE.Vector3(side * 0.42, 0.55, 1).normalize().multiplyScalar(d);
-    void c.setLookAt(x + dir.x, h * 0.45 + dir.y, z + dir.z, x, h * 0.45, z, true);
+    void c.setLookAt(x + dir.x, lookY + dir.y, z + dir.z, x, lookY, z, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedId, config]);
+  }, [focus?.key]);
 
   useEffect(() => {
     void ref.current?.setFocalOffset(cardOffset[0], cardOffset[1], 0, true);

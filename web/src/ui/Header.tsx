@@ -12,9 +12,11 @@ export interface HeaderProps {
   onToggleLabels: () => void;
   onToggleList: () => void;
   onResetView: () => void;
+  linesVisible: boolean;
+  onToggleLines: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, linesVisible, onToggleLines }: HeaderProps) {
   const ds = useDataSource();
   const states = useStates();
   const now = useNow(1000);
@@ -58,6 +60,9 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
         </span>
         <button className="btn" aria-pressed={listOpen} onClick={onToggleList}>
           Оборудование
+        </button>
+        <button className="btn" aria-pressed={linesVisible} onClick={onToggleLines}>
+          Линии питания
         </button>
         <button className="btn" aria-pressed={showLabels} onClick={onToggleLabels}>
           Подписи

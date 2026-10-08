@@ -21,13 +21,14 @@ export function isWorkingHour(tsMs: number, timezone: string): boolean {
   return h >= SHIFT_START_HOUR && h < SHIFT_END_HOUR;
 }
 
-export type FaultType = 'overload' | 'phase_loss' | 'overconsumption' | 'comm_loss';
+export type FaultType = 'overload' | 'phase_loss' | 'overconsumption' | 'undervoltage' | 'comm_loss';
 
 /** Неисправности модели станка: одна таблица для симулятора, мока и кнопок демо-событий. */
 export const FAULTS: Record<FaultType, { label: string; threePhaseOnly: boolean; demoDurationMs: number }> = {
   overload: { label: 'Перегрузка', threePhaseOnly: false, demoDurationMs: 2 * 60_000 },
   phase_loss: { label: 'Обрыв фазы', threePhaseOnly: true, demoDurationMs: 2 * 60_000 },
   overconsumption: { label: 'Перерасход', threePhaseOnly: false, demoDurationMs: 16 * 60_000 },
+  undervoltage: { label: 'Просадка напряжения', threePhaseOnly: false, demoDurationMs: 2 * 60_000 },
   comm_loss: { label: 'Потеря связи', threePhaseOnly: false, demoDurationMs: 45_000 },
 };
 
@@ -112,7 +113,7 @@ export class MachineSim {
   }
 
   private startFault(type: FaultType, nowMs: number, durationMs: number): void {
-    const factor = type === 'overload' ? this.between(1.2, 1.27) : type === 'overconsumption' ? this.between(1.5, 1.7) : 1;
+    const factor = type === 'overload' ? this.between(1.2, 1.27) : type === 'overconsumption' ? this.between(1.5, 1.7) : type === 'undervoltage' ? this.between(0.84, 0.88) : 1;
     this.fault = { type, from: nowMs, to: nowMs + durationMs, phase: Math.floor(this.rand() * this.eq.phases), factor };
     this.faultLog.push({ type, from: nowMs, to: nowMs + durationMs });
   }
@@ -216,7 +217,8 @@ export class MachineSim {
     const sumShares = shares.reduce((s, v) => s + v, 0) || 1;
     const totalA = (powerKw * 1000) / (230 * pf);
     const currentsA = shares.map((s) => round((totalA * s) / sumShares, 2));
-    const voltageV = shares.map(() => round(230 + 2 * this.gauss(), 1));
+    const uFactor = a?.type === 'undervoltage' ? a.factor : 1;
+    const voltageV = shares.map(() => round(230 * uFactor + 2 * this.gauss(), 1));
 
     const reading: Reading = {
       equipmentId: this.eq.id,

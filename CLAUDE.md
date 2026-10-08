@@ -4,7 +4,7 @@
 
 ## Где что
 - `config/equipment.json` — единственный источник правды о цехе: этапы, станки, пороги. Новый станок = новая запись; сцена, мок и симулятор подхватят её сами.
-- `packages/shared` — вся предметная логика (чистый TS, импортируется исходниками без сборки). Ядро — `TwinEngine` (`engine.ts`); `status`, `baseline`, `aiCheck`, `electrical` — его внутренние модули. Модель станков для мока и симулятора — `sim/machine.ts`. `node/` — только для Node (чтение конфига, `.env`).
+- `packages/shared` — вся предметная логика (чистый TS, импортируется исходниками без сборки). Ядро — `TwinEngine` (`engine.ts`); `status`, `baseline`, `aiCheck`, `electrical` — его внутренние модули. Модель станков для мока и симулятора — `sim/machine.ts`. Линии питания от щита — `feeder.ts` и `lineHealth.ts` (маршруты кабелей в сцене — `web/src/scene/powerRoutes.ts`). `node/` — только для Node (чтение конфига, `.env`).
 - `web` — React + Vite + React Three Fiber. Данные приходят только через интерфейс `DataSource` (`web/src/data/`); сцена и карточки не знают, мок это или живые данные.
 - `web/src/scene/machines/` — процедурные формы по `kind` (+ высоты и место сигнальной колонны в `specs.ts`). GLB: файл в `web/public/models/`, у станка `"model": "/models/x.glb"`.
 - `simulator` — публикует показания в MQTT по `docs/mqtt-contract.md` (нужен `docker compose up -d`). Фронт от него сейчас не зависит.
@@ -38,6 +38,7 @@ Single-context: `GLOSSARY.md` в корне + `docs/adr/`. See `docs/agents/doma
 2. `parseReading` — контракт MQTT с ESP32.
 3. `MachineSim` → `toPayload` → `parseReading` — симулятор соблюдает контракт.
 4. `MockDataSource` — то, что видит фронт (`start`, `getStates`, `getHistory`, `simulate`).
-5. Чистые функции фронта: `web/src/ui/format.ts`, `web/src/ui/chartMath.ts`, `web/src/scene/gestures.ts` (жесты тачпада и колесо → камера).
+5. Линии питания: `feederFor` (автомат и кабель по станку) и `assessLine` (диагностика линии) в `packages/shared`.
+6. Чистые функции фронта: `web/src/ui/format.ts`, `web/src/ui/chartMath.ts`, `web/src/scene/gestures.ts` (жесты тачпада и колесо → камера).
 
 Внутренние модули движка (`status`, `baseline`, `aiCheck`, `electrical`) — internal seams `TwinEngine`, их тесты допустимы. 3D-сцену и React-компоненты проверяем в браузере (скриншоты Playwright), без unit-тестов.

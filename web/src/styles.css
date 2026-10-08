@@ -214,3 +214,19 @@ details.table-view th { color: var(--text-muted); font-weight: 500; }
 .offline-title { font-size: 13px; font-weight: 600; }
 .offline-sub { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
 @media (prefers-reduced-motion: reduce) { .loading { transition: none; } }
+
+/* ── Линии питания и щит ───────────────────────────── */
+.diagnosis { list-style: none; margin: 8px 0 0; padding: 8px 10px; border-radius: 8px; background: #fdf3f3; display: grid; gap: 4px; font-size: 12px; }
+.diagnosis li { display: flex; gap: 6px; align-items: flex-start; }
+.meter-lg { height: 6px; margin-top: 8px; }
+.phase-table, .line-table { width: 100%; border-collapse: collapse; font-size: 12px; font-variant-numeric: tabular-nums; }
+.phase-table th, .phase-table td, .line-table th, .line-table td { padding: 5px 4px; border-bottom: 1px solid var(--grid); text-align: right; }
+.phase-table th:first-child, .line-table th:first-child, .line-table td:first-child { text-align: left; }
+.phase-table thead th, .line-table thead th { color: var(--text-muted); font-weight: 500; }
+.phase-table td.is-bad { color: var(--text-primary); font-weight: 600; }
+.line-table td:nth-child(2) { text-align: left; white-space: nowrap; }
+.line-table tbody tr { cursor: pointer; }
+.line-table tbody tr:hover { background: #eef4fc; }
+.line-table .row-btn { all: unset; cursor: pointer; }
+.line-table .row-btn:focus-visible { outline: 2px solid var(--focus); border-radius: 4px; }
+.line-actions { display: flex; }

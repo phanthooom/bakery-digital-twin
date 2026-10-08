@@ -28,6 +28,8 @@ export interface EquipmentConfig {
   model?: string | null;
   /** Масштаб GLB-модели. */
   modelScale?: number;
+  /** Линия питания от щита. Не задано — автомат и кабель подбираются по номиналу. */
+  feeder?: { id?: string; breakerA?: number; cable?: string };
 }
 
 export interface StageConfig {
@@ -66,6 +68,8 @@ export interface SiteConfig {
     /** Вывеска на стене цеха и логотип в шапке. logo — путь к SVG/PNG в web/public (например /brand/logo.svg). */
     brand?: { name: string; tagline?: string; color?: string; logo?: string | null };
   };
+  /** Электроснабжение цеха: щит, от которого идут линии к станкам. */
+  power?: { panel: { id: string; name: string; inputBreakerA: number; position: { x: number; z: number } } };
   thresholds: Thresholds;
   stages: StageConfig[];
   equipment: EquipmentConfig[];

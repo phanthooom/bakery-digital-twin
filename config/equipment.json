@@ -14,6 +14,17 @@
       "logo": null
     }
   },
+  "power": {
+    "panel": {
+      "id": "ЩР-1",
+      "name": "Щит распределительный цеха",
+      "inputBreakerA": 250,
+      "position": {
+        "x": -3.25,
+        "z": -4.65
+      }
+    }
+  },
   "thresholds": {
     "offlineAfterSec": 30,
     "idlePctOfNominal": 10,

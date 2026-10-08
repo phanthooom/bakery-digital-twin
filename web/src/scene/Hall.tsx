@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import { Line, RoundedBox } from '@react-three/drei';
 import * as THREE from 'three';
-import type { EquipmentConfig, SiteConfig, StageConfig } from '@bakery/shared';
+import type { SiteConfig, StageConfig } from '@bakery/shared';
 import { M } from './materials';
 import { makeLabelTexture, makeStripeTexture } from './textures';
 
@@ -164,26 +164,7 @@ export function Hall({ config }: { config: SiteConfig }) {
       <mesh position={[0, 2.85, -D / 2 + 1.25]} material={M.steelDark} castShadow>
         <boxGeometry args={[W - 1, 0.05, 0.35]} />
       </mesh>
-      {/* опуски питания к станкам */}
-      {config.equipment.map((e: EquipmentConfig) => (
-        <mesh key={e.id} position={[e.position.x - 0.15, 2.95, -D / 2 + 1.25]} material={M.steelDark}>
-          <boxGeometry args={[0.06, 0.2, 0.06]} />
-        </mesh>
-      ))}
 
-      {/* электрощит между формовкой и расстойкой */}
-      <group position={[-3.25, 0, -D / 2 + 0.35]}>
-        <RoundedBox args={[0.9, 1.9, 0.35]} radius={0.03} position={[0, 0.95, 0]} material={M.steelLight} castShadow />
-        {[-0.2, -0.05, 0.1].map((x, i) => (
-          <mesh key={x} position={[x, 1.55, 0.18]}>
-            <circleGeometry args={[0.025, 16]} />
-            <meshStandardMaterial color={['#38c24a', '#38c24a', '#f2a33a'][i]} emissive={['#38c24a', '#38c24a', '#f2a33a'][i]} emissiveIntensity={1.4} toneMapped={false} />
-          </mesh>
-        ))}
-        <mesh position={[0.18, 1.2, 0.18]} material={M.wall}>
-          <planeGeometry args={[0.32, 0.22]} />
-        </mesh>
-      </group>
 
       {/* поддон с мешками муки у замеса */}
       <group position={[-19.0, 0, -1.45]}>

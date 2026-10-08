@@ -93,6 +93,15 @@ describe('MachineSim', () => {
     expect(Math.min(...r.currentsA)).toBeLessThan(0.05);
   });
 
+  it('неисправность «просадка напряжения» опускает фазные напряжения ниже 207 В', () => {
+    const sim = new MachineSim(eq({}), { rng: mulberry32(5), timezone: TZ, faultsPerHour: 0 });
+    sim.forceMode('work', T0);
+    sim.forceFault('undervoltage', T0, 60_000);
+    const r = sim.tick(T0 + 5000, 5000)!;
+    expect(Math.max(...r.voltageV!)).toBeLessThan(207);
+    expect(Math.min(...r.voltageV!)).toBeGreaterThan(180);
+  });
+
   it('копит энергию (кВт·ч растёт)', () => {
     const sim = new MachineSim(eq({}), { rng: mulberry32(5), timezone: TZ, faultsPerHour: 0, energyKwh: 100 });
     const rs = run(sim, 30);

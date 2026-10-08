@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Bloom, EffectComposer, Outline, Selection } from '@react-three/postprocessing';
 import type { SiteConfig } from '@bakery/shared';
-import { CameraRig } from './CameraRig';
+import { CameraRig, type CameraFocus } from './CameraRig';
+import { PowerLines } from './PowerLines';
 import { BrandSign } from './BrandSign';
 import { Hall } from './Hall';
 import { Machine } from './Machine';
@@ -10,6 +11,12 @@ import { Machine } from './Machine';
 export interface SceneProps {
   config: SiteConfig;
   selectedId: string | null;
+  selectedLineId: string | null;
+  panelSelected: boolean;
+  showLines: boolean;
+  focus: CameraFocus | null;
+  onSelectLine: (id: string) => void;
+  onSelectPanel: () => void;
   showLabels: boolean;
   viewToken: number;
   /** Сдвиг кадра (м), чтобы выбранный станок не прятался под карточкой. */
@@ -44,16 +51,17 @@ function Lights() {
   );
 }
 
-export function Scene({ config, selectedId, showLabels, viewToken, cardOffset, onSelect, onDeselect, onReady }: SceneProps) {
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
+  const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
-    document.body.style.cursor = hoveredId ? 'pointer' : '';
+    document.body.style.cursor = hoveredId || hoveredLineId ? 'pointer' : '';
     return () => {
       document.body.style.cursor = '';
     };
-  }, [hoveredId]);
+  }, [hoveredId, hoveredLineId]);
 
   return (
     <div
@@ -77,7 +85,7 @@ export function Scene({ config, selectedId, showLabels, viewToken, cardOffset, o
       >
         <color attach="background" args={['#ecebe7']} />
         <Lights />
-        <CameraRig config={config} selectedId={selectedId} viewToken={viewToken} cardOffset={cardOffset} />
+        <CameraRig config={config} focus={focus} viewToken={viewToken} cardOffset={cardOffset} />
         <Selection>
           <EffectComposer multisampling={4} autoClear={false}>
             <Outline blur visibleEdgeColor={0x2f7bff} hiddenEdgeColor={0x2f7bff} edgeStrength={10} width={1800} xRay={false} />
@@ -85,6 +93,17 @@ export function Scene({ config, selectedId, showLabels, viewToken, cardOffset, o
           </EffectComposer>
           <Hall config={config} />
           <BrandSign config={config} />
+          {showLines && (
+            <PowerLines
+              config={config}
+              selectedLineId={selectedLineId}
+              panelSelected={panelSelected}
+              hoveredLineId={hoveredLineId}
+              onHoverLine={setHoveredLineId}
+              onSelectLine={onSelectLine}
+              onSelectPanel={onSelectPanel}
+            />
+          )}
           {config.equipment.map((eq) => (
             <Machine
               key={eq.id}

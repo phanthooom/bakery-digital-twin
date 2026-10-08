@@ -8,3 +8,5 @@ export * from './config';
 export * from './sim/machine';
 export * from './sim/payload';
 export * from './engine';
+export * from './feeder';
+export * from './lineHealth';

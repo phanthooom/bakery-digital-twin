@@ -15,6 +15,10 @@ export function validateSiteConfig(raw: unknown): { config: SiteConfig | null; e
   if (brand !== undefined && (typeof brand !== 'object' || brand === null || typeof brand.name !== 'string' || !brand.name)) {
     errors.push('site.brand.name обязателен, если задан site.brand');
   }
+  const panel = (c as { power?: { panel?: Record<string, unknown> } }).power?.panel;
+  if ((c as { power?: unknown }).power !== undefined && (!panel || typeof panel.id !== 'string' || !isNum(panel.inputBreakerA))) {
+    errors.push('power.panel: нужны id и inputBreakerA');
+  }
   if (brand && brand.logo != null && typeof brand.logo !== 'string') errors.push('site.brand.logo — путь к файлу логотипа или null');
   if (!Array.isArray(c.stages) || c.stages.length === 0) errors.push('stages: нужен хотя бы один этап');
   if (!Array.isArray(c.equipment)) errors.push('equipment должен быть массивом');
