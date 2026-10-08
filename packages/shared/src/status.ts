@@ -23,7 +23,7 @@ const PHASE_LOST_SHARE = 0.05;
 /**
  * Статус станка для светофора:
  * - offline (серый): нет данных дольше offlineAfterSec;
- * - alarm (красный): перегрузка, обрыв фазы, несимметрия под нагрузкой, аномалия ИИ;
+ * - alarm (красный): перегрузка, обрыв фазы, несимметрия под нагрузкой, аномалия потребления (и в простое);
  * - idle (жёлтый): мощность ниже порога простоя;
  * - running (зелёный): всё остальное.
  */
@@ -49,7 +49,8 @@ export function computeStatus(input: StatusInput): StatusResult {
   }
 
   const isIdle = load < th.idlePctOfNominal;
-  if (input.aiState === 'anomaly' && !isIdle) reasons.push('ai_anomaly');
+  // «красный — авария или аномалия»: в т.ч. станок стоит, когда в этот час обычно работает
+  if (input.aiState === 'anomaly') reasons.push('ai_anomaly');
 
   if (reasons.length > 0) return { status: 'alarm', reasons };
   return { status: isIdle ? 'idle' : 'running', reasons };

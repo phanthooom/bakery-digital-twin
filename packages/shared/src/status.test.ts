@@ -78,10 +78,10 @@ describe('computeStatus', () => {
     expect(s).toEqual({ status: 'alarm', reasons: ['ai_anomaly'] });
   });
 
-  it('аномалия ИИ не поднимает тревогу, если станок в простое', () => {
+  it('аномалия потребления — авария и у станка в простое (стоит, когда в этот час обычно работает)', () => {
     const r = reading(0.2, [0.3, 0.3, 0.3]);
     const s = computeStatus({ reading: r, nowMs: NOW, ...oven, thresholds, aiState: 'anomaly' });
-    expect(s.status).toBe('idle');
+    expect(s).toEqual({ status: 'alarm', reasons: ['ai_anomaly'] });
   });
 
   it('несколько причин сразу перечисляются все', () => {
