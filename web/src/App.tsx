@@ -6,6 +6,7 @@ import { EquipmentList } from './ui/EquipmentList';
 import { Header } from './ui/Header';
 import { STATUS_LABEL, STATUS_ORDER } from './ui/statusMeta';
 import { StatusIcon } from './ui/StatusIcon';
+import { GestureHint } from './ui/GestureHint';
 
 const NO_OFFSET: [number, number] = [0, 0];
 const SIDE_CARD_OFFSET: [number, number] = [1.1, 0];
@@ -74,6 +75,7 @@ export function App() {
         />
         {selected && <EquipmentCard key={selected.id} eq={selected} onClose={deselect} />}
         {listOpen && <EquipmentList config={ds.config} selectedId={selectedId} onSelect={select} />}
+        {!listOpen && <GestureHint />}
         <div className="legend" aria-label="Обозначения сигнальных колонн">
           {STATUS_ORDER.map((s) => (
             <span key={s}>

@@ -182,3 +182,14 @@ details.table-view th { color: var(--text-muted); font-weight: 500; }
   .list { left: 8px; right: 8px; width: auto; bottom: 8px; max-height: 55%; }
   .legend { display: none; }
 }
+
+/* ── Подсказка по жестам ───────────────────────────── */
+.hint {
+  position: absolute; z-index: 20; left: 16px; bottom: 16px; display: flex; align-items: flex-start; gap: 4px;
+  padding: 8px 6px 8px 12px; max-width: 360px; background: rgba(252, 252, 251, 0.92); border: 1px solid var(--border);
+  border-radius: 10px; font-size: 12px; color: var(--text-secondary);
+}
+.hint ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+.hint b { color: var(--text-primary); font-weight: 600; }
+.hint .card-close { width: 24px; height: 24px; flex: none; }
+@media (max-width: 760px), (pointer: coarse) { .hint { display: none; } }

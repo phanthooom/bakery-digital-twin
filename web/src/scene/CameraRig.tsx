@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react';
 import { useThree } from '@react-three/fiber';
-import { CameraControls } from '@react-three/drei';
+import { CameraControls, CameraControlsImpl } from '@react-three/drei';
 import * as THREE from 'three';
 import type { SiteConfig } from '@bakery/shared';
+import { createWheelInterpreter, zoomAboutPoint } from './gestures';
 import { SPECS } from './machines';
 
 const OVERVIEW_DIR = new THREE.Vector3(-0.14, 0.7, 0.7).normalize();
@@ -14,7 +15,7 @@ const OVERVIEW_TARGET = new THREE.Vector3(0, 0.6, -1.2);
  */
 export function CameraRig({ config, selectedId, viewToken, cardOffset }: { config: SiteConfig; selectedId: string | null; viewToken: number; cardOffset: [number, number] }) {
   const ref = useRef<CameraControls>(null);
-  const { size, camera } = useThree();
+  const { size, camera, gl } = useThree();
   const firstRun = useRef(true);
 
   const overview = (smooth: boolean) => {
@@ -54,6 +55,78 @@ export function CameraRig({ config, selectedId, viewToken, cardOffset }: { confi
   useEffect(() => {
     void ref.current?.setFocalOffset(cardOffset[0], cardOffset[1], 0, true);
   }, [cardOffset[0], cardOffset[1]]);
+
+  // Тачпад: щипок — масштаб к курсору, два пальца — сдвиг по полу цеха, Option/Alt + два пальца — поворот.
+  // Колесо мыши — масштаб к курсору. Перетаскивание мышью/пальцем остаётся за camera-controls.
+  useEffect(() => {
+    const c = ref.current;
+    if (!c) return;
+    const el = gl.domElement;
+    const { width: W, depth: D } = config.site.hall;
+    c.mouseButtons.wheel = CameraControlsImpl.ACTION.NONE;
+    c.setBoundary(new THREE.Box3(new THREE.Vector3(-W / 2 - 3, 0, -D / 2 - 3), new THREE.Vector3(W / 2 + 3, 4, D / 2 + 6)));
+
+    const interpret = createWheelInterpreter();
+    const raycaster = new THREE.Raycaster();
+    const floor = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const ndc = new THREE.Vector2();
+    const hit = new THREE.Vector3();
+    const pos = new THREE.Vector3();
+    const tgt = new THREE.Vector3();
+
+    const zoomAt = (factor: number, clientX: number, clientY: number) => {
+      c.getPosition(pos);
+      c.getTarget(tgt);
+      const rect = el.getBoundingClientRect();
+      ndc.set(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const point = raycaster.ray.intersectPlane(floor, hit) ?? tgt;
+      const r = zoomAboutPoint(pos, tgt, point, factor, { min: c.minDistance, max: c.maxDistance });
+      void c.setLookAt(r.position.x, r.position.y, r.position.z, r.target.x, r.target.y, r.target.z, false);
+    };
+
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault(); // иначе браузер масштабирует всю страницу на щипок
+      const intent = interpret(e);
+      if (intent.kind === 'zoom') zoomAt(intent.factor, e.clientX, e.clientY);
+      else if (intent.kind === 'pan') {
+        const vfov = THREE.MathUtils.degToRad((camera as THREE.PerspectiveCamera).fov);
+        const perPx = (2 * c.distance * Math.tan(vfov / 2)) / Math.max(1, el.clientHeight);
+        // вертикальный свайп двигает по полу; при наклонной камере пиксель экрана «длиннее» на полу
+        const groundStretch = 1 / Math.max(0.35, Math.cos(c.polarAngle));
+        void c.truck(intent.dx * perPx, 0, false);
+        void c.forward(-intent.dy * perPx * groundStretch, false);
+      } else if (intent.kind === 'orbit') {
+        void c.rotate(-intent.dx * 0.006, -intent.dy * 0.006, false);
+      }
+    };
+
+    // Safari на macOS шлёт щипок как gesture*-события со scale
+    let lastScale = 1;
+    type GestureLike = Event & { scale: number; clientX: number; clientY: number };
+    const onGestureStart = (e: Event) => {
+      e.preventDefault();
+      lastScale = 1;
+    };
+    const onGestureChange = (e: Event) => {
+      e.preventDefault();
+      const g = e as GestureLike;
+      if (g.scale > 0) zoomAt(lastScale / g.scale, g.clientX, g.clientY);
+      lastScale = g.scale;
+    };
+    const prevent = (e: Event) => e.preventDefault();
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    el.addEventListener('gesturestart', onGestureStart);
+    el.addEventListener('gesturechange', onGestureChange);
+    el.addEventListener('gestureend', prevent);
+    return () => {
+      el.removeEventListener('wheel', onWheel);
+      el.removeEventListener('gesturestart', onGestureStart);
+      el.removeEventListener('gesturechange', onGestureChange);
+      el.removeEventListener('gestureend', prevent);
+    };
+  }, [gl, camera, config]);
 
   useEffect(() => {
     if (import.meta.env.DEV) (window as unknown as { __cameraControls?: unknown }).__cameraControls = ref.current;

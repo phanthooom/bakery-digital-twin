@@ -38,6 +38,6 @@ Single-context: `GLOSSARY.md` в корне + `docs/adr/`. See `docs/agents/doma
 2. `parseReading` — контракт MQTT с ESP32.
 3. `MachineSim` → `toPayload` → `parseReading` — симулятор соблюдает контракт.
 4. `MockDataSource` — то, что видит фронт (`start`, `getStates`, `getHistory`, `simulate`).
-5. Чистые функции фронта: `web/src/ui/format.ts`, `web/src/ui/chartMath.ts`.
+5. Чистые функции фронта: `web/src/ui/format.ts`, `web/src/ui/chartMath.ts`, `web/src/scene/gestures.ts` (жесты тачпада и колесо → камера).
 
 Внутренние модули движка (`status`, `baseline`, `aiCheck`, `electrical`) — internal seams `TwinEngine`, их тесты допустимы. 3D-сцену и React-компоненты проверяем в браузере (скриншоты Playwright), без unit-тестов.
