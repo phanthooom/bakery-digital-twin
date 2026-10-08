@@ -149,7 +149,7 @@ export class TwinEngine {
     const windowStart = nowMs - thresholds.ai.windowMin * 60_000;
     return aiCheck({
       currentKw: meanSince(slot.points, windowStart),
-      baseline: slot.baseline.baselineFor(nowMs, windowStart),
+      baseline: slot.baseline.baselineFor(nowMs, windowStart, thresholds.ai.windowMin),
       nominalKw: slot.eq.nominalKw,
       idlePctOfNominal: thresholds.idlePctOfNominal,
       ai: thresholds.ai,

@@ -3,12 +3,17 @@ import type { AiCheck, AiThresholds } from './types';
 export interface AiCheckInput {
   /** Среднее потребление за окно ai.windowMin, кВт. */
   currentKw: number | null;
-  baseline: { medianKw: number | null; samples: number };
+  /** madKw — разброс нормы (медиана абсолютных отклонений); если задан, мелкие колебания не считаются отклонением. */
+  baseline: { medianKw: number | null; madKw?: number | null; samples: number };
   nominalKw: number;
   idlePctOfNominal: number;
   ai: AiThresholds;
   nowMs: number;
 }
+
+/** Во сколько σ нужно выйти за норму, чтобы считать это отклонением / аномалией. */
+const WARN_SIGMA = 1;
+const ANOMALY_SIGMA = 3.5;
 
 const fmt = (v: number) => {
   const sign = v > 0 ? '+' : v < 0 ? '−' : '';
@@ -37,11 +42,14 @@ export function aiCheck(input: AiCheckInput): AiCheck {
   const denom = Math.max(baseline.medianKw, floorKw, 1e-6);
   const deviationPct = ((currentKw - baseline.medianKw) / denom) * 100;
   const abs = Math.abs(deviationPct);
+  // σ ≈ 1,4826·MAD (для нормального распределения). Без MAD — только процентные пороги.
+  const sigma = baseline.madKw != null ? 1.4826 * baseline.madKw : 0;
+  const diff = Math.abs(currentKw - baseline.medianKw);
 
-  if (abs > ai.anomalyPct) {
+  if (abs > ai.anomalyPct && diff > ANOMALY_SIGMA * sigma) {
     return { ...base, state: 'anomaly', deviationPct, message: `аномалия: потребление ${fmt(deviationPct)} % от нормы` };
   }
-  const state = abs > ai.deviationWarnPct ? 'deviation' : 'ok';
+  const state = abs > ai.deviationWarnPct && diff > WARN_SIGMA * sigma ? 'deviation' : 'ok';
   const message = abs < 0.5 ? 'в норме' : `потребление ${fmt(deviationPct)} % от нормы`;
   return { ...base, state, deviationPct, message };
 }

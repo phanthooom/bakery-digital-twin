@@ -53,6 +53,8 @@ export interface BaselineOptions {
 export class HourlyBaseline {
   /** Минутные корзины, разложенные по часу суток: hour → (minuteStartMs → корзина). */
   private readonly byHour: Map<number, MinuteBucket>[] = Array.from({ length: 24 }, () => new Map());
+  /** Те же корзины одним словарём — для быстрого поиска соседних минут при сглаживании. */
+  private readonly flat = new Map<number, MinuteBucket>();
   private count = 0;
 
   constructor(private readonly opts: BaselineOptions) {}
@@ -70,7 +72,9 @@ export class HourlyBaseline {
       b.sum += kw;
       b.count++;
     } else {
-      bucket.set(key, { sum: kw, count: 1 });
+      const nb = { sum: kw, count: 1 };
+      bucket.set(key, nb);
+      this.flat.set(key, nb);
       this.count++;
     }
   }
@@ -81,20 +85,44 @@ export class HourlyBaseline {
     const key = Math.floor(minuteStartMs / MIN_MS) * MIN_MS;
     const bucket = this.byHour[hourOfDay(key, this.opts.timezone)]!;
     if (!bucket.has(key)) this.count++;
-    bucket.set(key, { sum: meanKw, count: 1 });
+    const nb = { sum: meanKw, count: 1 };
+    bucket.set(key, nb);
+    this.flat.set(key, nb);
   }
 
   /**
-   * Медиана для часа суток момента tsMs.
+   * Норма для часа суток момента tsMs: медиана и MAD (медиана абсолютных отклонений).
    * excludeFromMs — не учитывать минуты начиная с этого момента (окно, с которым сравниваем).
+   * smoothMin — каждую историческую минуту заменить средним за предыдущие smoothMin минут,
+   *   чтобы сравнивать «среднее за окно» с такими же средними в прошлом (важно для циклических станков).
    */
-  baselineFor(tsMs: number, excludeFromMs = Number.POSITIVE_INFINITY): { medianKw: number | null; samples: number } {
+  baselineFor(
+    tsMs: number,
+    excludeFromMs = Number.POSITIVE_INFINITY,
+    smoothMin = 1,
+  ): { medianKw: number | null; madKw: number | null; samples: number } {
     const oldest = tsMs - this.opts.historyDays * DAY_MS;
     const values: number[] = [];
     for (const [key, b] of this.byHour[hourOfDay(tsMs, this.opts.timezone)]!) {
-      if (key >= oldest && key < excludeFromMs) values.push(b.sum / b.count);
+      if (key < oldest || key >= excludeFromMs) continue;
+      if (smoothMin <= 1) {
+        values.push(b.sum / b.count);
+        continue;
+      }
+      let sum = 0;
+      let n = 0;
+      for (let i = 0; i < smoothMin; i++) {
+        const nb = this.flat.get(key - i * MIN_MS);
+        if (nb) {
+          sum += nb.sum / nb.count;
+          n++;
+        }
+      }
+      if (n * 2 >= smoothMin) values.push(sum / n);
     }
-    return { medianKw: median(values), samples: values.length };
+    const med = median(values);
+    const mad = med === null ? null : median(values.map((v) => Math.abs(v - med)));
+    return { medianKw: med, madKw: mad, samples: values.length };
   }
 
   prune(nowMs: number): void {
@@ -103,6 +131,7 @@ export class HourlyBaseline {
       for (const key of bucket.keys()) {
         if (key < oldest) {
           bucket.delete(key);
+          this.flat.delete(key);
           this.count--;
         }
       }

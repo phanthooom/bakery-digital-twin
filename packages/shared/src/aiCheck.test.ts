@@ -58,3 +58,21 @@ describe('aiCheck', () => {
     expect(r.samples).toBe(42);
   });
 });
+
+describe('aiCheck — устойчивость к естественному разбросу', () => {
+  it('большое отклонение в пределах обычного разброса (MAD) не считается аномалией', () => {
+    // норма 0.5 ± большой разброс (MAD 0.15) — +50 % в пределах 3.5·1.4826·MAD
+    const r = aiCheck({ currentKw: 0.75, baseline: { medianKw: 0.5, madKw: 0.15, samples: 100 }, nominalKw: 1, idlePctOfNominal: 10, ai, nowMs: NOW });
+    expect(r.state).toBe('deviation');
+  });
+
+  it('выход далеко за обычный разброс — аномалия', () => {
+    const r = aiCheck({ currentKw: 0.9, baseline: { medianKw: 0.5, madKw: 0.02, samples: 100 }, nominalKw: 1, idlePctOfNominal: 10, ai, nowMs: NOW });
+    expect(r.state).toBe('anomaly');
+  });
+
+  it('отклонение в пределах шума (меньше 1σ ≈ 1,48·MAD) — в норме, даже если > 15 %', () => {
+    const r = aiCheck({ currentKw: 0.6, baseline: { medianKw: 0.5, madKw: 0.1, samples: 100 }, nominalKw: 1, idlePctOfNominal: 10, ai, nowMs: NOW });
+    expect(r.state).toBe('ok');
+  });
+});

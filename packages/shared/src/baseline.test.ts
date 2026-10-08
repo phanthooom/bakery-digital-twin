@@ -51,7 +51,7 @@ describe('HourlyBaseline', () => {
 
   it('без истории базовой линии нет', () => {
     const b = new HourlyBaseline({ timezone: tz, historyDays: 7 });
-    expect(b.baselineFor(T0)).toEqual({ medianKw: null, samples: 0 });
+    expect(b.baselineFor(T0)).toMatchObject({ medianKw: null, samples: 0 });
   });
 
   it('агрегирует отсчёты в минутные средние', () => {
@@ -61,7 +61,7 @@ describe('HourlyBaseline', () => {
     b.add(t, 1);
     b.add(t + 5000, 2);
     b.add(t + 10_000, 3);
-    expect(b.baselineFor(T0)).toEqual({ medianKw: 2, samples: 1 });
+    expect(b.baselineFor(T0)).toMatchObject({ medianKw: 2, samples: 1 });
   });
 
   it('медиана по тому же часу суток за прошлые дни, другие часы не смешиваются', () => {
@@ -89,7 +89,7 @@ describe('HourlyBaseline', () => {
     for (let m = 0; m < 30; m++) b.add(T0 + m * MIN, 1);
     for (let m = 30; m < 45; m++) b.add(T0 + m * MIN, 50);
     const res = b.baselineFor(T0 + 45 * MIN, T0 + 30 * MIN);
-    expect(res).toEqual({ medianKw: 1, samples: 30 });
+    expect(res).toMatchObject({ medianKw: 1, samples: 30 });
   });
 
   it('забывает данные старше historyDays', () => {
@@ -97,7 +97,7 @@ describe('HourlyBaseline', () => {
     b.add(T0 - 3 * DAY, 100);
     b.add(T0 - 1 * DAY, 1);
     b.prune(T0);
-    expect(b.baselineFor(T0)).toEqual({ medianKw: 1, samples: 1 });
+    expect(b.baselineFor(T0)).toMatchObject({ medianKw: 1, samples: 1 });
     expect(b.size).toBe(1);
   });
 
@@ -106,12 +106,35 @@ describe('HourlyBaseline', () => {
     b.add(T0 - DAY + 2 * MIN, 3);
     b.add(T0 - DAY + 1 * MIN, 1);
     b.add(T0 - DAY + 2 * MIN + 1000, 5);
-    expect(b.baselineFor(T0)).toEqual({ medianKw: 2.5, samples: 2 });
+    expect(b.baselineFor(T0)).toMatchObject({ medianKw: 2.5, samples: 2 });
   });
 
   it('игнорирует нечисловые значения', () => {
     const b = new HourlyBaseline({ timezone: tz, historyDays: 7 });
     b.add(T0 - DAY, Number.NaN);
     expect(b.size).toBe(0);
+  });
+});
+
+describe('HourlyBaseline — сглаживание и разброс', () => {
+  const tz = 'Asia/Tashkent';
+
+  it('smoothMin: медиана скользящих средних, а не сырых минут (циклическая нагрузка)', () => {
+    const b = new HourlyBaseline({ timezone: tz, historyDays: 7 });
+    // вчера 08:00–11:00: 5 минут работы (1 кВт), 5 минут простоя (0 кВт)
+    for (let m = -60; m < 120; m++) b.add(T0 - DAY + m * MIN, Math.floor((m + 60) / 5) % 2 === 0 ? 1 : 0);
+    const raw = b.baselineFor(T0 + 30 * MIN);
+    const smooth = b.baselineFor(T0 + 30 * MIN, Number.POSITIVE_INFINITY, 10);
+    expect(raw.medianKw === 0 || raw.medianKw === 1 || raw.medianKw === 0.5).toBe(true);
+    expect(smooth.medianKw).toBeCloseTo(0.5, 5);
+    expect(smooth.madKw).toBeCloseTo(0, 5);
+  });
+
+  it('madKw — медиана абсолютных отклонений от медианы', () => {
+    const b = new HourlyBaseline({ timezone: tz, historyDays: 7 });
+    [1, 2, 3, 4, 100].forEach((v, i) => b.add(T0 - DAY + i * MIN, v));
+    const r = b.baselineFor(T0);
+    expect(r.medianKw).toBe(3);
+    expect(r.madKw).toBe(1);
   });
 });

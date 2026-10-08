@@ -2,7 +2,7 @@
   "site": {
     "name": "Хлебопекарня — цех №1",
     "timezone": "Asia/Tashkent",
-    "hall": { "width": 32, "depth": 12, "height": 5 }
+    "hall": { "width": 32, "depth": 10, "height": 5 }
   },
   "thresholds": {
     "offlineAfterSec": 30,

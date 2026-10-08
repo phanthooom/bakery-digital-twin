@@ -1,0 +1,24 @@
+import type { AnomalyType, EquipmentState, PowerPoint, SiteConfig } from '@bakery/shared';
+
+export interface HistoryResult {
+  points: PowerPoint[];
+  peak: PowerPoint | null;
+}
+
+/**
+ * Источник данных для 3D-сцены и карточек.
+ * Сейчас — MockDataSource (всё считается в браузере).
+ * Позже — LiveDataSource: REST /api/equipment + WebSocket /ws от API, формат тот же.
+ */
+export interface DataSource {
+  readonly kind: 'mock' | 'live';
+  readonly config: SiteConfig;
+  start(): void;
+  stop(): void;
+  getStates(): ReadonlyMap<string, EquipmentState>;
+  /** Вызывается при любом изменении состояний. Возвращает функцию отписки. */
+  subscribe(listener: () => void): () => void;
+  getHistory(id: string, hours: number, bucketMs?: number): HistoryResult;
+  /** Только для демо: вызвать аномалию на станке. */
+  simulate?(id: string, type: AnomalyType): void;
+}
