@@ -21,10 +21,23 @@ export function isWorkingHour(tsMs: number, timezone: string): boolean {
   return h >= SHIFT_START_HOUR && h < SHIFT_END_HOUR;
 }
 
-export type AnomalyType = 'overload' | 'phase_loss' | 'overconsumption' | 'comm_loss';
+export type FaultType = 'overload' | 'phase_loss' | 'overconsumption' | 'comm_loss';
 
-interface Anomaly {
-  type: AnomalyType;
+/** Неисправности модели станка: одна таблица для симулятора, мока и кнопок демо-событий. */
+export const FAULTS: Record<FaultType, { label: string; threePhaseOnly: boolean; demoDurationMs: number }> = {
+  overload: { label: 'Перегрузка', threePhaseOnly: false, demoDurationMs: 2 * 60_000 },
+  phase_loss: { label: 'Обрыв фазы', threePhaseOnly: true, demoDurationMs: 2 * 60_000 },
+  overconsumption: { label: 'Перерасход', threePhaseOnly: false, demoDurationMs: 16 * 60_000 },
+  comm_loss: { label: 'Потеря связи', threePhaseOnly: false, demoDurationMs: 45_000 },
+};
+
+/** Какие неисправности возможны у станка с таким числом фаз. */
+export function faultsFor(phases: 1 | 3): FaultType[] {
+  return (Object.keys(FAULTS) as FaultType[]).filter((t) => phases === 3 || !FAULTS[t].threePhaseOnly);
+}
+
+interface Fault {
+  type: FaultType;
   from: number;
   to: number;
   phase: number;
@@ -44,22 +57,23 @@ interface Segment {
 }
 
 const MIN = 60_000;
-const PRODUCTS = ['Батон нарезной', 'Хлеб пшеничный', 'Багет', 'Лепёшка тандырная', 'Булочка сдобная', 'Хлеб ржаной'];
+/** Ассортимент для HoReCa (демо-заказы). */
+const PRODUCTS = ['Багет', 'Чиабатта', 'Булочка для бургера', 'Хлеб тостовый', 'Круассан', 'Фокачча'];
 
 export interface SimOptions {
   rng: () => number;
   timezone: string;
-  /** Средняя частота аномалий на станок, раз в час (только когда станок работает). */
-  anomalyPerHour: number;
+  /** Средняя частота неисправностей на станок, раз в час (только когда станок работает). */
+  faultsPerHour: number;
   energyKwh?: number;
 }
 
 export class MachineSim {
-  readonly anomalyLog: { type: AnomalyType; from: number; to: number }[] = [];
+  readonly faultLog: { type: FaultType; from: number; to: number }[] = [];
   private seg: Segment | null = null;
   private altOn = true;
   private altUntil = 0;
-  private anomaly: Anomaly | null = null;
+  private fault: Fault | null = null;
   private readonly shares: number[];
   private energy: number;
   private bakesSinceRest = 0;
@@ -93,14 +107,14 @@ export class MachineSim {
     this.seg = { mode, until: nowMs + durationMs, level: mode === 'work' ? 0.8 : 0.02 };
   }
 
-  forceAnomaly(type: AnomalyType, nowMs: number, durationMs: number): void {
-    this.startAnomaly(type, nowMs, durationMs);
+  forceFault(type: FaultType, nowMs: number, durationMs: number): void {
+    this.startFault(type, nowMs, durationMs);
   }
 
-  private startAnomaly(type: AnomalyType, nowMs: number, durationMs: number): void {
+  private startFault(type: FaultType, nowMs: number, durationMs: number): void {
     const factor = type === 'overload' ? this.between(1.2, 1.27) : type === 'overconsumption' ? this.between(1.5, 1.7) : 1;
-    this.anomaly = { type, from: nowMs, to: nowMs + durationMs, phase: Math.floor(this.rand() * this.eq.phases), factor };
-    this.anomalyLog.push({ type, from: nowMs, to: nowMs + durationMs });
+    this.fault = { type, from: nowMs, to: nowMs + durationMs, phase: Math.floor(this.rand() * this.eq.phases), factor };
+    this.faultLog.push({ type, from: nowMs, to: nowMs + durationMs });
   }
 
   /** Следующий отрезок работы по типу станка. */
@@ -165,17 +179,17 @@ export class MachineSim {
     if (seg.pulse) level *= 1 + seg.pulse * Math.sin(nowMs / 3000 + this.rand() * 2) + seg.pulse * 0.5 * this.gauss();
     level *= 1 + 0.015 * this.gauss();
 
-    if (this.anomaly && nowMs >= this.anomaly.to) this.anomaly = null;
-    if (!this.anomaly && level > 0.15 && this.opts.anomalyPerHour > 0) {
-      if (this.rand() < (this.opts.anomalyPerHour * dtMs) / 3_600_000) {
-        const types: AnomalyType[] = this.eq.phases === 3 ? ['overload', 'phase_loss', 'overconsumption', 'comm_loss'] : ['overload', 'overconsumption', 'comm_loss'];
+    if (this.fault && nowMs >= this.fault.to) this.fault = null;
+    if (!this.fault && level > 0.15 && this.opts.faultsPerHour > 0) {
+      if (this.rand() < (this.opts.faultsPerHour * dtMs) / 3_600_000) {
+        const types = faultsFor(this.eq.phases);
         const type = types[Math.floor(this.rand() * types.length)]!;
         const dur = type === 'overconsumption' ? this.between(10, 20) * MIN : type === 'comm_loss' ? this.between(40_000, 90_000) : this.between(1, 3) * MIN;
-        this.startAnomaly(type, nowMs, dur);
+        this.startFault(type, nowMs, dur);
       }
     }
 
-    const a = this.anomaly;
+    const a = this.fault;
     if (a?.type === 'overload') level = Math.max(level, a.factor);
     if (a?.type === 'overconsumption') level = Math.min(level * a.factor, 1.1);
     if (a?.type === 'phase_loss') level *= 2 / 3;

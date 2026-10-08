@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef } from 'react';
-import type { AnomalyType, EquipmentConfig } from '@bakery/shared';
+import { FAULTS, faultsFor, type EquipmentConfig } from '@bakery/shared';
 import { useDataSource, useEquipmentState } from '../data/store';
 import { fmtAgo, fmtDuration, fmtKw, fmtPct } from './format';
 import { PhaseMeters } from './PhaseMeters';
@@ -12,12 +12,6 @@ const HOURS = 6;
 /** 3-минутные средние: 120 точек за 6 ч — читаемо и без «щётки» от термостатов. */
 const BUCKET_MS = 3 * 60_000;
 
-const DEMO: { type: AnomalyType; label: string; threePhaseOnly?: boolean }[] = [
-  { type: 'overload', label: 'Перегрузка' },
-  { type: 'phase_loss', label: 'Обрыв фазы', threePhaseOnly: true },
-  { type: 'overconsumption', label: 'Перерасход' },
-  { type: 'comm_loss', label: 'Потеря связи' },
-];
 
 export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: () => void }) {
   const ds = useDataSource();
@@ -107,11 +101,11 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
 
       {ds.simulate && (
         <div className="demo">
-          <div className="demo-title">Демо: сымитировать событие на этом станке</div>
+          <div className="demo-title">Демо-события на этом станке</div>
           <div className="demo-actions">
-            {DEMO.filter((d) => !d.threePhaseOnly || eq.phases === 3).map((d) => (
-              <button key={d.type} className="btn" onClick={() => ds.simulate!(eq.id, d.type)}>
-                {d.label}
+            {faultsFor(eq.phases).map((type) => (
+              <button key={type} className="btn" onClick={() => ds.simulate!(eq.id, type)}>
+                {FAULTS[type].label}
               </button>
             ))}
           </div>

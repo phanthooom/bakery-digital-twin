@@ -1,4 +1,4 @@
-import { MachineSim, TwinEngine, type AnomalyType, type EquipmentState, type SiteConfig } from '@bakery/shared';
+import { FAULTS, MachineSim, TwinEngine, type EquipmentState, type FaultType, type SiteConfig } from '@bakery/shared';
 import type { DataSource, HistoryResult } from './DataSource';
 
 const MIN = 60_000;
@@ -10,7 +10,7 @@ export interface MockOptions {
   warmupDays?: number;
   /** Сколько часов подробной истории (для графика 6 ч). */
   historyHours?: number;
-  anomalyPerHour?: number;
+  faultsPerHour?: number;
 }
 
 /**
@@ -33,7 +33,7 @@ export class MockDataSource implements DataSource {
     this.intervalMs = opts.intervalMs ?? 5000;
     this.engine = new TwinEngine(config, { historyHours: (opts.historyHours ?? 6) + 0.5 });
     this.sims = config.equipment.map(
-      (eq) => new MachineSim(eq, { rng: Math.random, timezone: config.site.timezone, anomalyPerHour: opts.anomalyPerHour ?? 0.6 }),
+      (eq) => new MachineSim(eq, { rng: Math.random, timezone: config.site.timezone, faultsPerHour: opts.faultsPerHour ?? 0.6 }),
     );
     this.engine.subscribe((s) => {
       // копия при первом изменении в «пачке» — прежний снимок остаётся неизменным для React
@@ -46,7 +46,7 @@ export class MockDataSource implements DataSource {
     for (const s of this.engine.getStates()) this.states.set(s.id, s);
   }
 
-  /** Прогон истории: сутки при шаге 1 мин (только базовая линия), затем 6 ч при шаге 5 с. */
+  /** Прогон истории: warmupDays суток с шагом 1 мин (только базовая линия), затем historyHours с шагом 5 с. */
   private warmup(): void {
     if (this.warmedUp) return;
     this.warmedUp = true;
@@ -117,13 +117,12 @@ export class MockDataSource implements DataSource {
     return this.engine.history(id, now - hours * HOUR, bucketMs, now);
   }
 
-  simulate(id: string, type: AnomalyType): void {
+  simulate(id: string, type: FaultType): void {
     const sim = this.sims.find((s) => s.eq.id === id);
     if (!sim) return;
     const now = Date.now();
     if (type !== 'comm_loss') sim.forceMode('work', now, 4 * MIN);
-    const dur = type === 'comm_loss' ? 45_000 : type === 'overconsumption' ? 16 * MIN : 2 * MIN;
-    sim.forceAnomaly(type, now, dur);
+    sim.forceFault(type, now, FAULTS[type].demoDurationMs);
     this.step();
   }
 }

@@ -16,7 +16,7 @@ const MQTT_URL = env('MQTT_URL', 'mqtt://localhost:1883');
 const PREFIX = env('MQTT_TOPIC_PREFIX', 'bakery');
 const INTERVAL = envNum('SIM_INTERVAL_MS', 5000);
 const BACKFILL_HOURS = envNum('SIM_BACKFILL_HOURS', 6);
-const ANOMALY_PER_HOUR = envNum('SIM_ANOMALY_PER_HOUR', 0.5);
+const FAULTS_PER_HOUR = envNum('SIM_FAULTS_PER_HOUR', 0.5);
 const STATE_FILE = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '.state.json');
 
 interface SimState {
@@ -38,7 +38,7 @@ const sims = config.equipment.map(
     new MachineSim(eq, {
       rng: Math.random,
       timezone: config.site.timezone,
-      anomalyPerHour: ANOMALY_PER_HOUR,
+      faultsPerHour: FAULTS_PER_HOUR,
       energyKwh: saved?.energyKwh[eq.id],
     }),
 );
@@ -53,14 +53,14 @@ function saveState(): void {
   }
 }
 
-const anomalySeen = new Map<string, number>();
-function logAnomalies(live: boolean): void {
+const faultSeen = new Map<string, number>();
+function logFaults(live: boolean): void {
   for (const s of sims) {
-    const n = anomalySeen.get(s.eq.id) ?? 0;
-    for (const a of s.anomalyLog.slice(n)) {
-      if (live) console.log(`[sim] ⚠ ${s.eq.name}: аномалия «${a.type}» на ${Math.round((a.to - a.from) / 1000)} с`);
+    const n = faultSeen.get(s.eq.id) ?? 0;
+    for (const a of s.faultLog.slice(n)) {
+      if (live) console.log(`[sim] ⚠ ${s.eq.name}: неисправность «${a.type}» на ${Math.round((a.to - a.from) / 1000)} с`);
     }
-    anomalySeen.set(s.eq.id, s.anomalyLog.length);
+    faultSeen.set(s.eq.id, s.faultLog.length);
   }
 }
 
@@ -92,7 +92,7 @@ async function main(): Promise<void> {
       await Promise.all(batch);
       lastTs = t;
     }
-    logAnomalies(false);
+    logFaults(false);
     console.log(`[sim] дозаписано ${count} сообщений истории за ${((now - from) / 3_600_000).toFixed(1)} ч (${Date.now() - started} мс)`);
     saveState();
   }
@@ -111,7 +111,7 @@ async function main(): Promise<void> {
       }
     }
     lastTs = t;
-    logAnomalies(true);
+    logFaults(true);
     if (ticks++ % 12 === 0) console.log(`[sim] кВт: ${line.join(' ')}`);
     if (ticks % 12 === 0) saveState();
   };

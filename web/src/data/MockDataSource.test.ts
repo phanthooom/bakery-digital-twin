@@ -8,7 +8,7 @@ const config = validateSiteConfig(rawConfig).config!;
 const NOW = Date.UTC(2026, 9, 8, 5, 0, 0);
 
 function createSource() {
-  return new MockDataSource(config, { warmupDays: 0.2, anomalyPerHour: 0 });
+  return new MockDataSource(config, { warmupDays: 0.2, faultsPerHour: 0 });
 }
 
 describe('MockDataSource (то, что видит фронт)', () => {

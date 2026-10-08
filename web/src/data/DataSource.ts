@@ -1,4 +1,4 @@
-import type { AnomalyType, EquipmentState, PowerPoint, SiteConfig } from '@bakery/shared';
+import type { FaultType, EquipmentState, PowerPoint, SiteConfig } from '@bakery/shared';
 
 export interface HistoryResult {
   points: PowerPoint[];
@@ -19,6 +19,6 @@ export interface DataSource {
   /** Вызывается при любом изменении состояний. Возвращает функцию отписки. */
   subscribe(listener: () => void): () => void;
   getHistory(id: string, hours: number, bucketMs?: number): HistoryResult;
-  /** Только для демо: вызвать аномалию на станке. */
-  simulate?(id: string, type: AnomalyType): void;
+  /** Только для демо: вызвать демо-событие (неисправность модели) на станке. */
+  simulate?(id: string, type: FaultType): void;
 }

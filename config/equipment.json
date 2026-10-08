@@ -1,6 +1,6 @@
 {
   "site": {
-    "name": "Хлебопекарня — цех №1",
+    "name": "ABC Trend Bakery — цех",
     "timezone": "Asia/Tashkent",
     "hall": { "width": 32, "depth": 10, "height": 5 }
   },
