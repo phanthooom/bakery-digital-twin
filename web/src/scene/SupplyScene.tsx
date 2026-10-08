@@ -9,7 +9,8 @@ import { fmtMass, fmtTime } from '../ui/format';
 import { WarnIcon } from '../ui/StatusIcon';
 import { supplyView, type SupplyTab, type SupplyView, type VehicleRow } from '../ui/supplyView';
 import { M } from './materials';
-import { makeLabelTexture, makeStripeTexture } from './textures';
+import { makeStripeTexture } from './textures';
+import { Truck, type TruckProps } from './Truck';
 
 /** Склады, упаковка, рампы и машины: приход сырья → склад сырья … склад готовой продукции → отгрузка. */
 
@@ -24,9 +25,6 @@ const carton = new THREE.MeshStandardMaterial({ color: '#c9a273', roughness: 0.9
 const cartonTape = new THREE.MeshStandardMaterial({ color: '#b7231f', roughness: 0.7 });
 const sackGeo = new THREE.BoxGeometry(0.44, 0.16, 0.32);
 const cartonGeo = new THREE.BoxGeometry(0.5, 0.32, 0.4);
-const vanWhite = new THREE.MeshStandardMaterial({ color: '#f5f5f3', roughness: 0.55, metalness: 0.1 });
-const tarp = new THREE.MeshStandardMaterial({ color: '#8d9a8c', roughness: 0.95 });
-const supplierCab = new THREE.MeshStandardMaterial({ color: '#b8bcc0', roughness: 0.5, metalness: 0.3 });
 
 type Open = (tab: SupplyTab) => void;
 
@@ -252,75 +250,11 @@ function DockPlate({ x }: { x: number }) {
   );
 }
 
-/** Надпись фирмы на борту фургона. */
-function useBrandTexture(text: string) {
-  return useMemo(() => makeLabelTexture(text, { fontSize: 120, weight: 800, color: '#ffffff', letterSpacing: 2 }), [text]);
-}
-
-/** Грузовик: задом к рампе (rear у -z), кабина впереди. brand — фирменный фургон, иначе машина поставщика. */
-function Truck({ x, brand, color, highlighted, onClick }: { x: number; brand?: string; color: string; highlighted?: boolean; onClick?: () => void }) {
-  const label = useBrandTexture(brand ?? '');
-  const bodyL = 3.4;
-  const cabL = 1.55;
-  const W = 2.05;
-  const z0 = FRONT_Z + 0.55; // зад кузова у рампы
+/** Машина задом к рампе: зад кузова у переднего края цеха, кабина — от цеха. */
+function DockedTruck({ x, onClick, ...props }: { x: number; onClick?: () => void } & TruckProps) {
   return (
-    <group position={[x, 0, z0]} onClick={(e) => (e.stopPropagation(), onClick?.())}>
-      {/* кузов */}
-      <RoundedBox args={[W, 2.25, bodyL]} radius={0.06} position={[0, 0.55 + 1.125, bodyL / 2]} material={brand ? vanWhite : tarp} castShadow receiveShadow />
-      {brand && (
-        <>
-          {[-1, 1].map((s) => (
-            <group key={s} position={[(s * (W / 2 + 0.006)), 1.35, bodyL / 2]} rotation={[0, s * Math.PI / 2, 0]}>
-              <mesh>
-                <planeGeometry args={[bodyL - 0.2, 0.62]} />
-                <meshStandardMaterial color={color} roughness={0.6} />
-              </mesh>
-              <mesh position={[0, 0, 0.003]}>
-                <planeGeometry args={[Math.min(bodyL - 0.5, 0.5 * label.aspect), 0.5]} />
-                <meshBasicMaterial map={label.texture} transparent toneMapped={false} />
-              </mesh>
-            </group>
-          ))}
-          {/* холодильный агрегат на передней стенке будки */}
-          <RoundedBox args={[1.3, 0.55, 0.32]} radius={0.05} position={[0, 2.35, bodyL - 0.05]} material={M.steelLight} castShadow />
-        </>
-      )}
-      {/* кабина */}
-      <group position={[0, 0, bodyL + 0.08 + cabL / 2]}>
-        <RoundedBox args={[W - 0.05, 1.75, cabL]} radius={0.18} position={[0, 0.55 + 0.875, 0]} material={brand ? vanWhite : supplierCab} castShadow />
-        <mesh position={[0, 1.75, cabL / 2 + 0.002]} material={M.glass}>
-          <planeGeometry args={[W - 0.35, 0.62]} />
-        </mesh>
-        {[-1, 1].map((s) => (
-          <mesh key={s} position={[s * (W / 2 - 0.02), 1.72, 0.1]} rotation={[0, s * Math.PI / 2, 0]} material={M.glass}>
-            <planeGeometry args={[0.7, 0.5]} />
-          </mesh>
-        ))}
-        {brand && (
-          <mesh position={[0, 0.85, cabL / 2 + 0.003]}>
-            <planeGeometry args={[W - 0.2, 0.12]} />
-            <meshStandardMaterial color={color} roughness={0.6} />
-          </mesh>
-        )}
-      </group>
-      {/* рама и колёса */}
-      <mesh position={[0, 0.45, (bodyL + cabL) / 2]} material={M.black}>
-        <boxGeometry args={[W - 0.3, 0.18, bodyL + cabL]} />
-      </mesh>
-      {[0.75, bodyL + cabL - 0.55].map((z) =>
-        [-1, 1].map((s) => (
-          <mesh key={`${z}${s}`} position={[s * (W / 2 - 0.18), 0.38, z]} rotation={[0, 0, Math.PI / 2]} material={M.rubber} castShadow>
-            <cylinderGeometry args={[0.38, 0.38, 0.28, 20]} />
-          </mesh>
-        )),
-      )}
-      {highlighted && (
-        <mesh position={[0, 1.4, (bodyL + cabL) / 2]}>
-          <boxGeometry args={[W + 0.25, 2.9, bodyL + cabL + 0.3]} />
-          <meshBasicMaterial color="#2f7bff" transparent opacity={0.07} depthWrite={false} />
-        </mesh>
-      )}
+    <group position={[x, 0, FRONT_Z + 0.5]} onClick={(e) => (e.stopPropagation(), onClick?.())}>
+      <Truck {...props} />
     </group>
   );
 }
@@ -341,7 +275,7 @@ function ShippingDocks({ config, view, onOpen, showLabels }: { config: SiteConfi
         return (
           <group key={v.vehicle.id} onPointerOver={(e) => (e.stopPropagation(), setHover(v.vehicle.id))} onPointerOut={() => setHover(null)}>
             <DockPlate x={x} />
-            {present && <Truck x={x} brand={config.site.brand?.name ?? 'Bakery'} color={color} highlighted={hover === v.vehicle.id} onClick={() => onOpen('trips')} />}
+            {present && <DockedTruck x={x} brand={config.site.brand?.name ?? 'Bakery'} tagline={config.site.brand?.tagline} color={color} plate={v.vehicle.plate} highlighted={hover === v.vehicle.id} onClick={() => onOpen('trips')} />}
             {!present && (
               <mesh position={[x, 0.02, FRONT_Z + 3]} rotation={[-Math.PI / 2, 0, 0]} onClick={(e) => (e.stopPropagation(), onOpen('trips'))}>
                 <planeGeometry args={[2.3, 5]} />
@@ -381,7 +315,7 @@ function ReceivingDock({ config, view, now, onOpen }: { config: SiteConfig; view
       <mesh position={[x, 0.03, FRONT_Z - 1.4]} material={M.steelDark} receiveShadow>
         <boxGeometry args={[1.4, 0.05, 1.4]} />
       </mesh>
-      {atDock && <Truck x={x} color="#7c8a7b" onClick={() => onOpen('raw')} />}
+      {atDock && <DockedTruck x={x} color="#7c8a7b" plate="01 X 555 SA" onClick={() => onOpen('raw')} />}
       <Tag
         position={[x, atDock ? 3.35 : 0.8, FRONT_Z + (atDock ? 2.2 : 3)]}
         title={atDock ? `Приёмка: ${atDock.name.split(' ')[0]}` : 'Приёмка сырья'}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { DataSourceContext, createDataSource } from './data/store';
 import type { CameraFocus } from './scene/CameraRig';
 import { SPECS } from './scene/machines';
@@ -44,6 +44,17 @@ export function App() {
 
   useEffect(() => {
     applyStatusCssVars();
+  }, []);
+
+  // высота шапки меняется при переносе строк — карточки и списки отступают от неё
+  useLayoutEffect(() => {
+    const bar = document.querySelector<HTMLElement>('.topbar');
+    if (!bar) return;
+    const set = () => document.documentElement.style.setProperty('--topbar-h', `${Math.ceil(bar.getBoundingClientRect().height)}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(bar);
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {

@@ -1,0 +1,362 @@
+import { memo, useMemo } from 'react';
+import { RoundedBox } from '@react-three/drei';
+import * as THREE from 'three';
+import { drawEmblem } from '../ui/brandEmblem';
+import { M } from './materials';
+import { makeGrilleTexture } from './textures';
+
+/**
+ * Фургон-рефрижератор (или машина поставщика) в стиле станков: скруглённые формы,
+ * кабина с наклонным стеклом, фары, зеркала, колёса с дисками, задние двери с запорами,
+ * холодильный агрегат и фирменная ливрея по борту.
+ * Локальные координаты: зад кузова в z = 0 (к рампе), кабина — к +z, ширина по x.
+ */
+
+const W = 2.1; // ширина кузова
+const BODY_L = 3.5;
+const BODY_Y0 = 0.68;
+const BODY_H = 2.2;
+const CAB_Z0 = BODY_L + 0.06;
+const CAB_W = 2.0;
+const WHEEL_R = 0.42;
+
+const paint = new THREE.MeshStandardMaterial({ color: '#f7f7f5', roughness: 0.35, metalness: 0.15 });
+const tarpMat = new THREE.MeshStandardMaterial({ color: '#7f8d7e', roughness: 0.95 });
+const tarpRib = new THREE.MeshStandardMaterial({ color: '#6c796b', roughness: 0.9 });
+const supplierPaint = new THREE.MeshStandardMaterial({ color: '#6f8090', roughness: 0.4, metalness: 0.25 });
+const glassMat = new THREE.MeshStandardMaterial({ color: '#1f2a33', roughness: 0.08, metalness: 0.6, side: THREE.DoubleSide });
+const trimMat = new THREE.MeshStandardMaterial({ color: '#2b2e31', roughness: 0.6 });
+const plasticMat = new THREE.MeshStandardMaterial({ color: '#3a3e42', roughness: 0.75 });
+const rimMat = new THREE.MeshStandardMaterial({ color: '#c9cdd1', roughness: 0.3, metalness: 0.8 });
+const headMat = new THREE.MeshStandardMaterial({ color: '#fffdf2', emissive: '#fff4d6', emissiveIntensity: 0.6, roughness: 0.15 });
+const amberMat = new THREE.MeshStandardMaterial({ color: '#f2a03d', emissive: '#f2a03d', emissiveIntensity: 0.35, roughness: 0.3 });
+const tailMat = new THREE.MeshStandardMaterial({ color: '#c8242b', emissive: '#a5141b', emissiveIntensity: 0.45, roughness: 0.3 });
+const seamMat = new THREE.MeshStandardMaterial({ color: '#c4c6c6', roughness: 0.6 });
+
+/** Боковой профиль кабины (z вперёд, y вверх): крыша, наклонное лобовое, короткий капот. */
+const CAB_PROFILE: [number, number][] = [
+  [0, 0.58], [0, 2.42], [0.62, 2.42], [1.12, 1.58], [1.5, 1.44], [1.6, 1.22], [1.6, 0.58],
+];
+
+function useCabGeometry() {
+  return useMemo(() => {
+    const s = new THREE.Shape();
+    CAB_PROFILE.forEach(([z, y], i) => (i ? s.lineTo(z, y) : s.moveTo(z, y)));
+    s.closePath();
+    const g = new THREE.ExtrudeGeometry(s, { depth: CAB_W - 0.16, bevelEnabled: true, bevelSize: 0.08, bevelThickness: 0.08, bevelSegments: 4, curveSegments: 6 });
+    // (u, v, w) → x = −w, y = v, z = u; центр по ширине
+    g.rotateY(-Math.PI / 2);
+    g.translate((CAB_W - 0.16) / 2, 0, 0);
+    g.computeVertexNormals();
+    return g;
+  }, []);
+}
+
+/** Плоский многоугольник в плоскости (z, y) — окно на боку кабины. */
+function sideGeometry(pts: [number, number][]) {
+  const s = new THREE.Shape();
+  pts.forEach(([z, y], i) => (i ? s.lineTo(z, y) : s.moveTo(z, y)));
+  s.closePath();
+  const g = new THREE.ShapeGeometry(s);
+  g.rotateY(-Math.PI / 2);
+  return g;
+}
+
+/** Лобовое стекло вдоль наклона профиля, чуть впереди поверхности. */
+function windshieldGeometry() {
+  const [z1, y1] = [0.66, 2.36];
+  const [z2, y2] = [1.08, 1.64];
+  const d = new THREE.Vector2(z2 - z1, y2 - y1).normalize();
+  const n = new THREE.Vector2(-d.y, d.x).multiplyScalar(0.09); // наружу (вперёд-вверх)
+  const hw = CAB_W / 2 - 0.12;
+  const v = [
+    [-hw, y1 + n.y, z1 + n.x], [hw, y1 + n.y, z1 + n.x], [hw, y2 + n.y, z2 + n.x], [-hw, y2 + n.y, z2 + n.x],
+  ].flat();
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  g.setIndex([0, 2, 1, 0, 3, 2]);
+  g.computeVertexNormals();
+  return g;
+}
+
+function plateTexture(text: string) {
+  const c = document.createElement('canvas');
+  c.width = 512;
+  c.height = 112;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, 512, 112);
+  ctx.strokeStyle = '#111';
+  ctx.lineWidth = 8;
+  ctx.strokeRect(4, 4, 504, 104);
+  ctx.fillStyle = '#111';
+  ctx.font = '700 70px "Segoe UI", system-ui, sans-serif';
+  ctx.textBaseline = 'middle';
+  const [region, ...rest] = text.split(' ');
+  ctx.fillText(region ?? '', 24, 60);
+  ctx.fillRect(118, 10, 5, 92);
+  ctx.fillText(rest.join(' '), 140, 60);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 4;
+  return t;
+}
+
+/** Ливрея борта: белый кузов, фирменная волна снизу, эмблема, название и слоган. */
+function liveryTexture(brand: string, tagline: string, color: string, mirror: boolean) {
+  const c = document.createElement('canvas');
+  c.width = 1400;
+  c.height = 880;
+  const ctx = c.getContext('2d')!;
+  ctx.fillStyle = '#f7f7f5';
+  ctx.fillRect(0, 0, c.width, c.height);
+  if (mirror) {
+    // левый борт: кабина слева — волна зеркально, текст читается как обычно
+    ctx.translate(c.width, 0);
+    ctx.scale(-1, 1);
+  }
+  ctx.fillStyle = color;
+  ctx.beginPath();
+  ctx.moveTo(0, 880);
+  ctx.lineTo(0, 560);
+  ctx.bezierCurveTo(420, 470, 900, 640, 1400, 420);
+  ctx.lineTo(1400, 880);
+  ctx.closePath();
+  ctx.fill();
+  ctx.fillStyle = 'rgba(255,255,255,0.9)';
+  ctx.beginPath();
+  ctx.moveTo(0, 520);
+  ctx.bezierCurveTo(420, 430, 900, 600, 1400, 380);
+  ctx.lineTo(1400, 398);
+  ctx.bezierCurveTo(900, 620, 420, 450, 0, 540);
+  ctx.closePath();
+  ctx.fill();
+  if (mirror) ctx.setTransform(1, 0, 0, 1, 0, 0);
+  // эмблема и надписи — всегда слева направо
+  const ex = mirror ? 1080 : 120;
+  const emb = document.createElement('canvas');
+  emb.width = emb.height = 256;
+  drawEmblem(emb.getContext('2d')!, 256, { bg: color, ring: '#ffd9a0', grain: '#fff3df' });
+  ctx.drawImage(emb, ex, 90, 200, 200);
+  ctx.fillStyle = color;
+  ctx.textBaseline = 'alphabetic';
+  ctx.font = '800 150px "Segoe UI", system-ui, sans-serif';
+  const tx = mirror ? 90 : 360;
+  ctx.fillText(brand, tx, 245, 920);
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'italic 500 92px "Segoe Script", "Brush Script MT", cursive';
+  ctx.fillText(tagline, mirror ? 120 : 640, 780, 700);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = 8;
+  return t;
+}
+
+function Wheel({ z, side }: { z: number; side: 1 | -1 }) {
+  return (
+    <group position={[side * (W / 2 - 0.2), WHEEL_R, z]} rotation={[0, 0, Math.PI / 2]}>
+      <mesh material={M.rubber} castShadow>
+        <cylinderGeometry args={[WHEEL_R, WHEEL_R, 0.3, 28]} />
+      </mesh>
+      <mesh position={[0, side * 0.152, 0]} material={rimMat}>
+        <cylinderGeometry args={[0.25, 0.25, 0.02, 24]} />
+      </mesh>
+      <mesh position={[0, side * 0.165, 0]} material={trimMat}>
+        <cylinderGeometry args={[0.07, 0.07, 0.03, 12]} />
+      </mesh>
+      {/* крыло над колесом */}
+      <mesh position={[0, side * 0.02, 0]} rotation={[Math.PI / 2, 0, -Math.PI / 2]} material={trimMat}>
+        <torusGeometry args={[WHEEL_R + 0.07, 0.05, 6, 20, Math.PI]} />
+      </mesh>
+    </group>
+  );
+}
+
+export interface TruckProps {
+  /** Название фирмы на борту; не задано — машина поставщика (тент, без ливреи). */
+  brand?: string;
+  tagline?: string;
+  color: string;
+  plate: string;
+  highlighted?: boolean;
+}
+
+export const Truck = memo(function Truck({ brand, tagline = '', color, plate, highlighted }: TruckProps) {
+  const cab = useCabGeometry();
+  const windshield = useMemo(() => windshieldGeometry(), []);
+  const sideWin = useMemo(() => sideGeometry([[0.12, 1.62], [0.12, 2.26], [0.58, 2.26], [0.98, 1.62]]), []);
+  const plateTex = useMemo(() => plateTexture(plate), [plate]);
+  const liveryR = useMemo(() => (brand ? liveryTexture(brand, tagline, color, false) : null), [brand, tagline, color]);
+  const liveryL = useMemo(() => (brand ? liveryTexture(brand, tagline, color, true) : null), [brand, tagline, color]);
+  const grille = useMemo(() => makeGrilleTexture(), []);
+  const emblem = useMemo(() => {
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    drawEmblem(c.getContext('2d')!, 256, { bg: color, ring: '#ffd9a0', grain: '#fff3df' });
+    const t = new THREE.CanvasTexture(c);
+    t.colorSpace = THREE.SRGBColorSpace;
+    return t;
+  }, [color]);
+  const cabMat = brand ? paint : supplierPaint;
+  const total = CAB_Z0 + 1.68;
+
+  return (
+    <group>
+      {/* рама, подножки, защитные боковые брусья */}
+      <mesh position={[0, 0.5, total / 2]} material={trimMat} castShadow>
+        <boxGeometry args={[W - 0.5, 0.2, total - 0.1]} />
+      </mesh>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * (W / 2 - 0.06), 0.48, BODY_L / 2 + 0.2]} material={rimMat}>
+          <boxGeometry args={[0.05, 0.06, 1.6]} />
+        </mesh>
+      ))}
+
+      {/* кузов */}
+      <RoundedBox args={[W, BODY_H, BODY_L]} radius={0.05} smoothness={3} position={[0, BODY_Y0 + BODY_H / 2, BODY_L / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow />
+      {brand ? (
+        <>
+          {[1, -1].map((s) => (
+            <mesh key={s} position={[s * (W / 2 + 0.004), BODY_Y0 + BODY_H / 2, BODY_L / 2]} rotation={[0, s * (Math.PI / 2), 0]}>
+              <planeGeometry args={[BODY_L - 0.1, BODY_H - 0.1]} />
+              <meshStandardMaterial map={s > 0 ? liveryR : liveryL} roughness={0.4} metalness={0.05} />
+            </mesh>
+          ))}
+          {/* угловые профили кузова */}
+          {[-1, 1].map((sx) =>
+            [0.03, BODY_L - 0.03].map((z) => (
+              <mesh key={`${sx}${z}`} position={[sx * (W / 2 - 0.01), BODY_Y0 + BODY_H / 2, z]} material={seamMat}>
+                <boxGeometry args={[0.05, BODY_H, 0.05]} />
+              </mesh>
+            )),
+          )}
+          {/* холодильный агрегат на передней стенке будки */}
+          <group position={[0, BODY_Y0 + BODY_H - 0.38, BODY_L + 0.2]}>
+            <RoundedBox args={[1.5, 0.62, 0.36]} radius={0.08} material={M.steelLight} castShadow />
+            {[-0.38, 0.38].map((x) => (
+              <mesh key={x} position={[x, 0, 0.185]}>
+                <circleGeometry args={[0.22, 28]} />
+                <meshStandardMaterial map={grille} roughness={0.6} />
+              </mesh>
+            ))}
+          </group>
+          {/* габаритные огни на крыше */}
+          {[-1, 1].map((s) => (
+            <mesh key={s} position={[s * (W / 2 - 0.12), BODY_Y0 + BODY_H + 0.03, BODY_L - 0.12]} material={amberMat}>
+              <boxGeometry args={[0.14, 0.05, 0.08]} />
+            </mesh>
+          ))}
+        </>
+      ) : (
+        // тент: рёбра каркаса
+        Array.from({ length: 6 }, (_, i) => (
+          <mesh key={i} position={[0, BODY_Y0 + BODY_H / 2, 0.3 + i * ((BODY_L - 0.6) / 5)]} material={tarpRib}>
+            <boxGeometry args={[W + 0.02, BODY_H + 0.02, 0.06]} />
+          </mesh>
+        ))
+      )}
+
+      {/* задние двери: шов, запоры, петли, фонари */}
+      <group position={[0, BODY_Y0 + BODY_H / 2, -0.004]}>
+        <mesh rotation={[0, Math.PI, 0]} material={seamMat}>
+          <planeGeometry args={[W - 0.1, BODY_H - 0.1]} />
+        </mesh>
+        <mesh position={[0, 0, -0.006]} material={trimMat}>
+          <boxGeometry args={[0.025, BODY_H - 0.12, 0.01]} />
+        </mesh>
+        {[-0.62, -0.22, 0.22, 0.62].map((x) => (
+          <mesh key={x} position={[x, 0, -0.03]} material={M.chrome}>
+            <cylinderGeometry args={[0.018, 0.018, BODY_H - 0.25, 8]} />
+          </mesh>
+        ))}
+        {[-1, 1].map((s) =>
+          [-0.7, 0.7].map((y) => (
+            <mesh key={`${s}${y}`} position={[s * (W / 2 - 0.08), y, -0.03]} material={trimMat}>
+              <boxGeometry args={[0.1, 0.16, 0.05]} />
+            </mesh>
+          )),
+        )}
+      </group>
+      {[-1, 1].map((s) => (
+        <mesh key={s} position={[s * (W / 2 - 0.22), 0.62, -0.02]} material={tailMat}>
+          <boxGeometry args={[0.32, 0.14, 0.06]} />
+        </mesh>
+      ))}
+      <mesh position={[0, 0.46, -0.05]} material={trimMat} castShadow>
+        <boxGeometry args={[W - 0.2, 0.12, 0.1]} />
+      </mesh>
+      <mesh position={[0, 0.66, -0.04]}>
+        <planeGeometry args={[0.52, 0.11]} />
+        <meshBasicMaterial map={plateTex} side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* кабина */}
+      <group position={[0, 0, CAB_Z0]}>
+        <mesh geometry={cab} material={cabMat} castShadow receiveShadow />
+        <mesh geometry={windshield} material={glassMat} />
+        {[-1, 1].map((s) => (
+          <group key={s}>
+            <mesh geometry={sideWin} position={[s * (CAB_W / 2 + 0.002), 0, 0]} material={glassMat} />
+            {/* шов двери и ручка */}
+            <mesh position={[s * (CAB_W / 2 + 0.003), 1.3, 1.02]} material={trimMat}>
+              <boxGeometry args={[0.01, 1.3, 0.02]} />
+            </mesh>
+            <mesh position={[s * (CAB_W / 2 + 0.02), 1.42, 0.25]} material={trimMat}>
+              <boxGeometry args={[0.03, 0.04, 0.18]} />
+            </mesh>
+            {/* зеркало */}
+            <mesh position={[s * (CAB_W / 2 + 0.14), 1.8, 1.0]} material={trimMat}>
+              <boxGeometry args={[0.24, 0.03, 0.03]} />
+            </mesh>
+            <RoundedBox args={[0.08, 0.3, 0.18]} radius={0.03} position={[s * (CAB_W / 2 + 0.27), 1.8, 1.0]} material={plasticMat} castShadow />
+            {/* фирменная полоса по низу кабины */}
+            {brand && (
+              <mesh position={[s * (CAB_W / 2 + 0.004), 0.88, 0.8]} rotation={[0, s * (Math.PI / 2), 0]}>
+                <planeGeometry args={[1.6, 0.12]} />
+                <meshStandardMaterial color={color} roughness={0.5} />
+              </mesh>
+            )}
+          </group>
+        ))}
+        {/* перед: решётка, эмблема, фары, поворотники, бампер, номер */}
+        <group position={[0, 0, 1.69]}>
+          <RoundedBox args={[1.2, 0.34, 0.04]} radius={0.04} position={[0, 0.98, 0]} material={trimMat} />
+          {[-1.5, -0.5, 0.5, 1.5].map((k) => (
+            <mesh key={k} position={[0, 0.98 + k * 0.06, 0.022]} material={plasticMat}>
+              <boxGeometry args={[1.1, 0.02, 0.01]} />
+            </mesh>
+          ))}
+          {brand && (
+            <mesh position={[0, 0.98, 0.03]}>
+              <circleGeometry args={[0.13, 28]} />
+              <meshBasicMaterial map={emblem} toneMapped={false} />
+            </mesh>
+          )}
+          {[-1, 1].map((s) => (
+            <group key={s}>
+              <RoundedBox args={[0.3, 0.16, 0.05]} radius={0.04} position={[s * 0.8, 1.02, 0]} material={headMat} />
+              <mesh position={[s * 0.8, 0.9, 0.01]} material={amberMat}>
+                <boxGeometry args={[0.24, 0.05, 0.03]} />
+              </mesh>
+            </group>
+          ))}
+          <RoundedBox args={[CAB_W + 0.06, 0.24, 0.16]} radius={0.06} position={[0, 0.66, 0.02]} material={plasticMat} castShadow />
+          <mesh position={[0, 0.66, 0.105]}>
+            <planeGeometry args={[0.52, 0.11]} />
+            <meshBasicMaterial map={plateTex} />
+          </mesh>
+        </group>
+      </group>
+
+      {/* колёса */}
+      {[0.85, CAB_Z0 + 0.95].map((z) => [1, -1].map((s) => <Wheel key={`${z}${s}`} z={z} side={s as 1 | -1} />))}
+
+      {highlighted && (
+        <mesh position={[0, 1.45, total / 2]}>
+          <boxGeometry args={[W + 0.4, 3.0, total + 0.4]} />
+          <meshBasicMaterial color="#2f7bff" transparent opacity={0.07} depthWrite={false} />
+        </mesh>
+      )}
+    </group>
+  );
+});
