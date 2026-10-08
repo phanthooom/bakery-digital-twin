@@ -10,7 +10,7 @@ export function Moulder({ live }: BodyProps) {
       <Legs w={0.8} d={0.7} h={0.55} />
       <RoundedBox args={[0.85, 0.5, 0.75]} radius={0.05} position={[0, 0.8, 0]} material={M.steelLight} castShadow receiveShadow />
       {/* воронка */}
-      <mesh position={[0, 1.27, 0]} rotation={[0, Math.PI / 4, 0]} material={M.steel} castShadow>
+      <mesh position={[0, 1.27, 0]} rotation={[0, Math.PI / 4, 0]} material={M.steelDouble} castShadow>
         <cylinderGeometry args={[0.36, 0.14, 0.42, 4, 1, true]} />
       </mesh>
       <mesh position={[0, 1.24, 0]} material={M.dough}>

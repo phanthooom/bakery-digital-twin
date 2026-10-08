@@ -16,7 +16,7 @@ export const STATUS_LABEL: Record<MachineStatus, string> = {
 };
 
 export const REASON_LABEL: Record<StatusReason, string> = {
-  no_data: 'нет данных от счётчика',
+  no_data: 'нет показаний от счётчика',
   overload: 'перегрузка',
   phase_loss: 'обрыв фазы',
   imbalance: 'несимметрия фаз',

@@ -6,6 +6,9 @@ export const M = {
   steelLight: new THREE.MeshStandardMaterial({ color: '#dfe2e5', metalness: 0.35, roughness: 0.4 }),
   steelDark: new THREE.MeshStandardMaterial({ color: '#7b8187', metalness: 0.6, roughness: 0.35 }),
   chrome: new THREE.MeshStandardMaterial({ color: '#e9ecef', metalness: 0.9, roughness: 0.18 }),
+  /** Для открытых форм (дежа, воронка) — видны обе стороны. */
+  chromeDouble: new THREE.MeshStandardMaterial({ color: '#dfe3e7', metalness: 0.85, roughness: 0.22, side: THREE.DoubleSide }),
+  steelDouble: new THREE.MeshStandardMaterial({ color: '#c3c8cd', metalness: 0.55, roughness: 0.35, side: THREE.DoubleSide }),
   black: new THREE.MeshStandardMaterial({ color: '#25282b', metalness: 0.2, roughness: 0.6 }),
   rubber: new THREE.MeshStandardMaterial({ color: '#2f3134', roughness: 0.9 }),
   belt: new THREE.MeshStandardMaterial({ color: '#2f5fd0', roughness: 0.7 }),

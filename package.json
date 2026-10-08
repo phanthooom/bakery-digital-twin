@@ -7,24 +7,22 @@
   "workspaces": [
     "packages/shared",
     "simulator",
-    "api",
     "web"
   ],
   "engines": {
     "node": ">=20.11"
   },
   "scripts": {
-    "dev": "concurrently -k -n sim,api,web -c yellow,cyan,magenta \"npm:dev:sim\" \"npm:dev:api\" \"npm:dev:web\"",
-    "dev:sim": "npm run dev -w simulator",
-    "dev:api": "npm run dev -w api",
+    "dev": "npm run dev -w web",
     "dev:web": "npm run dev -w web",
+    "dev:sim": "npm run dev -w simulator",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p packages/shared && tsc -p simulator && tsc -p api && tsc -p web",
+    "typecheck": "tsc -p packages/shared && tsc -p simulator && tsc -p web",
     "build": "npm run build -w web",
+    "preview": "npm run preview -w web",
     "infra:up": "docker compose up -d",
-    "infra:down": "docker compose down",
-    "infra:logs": "docker compose logs -f --tail=50"
+    "infra:down": "docker compose down"
   },
   "devDependencies": {
     "concurrently": "^9.2.1",

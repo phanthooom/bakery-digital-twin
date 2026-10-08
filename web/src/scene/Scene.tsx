@@ -11,7 +11,8 @@ export interface SceneProps {
   selectedId: string | null;
   showLabels: boolean;
   viewToken: number;
-  cardOffset: number;
+  /** Сдвиг кадра (м), чтобы выбранный станок не прятался под карточкой. */
+  cardOffset: [number, number];
   onSelect: (id: string) => void;
   onDeselect: () => void;
 }

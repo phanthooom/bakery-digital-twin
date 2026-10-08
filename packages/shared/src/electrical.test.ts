@@ -30,12 +30,13 @@ describe('imbalancePct (NEMA: макс. отклонение от среднег
 });
 
 describe('ratedCurrentA', () => {
-  it('3 фазы 400 В: I = P / (√3·U·cosφ)', () => {
-    expect(ratedCurrentA(36, 3)).toBeCloseTo(36000 / (Math.sqrt(3) * 400 * 0.9), 3);
+  // Ожидаемые значения — из таблиц номинальных токов (400 В, cos φ 0,9 и 230 В, cos φ 0,9)
+  it('печь 36 кВт, 3 фазы 400 В → ≈ 57,7 А на фазу', () => {
+    expect(ratedCurrentA(36, 3)).toBeCloseTo(57.74, 2);
   });
 
-  it('1 фаза 230 В: I = P / (U·cosφ)', () => {
-    expect(ratedCurrentA(1, 1)).toBeCloseTo(1000 / (230 * 0.9), 3);
+  it('льдогенератор 1 кВт, 1 фаза 230 В → ≈ 4,83 А', () => {
+    expect(ratedCurrentA(1, 1)).toBeCloseTo(4.83, 2);
   });
 });
 

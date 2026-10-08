@@ -7,6 +7,10 @@ import { Header } from './ui/Header';
 import { STATUS_LABEL, STATUS_ORDER } from './ui/statusMeta';
 import { StatusIcon } from './ui/StatusIcon';
 
+const NO_OFFSET: [number, number] = [0, 0];
+const SIDE_CARD_OFFSET: [number, number] = [1.1, 0];
+const BOTTOM_SHEET_OFFSET: [number, number] = [0, 2.0];
+
 export function App() {
   const ds = useMemo(() => createDataSource(), []);
   const [selectedId, setSelectedId] = useState<string | null>(() => new URLSearchParams(location.search).get('eq'));
@@ -64,7 +68,7 @@ export function App() {
           selectedId={selected?.id ?? null}
           showLabels={showLabels}
           viewToken={viewToken}
-          cardOffset={selected && wide ? 1.1 : 0}
+          cardOffset={!selected ? NO_OFFSET : wide ? SIDE_CARD_OFFSET : BOTTOM_SHEET_OFFSET}
           onSelect={select}
           onDeselect={deselect}
         />

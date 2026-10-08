@@ -20,7 +20,7 @@ export function Mixer({ live }: BodyProps) {
       <RoundedBox args={[1.0, 0.72, 1.15]} radius={0.06} smoothness={4} position={[0, 0.36, 0]} material={M.steel} castShadow receiveShadow />
       {/* дежа */}
       <group ref={bowl} position={[0, 0.72, 0.1]}>
-        <mesh material={M.chrome} castShadow>
+        <mesh material={M.chromeDouble} castShadow>
           <cylinderGeometry args={[0.44, 0.36, 0.5, 40, 1, true]} />
         </mesh>
         <mesh position={[0, 0.25, 0]} rotation={[Math.PI / 2, 0, 0]} material={M.chrome}>
