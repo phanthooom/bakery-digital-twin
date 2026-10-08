@@ -36,7 +36,7 @@ function Lights() {
         position={[9, 18, 12]}
         intensity={1.9}
         castShadow
-        shadow-mapSize={[4096, 4096]}
+        shadow-mapSize={[2048, 2048]}
         shadow-bias={-0.0008}
         shadow-normalBias={0.04}
         shadow-camera-left={-24}
@@ -87,8 +87,8 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
         <Lights />
         <CameraRig config={config} focus={focus} viewToken={viewToken} cardOffset={cardOffset} />
         <Selection>
-          <EffectComposer multisampling={4} autoClear={false}>
-            <Outline blur visibleEdgeColor={0x2f7bff} hiddenEdgeColor={0x2f7bff} edgeStrength={10} width={1800} xRay={false} />
+          <EffectComposer multisampling={2} autoClear={false}>
+            <Outline blur visibleEdgeColor={0x2f7bff} hiddenEdgeColor={0x2f7bff} edgeStrength={10} xRay={false} />
             <Bloom luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />
           </EffectComposer>
           <Hall config={config} />
