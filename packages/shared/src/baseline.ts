@@ -1,0 +1,100 @@
+import type { PowerPoint } from './types';
+
+const MIN_MS = 60_000;
+const DAY_MS = 24 * 60 * MIN_MS;
+
+export function median(values: readonly number[]): number | null {
+  if (values.length === 0) return null;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = s.length >> 1;
+  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
+}
+
+const formatters = new Map<string, Intl.DateTimeFormat>();
+
+/** Час суток (0–23) в часовом поясе площадки. */
+export function hourOfDay(tsMs: number, timezone: string): number {
+  let f = formatters.get(timezone);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-GB', { timeZone: timezone, hour: '2-digit', hourCycle: 'h23' });
+    formatters.set(timezone, f);
+  }
+  return Number(f.format(tsMs)) % 24;
+}
+
+/** Среднее значение kw по точкам с t >= fromMs. */
+export function meanSince(points: readonly PowerPoint[], fromMs: number): number | null {
+  let sum = 0;
+  let n = 0;
+  for (const p of points) {
+    if (p.t >= fromMs) {
+      sum += p.kw;
+      n++;
+    }
+  }
+  return n ? sum / n : null;
+}
+
+interface MinuteBucket {
+  hour: number;
+  sum: number;
+  count: number;
+}
+
+export interface BaselineOptions {
+  timezone: string;
+  historyDays: number;
+}
+
+/**
+ * Базовая линия потребления: скользящая медиана минутных средних
+ * по тому же часу суток за последние historyDays дней.
+ * Отсчёты можно добавлять не по порядку (догрузка буфера ESP32, backfill из InfluxDB).
+ */
+export class HourlyBaseline {
+  private readonly minutes = new Map<number, MinuteBucket>();
+
+  constructor(private readonly opts: BaselineOptions) {}
+
+  get size(): number {
+    return this.minutes.size;
+  }
+
+  add(tsMs: number, kw: number): void {
+    if (!Number.isFinite(kw) || !Number.isFinite(tsMs)) return;
+    const key = Math.floor(tsMs / MIN_MS) * MIN_MS;
+    const b = this.minutes.get(key);
+    if (b) {
+      b.sum += kw;
+      b.count++;
+    } else {
+      this.minutes.set(key, { hour: hourOfDay(key, this.opts.timezone), sum: kw, count: 1 });
+    }
+  }
+
+  /** Добавить уже агрегированное минутное среднее (например, из InfluxDB). */
+  addMinuteMean(minuteStartMs: number, meanKw: number): void {
+    if (!Number.isFinite(meanKw)) return;
+    const key = Math.floor(minuteStartMs / MIN_MS) * MIN_MS;
+    this.minutes.set(key, { hour: hourOfDay(key, this.opts.timezone), sum: meanKw, count: 1 });
+  }
+
+  /**
+   * Медиана для часа суток момента tsMs.
+   * excludeFromMs — не учитывать минуты начиная с этого момента (окно, с которым сравниваем).
+   */
+  baselineFor(tsMs: number, excludeFromMs = Number.POSITIVE_INFINITY): { medianKw: number | null; samples: number } {
+    const hour = hourOfDay(tsMs, this.opts.timezone);
+    const oldest = tsMs - this.opts.historyDays * DAY_MS;
+    const values: number[] = [];
+    for (const [key, b] of this.minutes) {
+      if (b.hour === hour && key >= oldest && key < excludeFromMs) values.push(b.sum / b.count);
+    }
+    return { medianKw: median(values), samples: values.length };
+  }
+
+  prune(nowMs: number): void {
+    const oldest = nowMs - this.opts.historyDays * DAY_MS;
+    for (const key of this.minutes.keys()) if (key < oldest) this.minutes.delete(key);
+  }
+}
