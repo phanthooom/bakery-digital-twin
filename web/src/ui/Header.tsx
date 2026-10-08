@@ -2,6 +2,7 @@ import type { MachineStatus } from '@bakery/shared';
 import { useDataSource, useStates } from '../data/store';
 import { fmtAgo, fmtKw } from './format';
 import { STATUS_LABEL, STATUS_ORDER } from './statusMeta';
+import { BrandMark } from './BrandMark';
 import { StatusIcon } from './StatusIcon';
 import { useNow } from './useNow';
 
@@ -29,16 +30,11 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
   return (
     <header className="topbar">
       <div className="brand">
-        <svg className="brand-mark" viewBox="0 0 32 32" aria-hidden>
-          <rect x="3" y="11" width="26" height="18" rx="3" fill="#52514e" />
-          <rect x="7" y="16" width="8" height="9" rx="1.5" fill="#efa21f" />
-          <rect x="18" y="16" width="7" height="4" rx="1" fill="#cde2fb" />
-          <rect x="13" y="3" width="6" height="9" rx="2" fill="#2a78d6" />
-        </svg>
+        <BrandMark logo={ds.config.site.brand?.logo} color={ds.config.site.brand?.color} name={ds.config.site.brand?.name ?? ds.config.site.name} />
         <div style={{ minWidth: 0 }}>
-          <div className="brand-title">3D Пекарня</div>
+          <div className="brand-title">{ds.config.site.brand?.name ?? '3D Пекарня'}</div>
+          <div className="brand-sub">3D-цех · цифровой двойник</div>
         </div>
-        <span className="brand-sub">{ds.config.site.name}</span>
       </div>
 
       <div className="topbar-stats" aria-label="Сводка по цеху">

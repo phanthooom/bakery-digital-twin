@@ -65,6 +65,10 @@ docs/                      план, MQTT-контракт, ADR, настрой�
 
 Пороги — в `thresholds` в `config/equipment.json`. Несимметрия — по NEMA ([ADR-0002](docs/adr/0002-phase-imbalance-nema.md)). ИИ-проверка сравнивает среднее за 15 мин с медианой таких же средних в этот час суток за 7 дней и учитывает обычный разброс станка ([ADR-0003](docs/adr/0003-ai-check-robust-statistics.md)).
 
+### Вывеска и логотип компании
+
+`site.brand` в `config/equipment.json`: `name`, `tagline`, `color` (фирменный цвет короба), `logo`. Без `logo` вывеска набирает название объёмными буквами. Если положить SVG-логотип в `web/public/brand/` и указать `"logo": "/brand/<файл>.svg"`, вывеска выдавит контуры логотипа в объёмные световые буквы, а в шапке появится этот же логотип.
+
 ### Свой станок или своя 3D-модель
 
 - Новый станок — добавьте запись в `config/equipment.json` (`kind`: mixer, moulder, conveyor, proofer, oven, icemaker или generic).

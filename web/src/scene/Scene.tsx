@@ -3,6 +3,7 @@ import { Canvas } from '@react-three/fiber';
 import { Bloom, EffectComposer, Outline, Selection } from '@react-three/postprocessing';
 import type { SiteConfig } from '@bakery/shared';
 import { CameraRig } from './CameraRig';
+import { BrandSign } from './BrandSign';
 import { Hall } from './Hall';
 import { Machine } from './Machine';
 
@@ -83,6 +84,7 @@ export function Scene({ config, selectedId, showLabels, viewToken, cardOffset, o
             <Bloom luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />
           </EffectComposer>
           <Hall config={config} />
+          <BrandSign config={config} />
           {config.equipment.map((eq) => (
             <Machine
               key={eq.id}

@@ -8,6 +8,8 @@ export interface LabelOptions {
   color?: string;
   letterSpacing?: number;
   padding?: number;
+  /** Полная CSS-строка шрифта (перекрывает fontSize/weight для начертания). */
+  font?: string;
 }
 
 /** Текст на прозрачном фоне — для подписей этапов на полу. Шрифт системный, кириллица есть. */
@@ -16,7 +18,7 @@ export function makeLabelTexture(text: string, o: LabelOptions = {}): { texture:
   const pad = o.padding ?? 16;
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d')!;
-  const font = `${o.weight ?? 600} ${fontSize}px ${FONT}`;
+  const font = o.font ?? `${o.weight ?? 600} ${fontSize}px ${FONT}`;
   ctx.font = font;
   const spacing = o.letterSpacing ?? 0;
   const w = Math.ceil(ctx.measureText(text).width + spacing * text.length + pad * 2);

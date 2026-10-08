@@ -42,8 +42,10 @@ button { font: inherit; color: inherit; }
   position: relative; z-index: 30;
 }
 .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.brand-mark { width: 28px; height: 28px; flex: none; }
-.brand-title { font-size: 16px; font-weight: 650; white-space: nowrap; }
+.brand-mark { width: 36px; height: 36px; flex: none; border-radius: 50%; object-fit: contain; box-shadow: 0 1px 3px rgba(20,20,18,.18); }
+.brand-logo { display: inline-flex; align-items: center; height: 36px; padding: 0 12px; border-radius: 10px; flex: none; }
+.brand-logo img { height: 18px; display: block; }
+.brand-title { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; white-space: nowrap; line-height: 1.2; }
 .brand-sub { color: var(--text-muted); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar-stats { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
 .stat-total { display: flex; align-items: baseline; gap: 6px; padding-right: 8px; margin-right: 4px; border-right: 1px solid var(--grid); }

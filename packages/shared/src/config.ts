@@ -11,6 +11,11 @@ export function validateSiteConfig(raw: unknown): { config: SiteConfig | null; e
 
   if (!c.site?.timezone) errors.push('site.timezone обязателен');
   if (!c.thresholds) errors.push('thresholds обязателен');
+  const brand = c.site?.brand as unknown as Record<string, unknown> | undefined;
+  if (brand !== undefined && (typeof brand !== 'object' || brand === null || typeof brand.name !== 'string' || !brand.name)) {
+    errors.push('site.brand.name обязателен, если задан site.brand');
+  }
+  if (brand && brand.logo != null && typeof brand.logo !== 'string') errors.push('site.brand.logo — путь к файлу логотипа или null');
   if (!Array.isArray(c.stages) || c.stages.length === 0) errors.push('stages: нужен хотя бы один этап');
   if (!Array.isArray(c.equipment)) errors.push('equipment должен быть массивом');
   if (errors.length) return { config: null, errors };

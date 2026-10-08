@@ -10,11 +10,11 @@ const FLOW_Z = 0.55;
 const LABEL_Z = 1.25;
 const ZONE_Z: [number, number] = [-4.45, -0.85];
 
-function FloorLabel({ text, x, z, height = 0.62, color = '#3d3d3a' }: { text: string; x: number; z: number; height?: number; color?: string }) {
-  const { texture, aspect } = useMemo(() => makeLabelTexture(text, { fontSize: 110, weight: 650, color, letterSpacing: 10 }), [text, color]);
+function FloorLabel({ text, x, z, height = 0.62, color = '#3d3d3a', align = 'left', font }: { text: string; x: number; z: number; height?: number; color?: string; align?: 'left' | 'center'; font?: string }) {
+  const { texture, aspect } = useMemo(() => makeLabelTexture(text, { fontSize: 110, weight: 650, color, letterSpacing: font ? 2 : 10, font }), [text, color, font]);
   // x — левый край подписи
   return (
-    <mesh position={[x + (height * aspect) / 2, 0.013, z]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh position={[align === 'left' ? x + (height * aspect) / 2 : x, 0.013, z]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[height * aspect, height]} />
       <meshBasicMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
     </mesh>
@@ -214,6 +214,7 @@ export function Hall({ config }: { config: SiteConfig }) {
       {stages.map((s) => (
         <FloorLabel key={s.id} text={s.label} x={s.xFrom + 0.2} z={LABEL_Z} />
       ))}
+
     </group>
   );
 }

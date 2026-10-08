@@ -63,6 +63,8 @@ export interface SiteConfig {
     name: string;
     timezone: string;
     hall: { width: number; depth: number; height: number };
+    /** Вывеска на стене цеха и логотип в шапке. logo — путь к SVG/PNG в web/public (например /brand/logo.svg). */
+    brand?: { name: string; tagline?: string; color?: string; logo?: string | null };
   };
   thresholds: Thresholds;
   stages: StageConfig[];

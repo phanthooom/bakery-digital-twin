@@ -6,6 +6,12 @@
       "width": 40,
       "depth": 10,
       "height": 5
+    },
+    "brand": {
+      "name": "Trénd Bakery",
+      "tagline": "With love…",
+      "color": "#B71F3E",
+      "logo": null
     }
   },
   "thresholds": {
