@@ -243,7 +243,7 @@ button { font: inherit; color: inherit; }
   width: 100%;
 }
 .chart-svg-wrap.is-dragging { cursor: grabbing; }
-.chart-svg-wrap svg:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; border-radius: 6px; }
+.chart-svg-wrap svg:focus, .chart-svg-wrap svg:focus-visible { outline: none; }
 .tnum { font-variant-numeric: tabular-nums; }
 /* подпись значения поверх линии читается за счёт обводки цветом фона */
 .chart-value-label { paint-order: stroke; stroke: var(--surface-1); stroke-width: 3px; stroke-linejoin: round; }
