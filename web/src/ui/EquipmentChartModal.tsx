@@ -35,7 +35,8 @@ export function EquipmentChartModal({ eq, isOpen, onClose }: EquipmentChartModal
     () => ds.getHistory(eq.id, hours, bucketMs),
     [ds, eq.id, hours, bucketMs, state?.updatedAt, state?.status]
   );
-  const range = useMemo(() => ({ to: Date.now(), from: Date.now() - hours * 3_600_000 }), [hours]);
+  // период «последние N часов до сейчас» сдвигается с каждым показанием; окно графика следует за ним
+  const range = useMemo(() => ({ to: Date.now(), from: Date.now() - hours * 3_600_000 }), [history, hours]);
 
   useEffect(() => {
     if (isOpen) {
@@ -110,6 +111,7 @@ export function EquipmentChartModal({ eq, isOpen, onClose }: EquipmentChartModal
             timezone={ds.config.site.timezone}
             hours={hours}
             bucketMs={bucketMs}
+            badge={ds.simulate ? 'демо' : 'ESP32'}
             height={260}
             onHoursChange={setHours}
             isExpanded={true}

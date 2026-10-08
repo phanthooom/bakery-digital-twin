@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtNum, fmtPct, fmtTime } from './format';
+import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtNum, fmtPct, fmtTime, fmtAxis } from './format';
 
 const NB = ' ';
 
@@ -57,5 +57,14 @@ describe('fmtAiHeadline — строка «ИИ: …» в карточке', () 
   it('обучение — сколько истории накоплено', () => {
     expect(fmtAiHeadline({ ...base, state: 'learning', deviationPct: null, samples: 3 })).toBe('обучение');
     expect(fmtAiLearning({ ...base, state: 'learning', deviationPct: null, samples: 3 }, 10)).toBe(`накоплено 3 из 10${NB}мин истории для этого часа`);
+  });
+});
+
+describe('fmtAxis (деления оси графика)', () => {
+  it('без лишних нулей', () => {
+    expect(fmtAxis(0)).toBe('0');
+    expect(fmtAxis(0.4)).toBe('0,4');
+    expect(fmtAxis(1.25)).toBe('1,25');
+    expect(fmtAxis(40)).toBe('40');
   });
 });

@@ -20,6 +20,11 @@ export function fmtKw(kw: number): string {
   return fmtNum(kw, a < 10 ? 2 : a < 100 ? 1 : 0);
 }
 
+/** Подпись деления оси: без лишних нулей — 0 · 0,4 · 1,2 · 40 */
+export function fmtAxis(v: number): string {
+  return fmtNum(v, 2).replace(/,?0+$/, '') || '0';
+}
+
 export function fmtPct(v: number, digits = 0): string {
   return `${fmtNum(v, digits)}${NB}%`;
 }

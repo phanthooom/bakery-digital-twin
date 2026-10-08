@@ -38,7 +38,8 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
     () => ds.getHistory(eq.id, hours, bucketMs),
     [ds, eq.id, hours, bucketMs, state?.updatedAt, state?.status]
   );
-  const range = useMemo(() => ({ to: Date.now(), from: Date.now() - hours * 3_600_000 }), [hours]);
+  // период «последние N часов до сейчас» сдвигается с каждым показанием; окно графика следует за ним
+  const range = useMemo(() => ({ to: Date.now(), from: Date.now() - hours * 3_600_000 }), [history, hours]);
 
   if (!state) return null;
   const r = state.lastReading;
@@ -124,6 +125,7 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
           timezone={site.timezone}
           hours={hours}
           bucketMs={bucketMs}
+          badge={ds.simulate ? 'демо' : 'ESP32'}
           height={isStretched ? 150 : 124}
           onHoursChange={setHours}
           onExpand={() => setIsModalOpen(true)}

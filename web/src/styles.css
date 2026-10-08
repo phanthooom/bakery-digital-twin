@@ -135,7 +135,7 @@ button { font: inherit; color: inherit; }
 }
 .chart-header-left { min-width: 0; }
 .chart-title-row { display: flex; align-items: center; gap: 6px; }
-.chart-title { margin: 0; font-size: 13.5px; font-weight: 700; color: #0f172a; }
+.chart-title { margin: 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); white-space: nowrap; }
 .chart-badge {
   font-size: 9px;
   font-weight: 700;
@@ -147,7 +147,9 @@ button { font: inherit; color: inherit; }
   color: #64748b;
   border: 1px solid #e2e8f0;
 }
-.chart-legend { display: flex; align-items: center; gap: 10px; margin-top: 4px; font-size: 11px; }
+.chart-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; margin-top: 4px; font-size: 11px; }
+.legend-line { width: 14px; height: 0; border-top: 2px solid var(--series-1); flex: none; }
+.legend-line.is-dashed { border-top: 1px dashed var(--text-muted); }
 .legend-item { display: flex; align-items: center; gap: 4px; color: #64748b; }
 .legend-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
 .legend-dot.dot-blue { background: #2563eb; }
@@ -240,7 +242,15 @@ button { font: inherit; color: inherit; }
   cursor: grab;
   width: 100%;
 }
-.chart-svg-wrap:active { cursor: grabbing; }
+.chart-svg-wrap.is-dragging { cursor: grabbing; }
+.chart-svg-wrap svg:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; border-radius: 6px; }
+.tnum { font-variant-numeric: tabular-nums; }
+/* подпись значения поверх линии читается за счёт обводки цветом фона */
+.chart-value-label { paint-order: stroke; stroke: var(--surface-1); stroke-width: 3px; stroke-linejoin: round; }
+/* появление линии слева направо, как appear() у amCharts */
+.chart-series { animation: chart-reveal 0.9s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes chart-reveal { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+@media (prefers-reduced-motion: reduce) { .chart-series { animation: none; } }
 .chart-svg-wrap svg { display: block; overflow: visible; width: 100%; }
 
 .chart-footer-axis {
@@ -496,3 +506,25 @@ details.table-view th { color: var(--text-muted); font-weight: 500; }
 .line-table .row-btn { all: unset; cursor: pointer; }
 .line-table .row-btn:focus-visible { outline: 2px solid var(--focus); border-radius: 4px; }
 .line-actions { display: flex; }
+
+/* ── Скролл в стиле интерфейса: тонкий ползунок-«таблетка» без стрелок, ярче при наведении ── */
+.card, .chart-modal, .list { scrollbar-gutter: stable; }
+.card::-webkit-scrollbar, .chart-modal::-webkit-scrollbar, .list::-webkit-scrollbar, .table-view ::-webkit-scrollbar { width: 10px; height: 10px; }
+.card::-webkit-scrollbar-button, .chart-modal::-webkit-scrollbar-button, .list::-webkit-scrollbar-button { display: none; width: 0; height: 0; }
+.card::-webkit-scrollbar-track, .chart-modal::-webkit-scrollbar-track, .list::-webkit-scrollbar-track { background: transparent; margin: 14px 0; }
+.card::-webkit-scrollbar-corner, .list::-webkit-scrollbar-corner { background: transparent; }
+.card::-webkit-scrollbar-thumb, .chart-modal::-webkit-scrollbar-thumb, .list::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--text-muted) 28%, transparent);
+  border-radius: 10px; border: 3px solid transparent; background-clip: padding-box;
+}
+.card:hover::-webkit-scrollbar-thumb, .chart-modal:hover::-webkit-scrollbar-thumb, .list:hover::-webkit-scrollbar-thumb {
+  background-color: color-mix(in srgb, var(--text-muted) 55%, transparent);
+}
+.card::-webkit-scrollbar-thumb:hover, .chart-modal::-webkit-scrollbar-thumb:hover, .list::-webkit-scrollbar-thumb:hover,
+.card::-webkit-scrollbar-thumb:active, .chart-modal::-webkit-scrollbar-thumb:active, .list::-webkit-scrollbar-thumb:active {
+  background-color: var(--text-muted); border-width: 2px;
+}
+/* Firefox: стандартные свойства (Chrome их не видит здесь и рисует ползунок по правилам выше) */
+@supports not selector(::-webkit-scrollbar) {
+  .card, .chart-modal, .list { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--text-muted) 45%, transparent) transparent; }
+}

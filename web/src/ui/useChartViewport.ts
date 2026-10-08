@@ -1,75 +1,140 @@
-import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefObject } from 'react';
 
+/** Видимое окно графика по времени: [от, до], мс. */
 export type Viewport = [number, number];
+
+/** Весь период графика и самое узкое окно, до которого можно приблизить. */
+export interface Domain {
+  min: number;
+  max: number;
+  minSpan: number;
+}
 
 export interface Insets {
   left: number;
   right: number;
 }
 
-const EASE = 0.28; // Доля пути к цели за кадр (плавный зум без рывков)
-const FRICTION = 0.92; // Затухание инерции после свайпа пальцем/мышью
-const PINCH_ZOOM_SPEED = 0.01;
-const SCROLL_ZOOM_SPEED = 0.0025;
+/* ── Чистые функции окна (тестируются, см. useChartViewport.test.ts) ── */
 
-export function clampViewport(
-  [start, end]: Viewport,
-  total: number,
-  minSpan = 3
-): Viewport {
-  const max = Math.max(0, total - 1);
-  const span = Math.min(max, Math.max(Math.min(minSpan, max), end - start));
-  const s = Math.min(Math.max(0, start), max - span);
-  return [s, s + span];
+export function clampView([s, e]: Viewport, d: Domain): Viewport {
+  const full = Math.max(0, d.max - d.min);
+  const span = Math.min(full, Math.max(Math.min(d.minSpan, full), e - s));
+  const start = Math.min(Math.max(d.min, s), d.max - span);
+  return [start, start + span];
 }
 
-export function isViewportZoomed(view: Viewport, total: number): boolean {
-  return total > 1 && (view[0] > 0.02 || view[1] < total - 1 - 0.02);
+/** Масштаб в factor раз (меньше 1 — приблизить) вокруг точки anchor (0…1 по ширине графика). */
+export function zoomView([s, e]: Viewport, factor: number, anchor: number, d: Domain): Viewport {
+  const span = e - s;
+  const at = s + anchor * span;
+  const next = span * factor;
+  return clampView([at - anchor * next, at - anchor * next + next], d);
+}
+
+export function panView([s, e]: Viewport, deltaMs: number, d: Domain): Viewport {
+  return clampView([s + deltaMs, e + deltaMs], d);
+}
+
+export function isZoomed([s, e]: Viewport, d: Domain): boolean {
+  const full = d.max - d.min;
+  return full > 0 && e - s < full * 0.995;
 }
 
 /**
- * Плавный видимый диапазон [start, end] (дробные индексы точек) для графика по оси X.
- *
- * - свайп двумя пальцами вверх/вниз на тачпаде или колесо мыши — масштаб вокруг курсора;
- * - щипок двумя пальцами (wheel + ctrlKey), Ctrl+колесо, Safari gesture* — масштаб;
- * - горизонтальный свайп двумя пальцами / Shift+колесо — прокрутка по времени;
- * - перетаскивание мышью или пальцем — прокрутка с инерцией;
- * - двойной клик — сброс на весь период.
+ * Период сдвинулся (пришли новые показания). Весь период остаётся всем периодом;
+ * окно у правого края едет за «сейчас»; окно в прошлом стоит на месте.
  */
-export function useChartViewport(
-  ref: RefObject<HTMLElement | null>,
-  total: number,
-  insets: Insets = { left: 40, right: 16 },
-  minSpan = 3
-) {
-  const full = useCallback((): Viewport => [0, Math.max(0, total - 1)], [total]);
-  const [view, setView] = useState<Viewport>(full);
-  const current = useRef<Viewport>(full());
-  const target = useRef<Viewport>(full());
-  const velocity = useRef(0); // индексов за кадр
-  const frame = useRef<number | null>(null);
+export function followDomain(view: Viewport, prev: Domain, next: Domain): Viewport {
+  if (!isZoomed(view, prev)) return [next.min, next.max];
+  const span = view[1] - view[0];
+  if (view[1] >= prev.max - span * 0.01) return clampView([next.max - span, next.max], next);
+  return clampView(view, next);
+}
 
-  const clamp = useCallback(
-    (next: Viewport): Viewport => clampViewport(next, total, minSpan),
-    [total, minSpan]
-  );
+export interface WheelLike {
+  deltaX: number;
+  deltaY: number;
+  deltaMode: number;
+  ctrlKey: boolean;
+  shiftKey: boolean;
+}
+
+export type WheelAction = { kind: 'zoom'; factor: number } | { kind: 'pan'; px: number };
+
+const PINCH_ZOOM_SPEED = 0.01;
+const SCROLL_ZOOM_SPEED = 0.0025;
+
+/**
+ * Колесо/тачпад → действие, как в графике ai-solar-panels (amCharts wheelX: panX, wheelY: zoomX):
+ * два пальца вверх-вниз и колесо мыши — растянуть/сжать ось времени (вверх — приблизить);
+ * щипок (ctrlKey) — то же; два пальца влево-вправо и Shift+колесо — сдвиг.
+ * lock — ось уже идущего жеста: мелкое дрожание пальцев не переключает зум ↔ сдвиг.
+ */
+export function wheelToAction(e: WheelLike, pageHeight: number, lock?: WheelAction['kind']): WheelAction {
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? pageHeight : 1;
+  const dx = (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit;
+  const dy = (e.shiftKey && !e.deltaX ? 0 : e.deltaY) * unit;
+  if (e.ctrlKey) return { kind: 'zoom', factor: Math.exp(dy * PINCH_ZOOM_SPEED) };
+  const kind = lock ?? (Math.abs(dx) > Math.abs(dy) ? 'pan' : 'zoom');
+  return kind === 'pan' ? { kind, px: dx } : { kind, factor: Math.exp(dy * SCROLL_ZOOM_SPEED) };
+}
+
+/* ── Хук ── */
+
+const EASE = 0.25; // доля пути к цели за кадр — плавный зум без рывков
+const FRICTION = 0.92; // затухание инерции после броска мышью/пальцем
+const AXIS_LOCK_MS = 220;
+
+/**
+ * Окно графика с жестами: колесо/тачпад (wheelToAction), Safari gesture*, перетаскивание мышью
+ * или пальцем с инерцией, щипок двумя пальцами на сенсорном экране, двойной клик — плавный сброс.
+ * Когда график показывает весь период, прокрутка вниз отдаётся странице (карточка листается).
+ */
+export function useChartViewport(ref: RefObject<HTMLElement | null>, domain: Domain, insets: Insets) {
+  const d = useRef(domain);
+  const [view, setView] = useState<Viewport>([domain.min, domain.max]);
+  const current = useRef<Viewport>([domain.min, domain.max]);
+  const target = useRef<Viewport>([domain.min, domain.max]);
+  const velocity = useRef(0); // мс за кадр
+  const frame = useRef<number | null>(null);
+  const [dragging, setDragging] = useState(false);
+
+  // новые показания или другой период: окно следует за периодом без анимации
+  useLayoutEffect(() => {
+    const prev = d.current;
+    const next = { min: domain.min, max: domain.max, minSpan: domain.minSpan };
+    d.current = next;
+    if (prev.min === next.min && prev.max === next.max && prev.minSpan === next.minSpan) return;
+    const prevSpan = prev.max - prev.min;
+    const nextSpan = next.max - next.min;
+    // другой период (1 ч → 24 ч) — сразу весь период
+    const periodChanged = Math.abs(prevSpan - nextSpan) > Math.max(prevSpan, nextSpan) * 0.05;
+    current.current = periodChanged ? [next.min, next.max] : followDomain(current.current, prev, next);
+    target.current = periodChanged ? [next.min, next.max] : followDomain(target.current, prev, next);
+    if (periodChanged) velocity.current = 0;
+    setView(current.current);
+  }, [domain.min, domain.max, domain.minSpan]);
 
   const tick = useCallback(() => {
     frame.current = null;
     if (velocity.current) {
-      const [s, e] = target.current;
-      target.current = clamp([s + velocity.current, e + velocity.current]);
+      const moved = panView(target.current, velocity.current, d.current);
+      if (moved[0] === target.current[0]) velocity.current = 0; // упёрлись в край
+      target.current = moved;
       velocity.current *= FRICTION;
-      if (Math.abs(velocity.current) < 0.002) velocity.current = 0;
+      const span = target.current[1] - target.current[0];
+      if (Math.abs(velocity.current) < span * 0.0002) velocity.current = 0;
     }
     const [cs, ce] = current.current;
     const [ts, te] = target.current;
     const next: Viewport = [cs + (ts - cs) * EASE, ce + (te - ce) * EASE];
-    const settled = Math.abs(ts - next[0]) < 0.001 && Math.abs(te - next[1]) < 0.001;
+    const eps = (te - ts) * 0.0005;
+    const settled = Math.abs(ts - next[0]) < eps && Math.abs(te - next[1]) < eps;
     current.current = settled ? target.current : next;
     setView(current.current);
     if (!settled || velocity.current) frame.current = requestAnimationFrame(tick);
-  }, [clamp]);
+  }, []);
 
   const animate = useCallback(() => {
     if (frame.current === null) frame.current = requestAnimationFrame(tick);
@@ -77,26 +142,34 @@ export function useChartViewport(
 
   const moveTo = useCallback(
     (next: Viewport, immediate = false) => {
-      target.current = clamp(next);
+      target.current = clampView(next, d.current);
       if (immediate) {
         current.current = target.current;
         setView(target.current);
       }
       animate();
     },
-    [clamp, animate]
+    [animate]
   );
 
   const reset = useCallback(() => {
     velocity.current = 0;
-    moveTo(full());
-  }, [moveTo, full]);
+    moveTo([d.current.min, d.current.max]);
+  }, [moveTo]);
 
-  // Новые данные (другой период или станок) — сразу весь диапазон
-  useEffect(() => {
+  /** Масштаб вокруг точки anchor (0…1 по ширине графика) — для клавиш и кнопок. */
+  const zoomBy = useCallback((factor: number, anchor = 0.5) => {
     velocity.current = 0;
-    moveTo(full(), true);
-  }, [total, moveTo, full]);
+    moveTo(zoomView(target.current, factor, anchor, d.current));
+  }, [moveTo]);
+
+  /** Показать момент t, если он за краем окна (клавиши ←/→). */
+  const reveal = useCallback((t: number) => {
+    const [s, e] = target.current;
+    const span = e - s;
+    if (t < s) moveTo([t - span * 0.1, t - span * 0.1 + span]);
+    else if (t > e) moveTo([t + span * 0.1 - span, t + span * 0.1]);
+  }, [moveTo]);
 
   useEffect(() => () => {
     if (frame.current !== null) cancelAnimationFrame(frame.current);
@@ -105,42 +178,28 @@ export function useChartViewport(
 
   useEffect(() => {
     const el = ref.current;
-    if (!el || total < 2) return;
+    if (!el) return;
 
     const plotWidth = () => Math.max(1, el.clientWidth - insets.left - insets.right);
     const anchorAt = (clientX: number) => {
       const rect = el.getBoundingClientRect();
       return Math.min(1, Math.max(0, (clientX - rect.left - insets.left) / plotWidth()));
     };
-    const zoomAround = (factor: number, anchor: number) => {
-      const [s, e] = target.current;
-      const span = e - s;
-      const point = s + anchor * span;
-      const nextSpan = span * factor;
-      moveTo([point - anchor * nextSpan, point - anchor * nextSpan + nextSpan]);
-    };
-    const panByPixels = (dx: number, immediate: boolean) => {
-      const [s, e] = target.current;
-      const shift = (dx / plotWidth()) * (e - s);
-      moveTo([s + shift, e + shift], immediate);
-      return shift;
-    };
+    const msPerPx = () => (target.current[1] - target.current[0]) / plotWidth();
 
+    let lock: WheelAction['kind'] | undefined;
+    let lastWheel = 0;
     const onWheel = (e: WheelEvent) => {
-      const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? el.clientHeight : 1;
-      const dx = (e.shiftKey && !e.deltaX ? e.deltaY : e.deltaX) * unit;
-      const dy = e.deltaY * unit;
+      if (e.timeStamp - lastWheel > AXIS_LOCK_MS) lock = undefined;
+      const action = wheelToAction(e, window.innerHeight, e.ctrlKey ? undefined : lock);
+      // весь период и жест «отдалить» — пусть листается карточка/страница
+      if (action.kind === 'zoom' && action.factor > 1 && !e.ctrlKey && !lock && !isZoomed(target.current, d.current)) return;
       e.preventDefault();
+      lastWheel = e.timeStamp;
+      if (!e.ctrlKey) lock = action.kind;
       velocity.current = 0;
-      if (e.ctrlKey) {
-        // Щипок: приближаем/отдаляем
-        zoomAround(Math.exp(dy * PINCH_ZOOM_SPEED), anchorAt(e.clientX));
-      } else if (Math.abs(dx) > Math.abs(dy)) {
-        panByPixels(dx, true);
-      } else {
-        // Свайп двумя пальцами вверх/вниз или колесо мыши
-        zoomAround(Math.exp(-dy * SCROLL_ZOOM_SPEED), anchorAt(e.clientX));
-      }
+      if (action.kind === 'zoom') moveTo(zoomView(target.current, action.factor, anchorAt(e.clientX), d.current));
+      else moveTo(panView(target.current, action.px * msPerPx(), d.current), true);
     };
 
     let gestureScale = 1;
@@ -151,55 +210,53 @@ export function useChartViewport(
     const onGestureChange = (e: Event) => {
       e.preventDefault();
       const ge = e as Event & { scale: number; clientX: number };
-      zoomAround(gestureScale / ge.scale, anchorAt(ge.clientX));
+      moveTo(zoomView(target.current, gestureScale / ge.scale, anchorAt(ge.clientX), d.current));
       gestureScale = ge.scale;
     };
 
     const pointers = new Map<number, { x: number; t: number }>();
     let pinchDistance = 0;
+    let moved = false;
     const onPointerDown = (e: PointerEvent) => {
       if (e.pointerType === 'mouse' && e.button !== 0) return;
       pointers.set(e.pointerId, { x: e.clientX, t: e.timeStamp });
       velocity.current = 0;
+      moved = false;
       if (pointers.size === 2) {
         const [a, b] = [...pointers.values()];
-        if (a && b) {
-          pinchDistance = Math.abs(a.x - b.x);
-        }
+        pinchDistance = a && b ? Math.abs(a.x - b.x) : 0;
       }
     };
-
     const onPointerMove = (e: PointerEvent) => {
       const prev = pointers.get(e.pointerId);
       if (!prev) return;
-      if (!el.hasPointerCapture(e.pointerId) && (pointers.size === 2 || Math.abs(prev.x - e.clientX) > 3)) {
+      if (!moved && (pointers.size === 2 || Math.abs(prev.x - e.clientX) > 3)) {
+        moved = true;
         el.setPointerCapture(e.pointerId);
+        setDragging(true);
       }
+      if (!moved) return;
+      pointers.set(e.pointerId, { x: e.clientX, t: e.timeStamp });
       if (pointers.size === 2) {
-        pointers.set(e.pointerId, { x: e.clientX, t: e.timeStamp });
         const [a, b] = [...pointers.values()];
         if (a && b) {
           const distance = Math.abs(a.x - b.x);
           if (pinchDistance > 10 && distance > 10) {
-            zoomAround(pinchDistance / distance, anchorAt((a.x + b.x) / 2));
+            moveTo(zoomView(target.current, pinchDistance / distance, anchorAt((a.x + b.x) / 2), d.current), true);
           }
           pinchDistance = distance;
         }
         return;
       }
-      const dx = prev.x - e.clientX;
-      const shift = panByPixels(dx, true);
-      const dt = Math.max(1, e.timeStamp - prev.t);
-      velocity.current = (shift / dt) * 16;
-      pointers.set(e.pointerId, { x: e.clientX, t: e.timeStamp });
-      if (Math.abs(dx) > 2) el.style.cursor = 'grabbing';
+      const shift = (prev.x - e.clientX) * msPerPx();
+      moveTo(panView(target.current, shift, d.current), true);
+      velocity.current = (shift / Math.max(1, e.timeStamp - prev.t)) * 16;
     };
-
     const onPointerUp = (e: PointerEvent) => {
       const prev = pointers.get(e.pointerId);
       pointers.delete(e.pointerId);
-      el.style.cursor = '';
       if (pointers.size > 0 || !prev || e.timeStamp - prev.t > 80) velocity.current = 0;
+      if (!pointers.size) setDragging(false);
       if (velocity.current) animate();
     };
 
@@ -211,7 +268,6 @@ export function useChartViewport(
     el.addEventListener('pointerup', onPointerUp);
     el.addEventListener('pointercancel', onPointerUp);
     el.addEventListener('dblclick', reset);
-
     return () => {
       el.removeEventListener('wheel', onWheel);
       el.removeEventListener('gesturestart', onGestureStart);
@@ -222,8 +278,7 @@ export function useChartViewport(
       el.removeEventListener('pointercancel', onPointerUp);
       el.removeEventListener('dblclick', reset);
     };
-  }, [ref, total, insets.left, insets.right, moveTo, animate, reset]);
+  }, [ref, insets.left, insets.right, moveTo, animate, reset]);
 
-  const isZoomed = isViewportZoomed(view, total);
-  return { view, isZoomed, reset, moveTo };
+  return { view, isZoomed: isZoomed(view, domain), dragging, reset, zoomBy, reveal };
 }
