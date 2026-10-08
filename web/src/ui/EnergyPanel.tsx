@@ -151,7 +151,13 @@ export function EnergyPanel({ onClose }: { onClose: () => void }) {
         months: [...data.month].reverse(),
         equipment: [...eqAll.entries()].map(([id, v]) => ({ name: nameOf(id), kwh: Math.round(v.kwh * 10) / 10, cost: Math.round(v.cost) })).sort((a, b) => b.kwh - a.kwh),
       });
-      await writeXlsxFile(sheets as never, { fontFamily: 'Calibri', fontSize: 11 }).toFile(`energiya-${today}.xlsx`);
+      const book = writeXlsxFile(sheets as never, { fontFamily: 'Calibri', fontSize: 11 });
+      const filename = `energiya-${today}.xlsx`;
+      // На странице claude.ai файл отдаётся через возможность downloads (с подтверждением), локально — обычным скачиванием
+      const host = (window as { claude?: { use?: (name: string) => Promise<unknown> } }).claude;
+      const downloads = host?.use ? ((await host.use('downloads')) as { save(r: { filename: string; data: Blob }): Promise<unknown> } | null) : null;
+      if (downloads) await downloads.save({ filename, data: await book.toBlob() }).catch(() => undefined);
+      else await book.toFile(filename);
     } finally {
       setExporting(false);
     }
