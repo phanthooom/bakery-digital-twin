@@ -16,5 +16,7 @@ export default defineConfig({
   },
   build: {
     chunkSizeWarningLimit: 2000,
+    // SINGLE_FILE=1 — один JS-файл без отдельных чанков (для страницы-демо одним HTML)
+    rollupOptions: process.env.SINGLE_FILE ? { output: { inlineDynamicImports: true } } : {},
   },
 });

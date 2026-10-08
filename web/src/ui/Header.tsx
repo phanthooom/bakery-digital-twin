@@ -12,11 +12,13 @@ export interface HeaderProps {
   onToggleLabels: () => void;
   onToggleList: () => void;
   onResetView: () => void;
+  energyOpen: boolean;
+  onOpenEnergy: () => void;
   linesVisible: boolean;
   onToggleLines: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, linesVisible, onToggleLines }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, linesVisible, onToggleLines }: HeaderProps) {
   const ds = useDataSource();
   const states = useStates();
   const now = useNow(1000);
@@ -58,6 +60,14 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
           <span className="pulse" aria-hidden />
           {ds.kind === 'mock' ? 'Демо-данные' : 'Онлайн'} · {lastTs ? fmtAgo(now - lastTs) : '—'}
         </span>
+        {ds.config.energy && (
+          <button className="btn btn-energy" aria-pressed={energyOpen} onClick={onOpenEnergy} title="кВт·ч и сумма по тарифу за смены, дни, месяцы; выгрузка в Excel">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+              <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
+            </svg>
+            Энергия, сум
+          </button>
+        )}
         <button className="btn" aria-pressed={listOpen} onClick={onToggleList}>
           Оборудование
         </button>

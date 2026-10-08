@@ -60,6 +60,41 @@ export interface Thresholds {
   ai: AiThresholds;
 }
 
+/** Зона суток дифференцированного тарифа: цена = базовая × coef (часы по местному времени, HH:MM). */
+export interface TariffZone {
+  name: string;
+  from: string;
+  to: string;
+  coef: number;
+}
+
+/** Тариф на электроэнергию, действующий с даты from (YYYY-MM-DD по местному времени). */
+export interface Tariff {
+  from: string;
+  /** Цена 1 кВт·ч, в валюте energy.currency (для Узбекистана — сум, с НДС). */
+  pricePerKwh: number;
+  /** Основание: постановление, письмо энергосбыта. */
+  basis?: string;
+  zones?: TariffZone[];
+}
+
+export interface ShiftConfig {
+  id: string;
+  name: string;
+  /** Начало и конец смены по местному времени, HH:MM; конец может быть на следующий день (22:00–06:00). */
+  from: string;
+  to: string;
+}
+
+/** Учёт энергии: тарифы (история изменений) и смены. */
+export interface EnergyConfig {
+  currency: string;
+  /** Тарифная группа потребителя (для подписи; I — крупные, II — остальные юрлица). */
+  tariffGroup?: string;
+  tariffs: Tariff[];
+  shifts: ShiftConfig[];
+}
+
 export interface SiteConfig {
   site: {
     name: string;
@@ -70,6 +105,8 @@ export interface SiteConfig {
   };
   /** Электроснабжение цеха: щит, от которого идут линии к станкам. */
   power?: { panel: { id: string; name: string; inputBreakerA: number; position: { x: number; z: number } } };
+  /** Учёт энергии в деньгах. */
+  energy?: EnergyConfig;
   thresholds: Thresholds;
   stages: StageConfig[];
   equipment: EquipmentConfig[];

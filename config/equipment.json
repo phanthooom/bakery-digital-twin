@@ -25,6 +25,47 @@
       }
     }
   },
+  "energy": {
+    "currency": "сум",
+    "tariffGroup": "II",
+    "tariffs": [
+      {
+        "from": "2024-06-01",
+        "pricePerKwh": 900,
+        "basis": "Юрлица II группы, с 1 июня 2024"
+      },
+      {
+        "from": "2025-05-01",
+        "pricePerKwh": 1000,
+        "basis": "Юрлица, с 1 мая 2025"
+      },
+      {
+        "from": "2026-06-01",
+        "pricePerKwh": 1100,
+        "basis": "ПКМ №243 от 15.05.2026, с НДС"
+      }
+    ],
+    "shifts": [
+      {
+        "id": "1",
+        "name": "1 смена",
+        "from": "06:00",
+        "to": "14:00"
+      },
+      {
+        "id": "2",
+        "name": "2 смена",
+        "from": "14:00",
+        "to": "22:00"
+      },
+      {
+        "id": "3",
+        "name": "3 смена",
+        "from": "22:00",
+        "to": "06:00"
+      }
+    ]
+  },
   "thresholds": {
     "offlineAfterSec": 30,
     "idlePctOfNominal": 10,

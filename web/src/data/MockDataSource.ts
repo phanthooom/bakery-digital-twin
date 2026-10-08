@@ -1,4 +1,4 @@
-import { FAULTS, MachineSim, TwinEngine, type EquipmentState, type FaultType, type SiteConfig } from '@bakery/shared';
+import { EnergyLedger, FAULTS, MachineSim, TwinEngine, type EnergyEntry, type EquipmentState, type FaultType, type SiteConfig } from '@bakery/shared';
 import type { DataSource, HistoryResult } from './DataSource';
 
 const MIN = 60_000;
@@ -11,7 +11,12 @@ export interface MockOptions {
   /** Сколько часов подробной истории (для графика 6 ч). */
   historyHours?: number;
   faultsPerHour?: number;
+  /** За сколько суток держать журнал энергии (кВт·ч по часам) для отчётов по сменам/дням/месяцам. */
+  energyDays?: number;
 }
+
+/** Шаг модели для старой части журнала энергии (дальше, чем прогон базовой линии). */
+const ARCHIVE_STEP = 5 * MIN;
 
 /**
  * Мок-источник: те же модели станков, что и симулятор MQTT, плюс TwinEngine —
@@ -27,6 +32,9 @@ export class MockDataSource implements DataSource {
   private offlineTimer: ReturnType<typeof setInterval> | null = null;
   private readonly intervalMs: number;
   private warmedUp = false;
+  private readonly ledger = new EnergyLedger();
+  private warmupFrom = 0;
+  private archived = false;
   private dirty = false;
 
   constructor(readonly config: SiteConfig, private readonly opts: MockOptions = {}) {
@@ -54,16 +62,24 @@ export class MockDataSource implements DataSource {
     const days = this.opts.warmupDays ?? 3;
     const hours = this.opts.historyHours ?? 6;
     const detailFrom = now - hours * HOUR;
-    for (let t = now - days * 24 * HOUR; t < detailFrom; t += MIN) {
+    // журнал энергии непрерывен с того, что раньше: прогона базовой линии или подробной истории
+    this.warmupFrom = Math.min(now - days * 24 * HOUR, detailFrom);
+    for (let t = this.warmupFrom; t < detailFrom; t += MIN) {
       for (const sim of this.sims) {
         const r = sim.tick(t, MIN);
-        if (r) this.engine.seedBaseline(r.equipmentId, r.ts, r.powerKw);
+        if (r) {
+          this.engine.seedBaseline(r.equipmentId, r.ts, r.powerKw);
+          this.ledger.add(r.equipmentId, t, t + MIN, r.powerKw);
+        }
       }
     }
     for (let t = detailFrom; t < now; t += this.intervalMs) {
       for (const sim of this.sims) {
         const r = sim.tick(t, this.intervalMs);
-        if (r) this.engine.ingest(r, t);
+        if (r) {
+          this.engine.ingest(r, t);
+          this.ledger.add(r.equipmentId, t, t + this.intervalMs, r.powerKw);
+        }
       }
       if ((t - detailFrom) % (30 * 1000) < this.intervalMs) this.engine.tick(t);
     }
@@ -92,10 +108,35 @@ export class MockDataSource implements DataSource {
     const now = Date.now();
     for (const sim of this.sims) {
       const r = sim.tick(now, this.intervalMs);
-      if (r) this.engine.ingest(r, now);
+      if (r) {
+        this.engine.ingest(r, now);
+        this.ledger.add(r.equipmentId, now - this.intervalMs, now, r.powerKw);
+      }
     }
     this.engine.tick(now);
     this.notify();
+  }
+
+  /** Старая часть журнала (старше прогона базовой линии) — моделью с шагом 5 мин, один раз по запросу. */
+  private archive(): void {
+    if (this.archived) return;
+    this.archived = true;
+    const from = Date.now() - (this.opts.energyDays ?? 31) * 24 * HOUR;
+    const sims = this.config.equipment.map(
+      (eq) => new MachineSim(eq, { rng: Math.random, timezone: this.config.site.timezone, faultsPerHour: this.opts.faultsPerHour ?? 0.6 }),
+    );
+    for (let t = from; t < this.warmupFrom; t += ARCHIVE_STEP) {
+      for (const sim of sims) {
+        const r = sim.tick(t, ARCHIVE_STEP);
+        if (r) this.ledger.add(r.equipmentId, t, Math.min(t + ARCHIVE_STEP, this.warmupFrom), r.powerKw);
+      }
+    }
+  }
+
+  async getEnergy(fromMs: number, toMs: number): Promise<EnergyEntry[]> {
+    this.warmup();
+    if (fromMs < this.warmupFrom) this.archive();
+    return this.ledger.entries(fromMs, toMs);
   }
 
   private notify(): void {

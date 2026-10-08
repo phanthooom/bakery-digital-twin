@@ -19,6 +19,8 @@ export function validateSiteConfig(raw: unknown): { config: SiteConfig | null; e
   if ((c as { power?: unknown }).power !== undefined && (!panel || typeof panel.id !== 'string' || !isNum(panel.inputBreakerA))) {
     errors.push('power.panel: нужны id и inputBreakerA');
   }
+  const energy = (c as { energy?: Record<string, unknown> }).energy;
+  if (energy !== undefined) errors.push(...validateEnergy(energy));
   if (brand && brand.logo != null && typeof brand.logo !== 'string') errors.push('site.brand.logo — путь к файлу логотипа или null');
   if (!Array.isArray(c.stages) || c.stages.length === 0) errors.push('stages: нужен хотя бы один этап');
   if (!Array.isArray(c.equipment)) errors.push('equipment должен быть массивом');
@@ -45,4 +47,38 @@ export function validateSiteConfig(raw: unknown): { config: SiteConfig | null; e
   });
 
   return errors.length ? { config: null, errors } : { config: c as SiteConfig, errors };
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const HM_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+function validateEnergy(energy: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const tariffs = energy.tariffs as Array<Record<string, unknown>> | undefined;
+  const shifts = energy.shifts as Array<Record<string, unknown>> | undefined;
+  if (!Array.isArray(tariffs) || !tariffs.length) errors.push('energy.tariffs: нужен хотя бы один тариф');
+  else tariffs.forEach((t, i) => {
+    if (typeof t.from !== 'string' || !DATE_RE.test(t.from) || !isNum(t.pricePerKwh) || t.pricePerKwh <= 0) {
+      errors.push(`energy.tariffs[${i}]: from — дата YYYY-MM-DD, pricePerKwh > 0`);
+    }
+  });
+  if (!Array.isArray(shifts) || !shifts.length) {
+    errors.push('energy.shifts: нужна хотя бы одна смена');
+    return errors;
+  }
+  let ok = true;
+  shifts.forEach((s, i) => {
+    if (typeof s.from !== 'string' || typeof s.to !== 'string' || !HM_RE.test(s.from) || !HM_RE.test(s.to)) {
+      errors.push(`energy.shifts[${i}]: from и to — время HH:MM`);
+      ok = false;
+    }
+  });
+  // каждая минута суток — ровно в одной смене
+  const covered = ok ? new Array<number>(1440).fill(0) : [];
+  if (ok) for (const s of shifts) {
+    const [a, b] = [s.from, s.to].map((v) => { const [h, m] = String(v).split(':').map(Number); return h! * 60 + m!; });
+    for (let m = a!; m !== b; m = (m + 1) % 1440) covered[m]!++;
+  }
+  if (!ok || covered.some((n) => n !== 1)) errors.push('energy.shifts: смены должны покрывать все 24 часа без наложений');
+  return errors;
 }

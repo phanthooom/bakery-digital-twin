@@ -67,4 +67,22 @@ describe('MockDataSource (то, что видит фронт)', () => {
     expect(ds.getStates().get('oven-2')!.status).not.toBe('offline');
     ds.stop();
   });
+
+  it('журнал энергии: кВт·ч по часам за прошлые сутки и за текущий час растёт с показаниями', async () => {
+    const ds = new MockDataSource(config, { warmupDays: 0.2, energyDays: 2, faultsPerHour: 0 });
+    ds.start();
+    const HOUR = 3_600_000;
+    const entries = await ds.getEnergy!(NOW - 2 * 24 * HOUR, NOW + HOUR);
+    // морозильная камера работает круглосуточно — у неё есть запись за каждый час двух суток
+    const cold = entries.filter((e) => e.equipmentId === 'coldroom-1');
+    expect(cold.length).toBeGreaterThanOrEqual(47);
+    const perHour = cold.map((e) => e.kwh);
+    expect(Math.max(...perHour)).toBeLessThanOrEqual(3 * 1.2); // не больше номинала × 1 ч с запасом
+    const hourNow = Math.floor(NOW / HOUR) * HOUR;
+    const before = (await ds.getEnergy!(hourNow, hourNow + HOUR)).reduce((s, e) => s + e.kwh, 0);
+    vi.advanceTimersByTime(10 * 60_000);
+    const after = (await ds.getEnergy!(hourNow, hourNow + HOUR)).reduce((s, e) => s + e.kwh, 0);
+    expect(after).toBeGreaterThan(before);
+    ds.stop();
+  });
 });

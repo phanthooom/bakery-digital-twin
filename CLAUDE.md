@@ -39,6 +39,7 @@ Single-context: `GLOSSARY.md` в корне + `docs/adr/`. See `docs/agents/doma
 3. `MachineSim` → `toPayload` → `parseReading` — симулятор соблюдает контракт.
 4. `MockDataSource` — то, что видит фронт (`start`, `getStates`, `getHistory`, `simulate`).
 5. Линии питания: `feederFor` (автомат и кабель по станку) и `assessLine` (диагностика линии) в `packages/shared`.
-6. Чистые функции фронта: `web/src/ui/format.ts`, `web/src/ui/chartMath.ts`, `web/src/scene/gestures.ts` (жесты тачпада и колесо → камера).
+6. Учёт энергии: `packages/shared/src/energy.ts` (тариф по дате и зоне суток, смены, журнал кВт·ч по часам, сводки) и `web/src/ui/energyReport.ts` (выпуск, удельный расход, прогноз, листы Excel).
+7. Чистые функции фронта: `web/src/ui/format.ts`, `web/src/ui/chartMath.ts`, `web/src/ui/useChartViewport.ts` (окно графика и жесты), `web/src/scene/gestures.ts` (жесты тачпада и колесо → камера).
 
 Внутренние модули движка (`status`, `baseline`, `aiCheck`, `electrical`) — internal seams `TwinEngine`, их тесты допустимы. 3D-сцену и React-компоненты проверяем в браузере (скриншоты Playwright), без unit-тестов.

@@ -55,6 +55,18 @@ describe('validateSiteConfig', () => {
     expect(validateSiteConfig(bad).errors.join()).toMatch(/position/);
   });
 
+  it('учёт энергии: тарифы с датой и ценой, смены HH:MM без пропусков', () => {
+    const base = structuredClone(realConfig);
+    const energy = base.energy;
+    expect(validateSiteConfig(base).config!.energy!.tariffs.length).toBeGreaterThan(0);
+    const bad = { ...base, energy: { ...energy, tariffs: [{ from: '01.06.2026', pricePerKwh: 0 }], shifts: [{ id: '1', name: '1', from: '6', to: '14:00' }] } };
+    expect(validateSiteConfig(bad).errors).toEqual([
+      'energy.tariffs[0]: from — дата YYYY-MM-DD, pricePerKwh > 0',
+      'energy.shifts[0]: from и to — время HH:MM',
+      'energy.shifts: смены должны покрывать все 24 часа без наложений',
+    ]);
+  });
+
   it('не объект → ошибка', () => {
     expect(validateSiteConfig(null).errors.length).toBeGreaterThan(0);
   });

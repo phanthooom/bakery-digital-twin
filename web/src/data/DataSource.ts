@@ -1,4 +1,4 @@
-import type { FaultType, EquipmentState, PowerPoint, SiteConfig } from '@bakery/shared';
+import type { EnergyEntry, FaultType, EquipmentState, PowerPoint, SiteConfig } from '@bakery/shared';
 
 export interface HistoryResult {
   points: PowerPoint[];
@@ -19,6 +19,8 @@ export interface DataSource {
   /** Вызывается при любом изменении состояний. Возвращает функцию отписки. */
   subscribe(listener: () => void): () => void;
   getHistory(id: string, hours: number, bucketMs?: number): HistoryResult;
+  /** Журнал энергии: кВт·ч по станкам и часам, начавшимся в [fromMs, toMs). Живой источник возьмёт его из InfluxDB. */
+  getEnergy?(fromMs: number, toMs: number): Promise<EnergyEntry[]>;
   /** Только для демо: вызвать демо-событие (неисправность модели) на станке. */
   simulate?(id: string, type: FaultType): void;
 }

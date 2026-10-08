@@ -9,6 +9,7 @@ import { PanelCard } from './ui/PanelCard';
 import { EquipmentCard } from './ui/EquipmentCard';
 import { EquipmentList } from './ui/EquipmentList';
 import { Header } from './ui/Header';
+import { EnergyPanel } from './ui/EnergyPanel';
 import { STATUS_LABEL, STATUS_ORDER, applyStatusCssVars } from './ui/statusMeta';
 import { StatusIcon } from './ui/StatusIcon';
 import { GestureHint } from './ui/GestureHint';
@@ -27,6 +28,7 @@ export function App() {
     return eq ? { kind: 'machine', id: eq } : null;
   });
   const [showLines, setShowLines] = useState(true);
+  const [energyOpen, setEnergyOpen] = useState(false);
   const selectedId = selection?.kind === 'machine' ? selection.id : null;
   const selectedLineId = selection?.kind === 'line' ? selection.id : null;
   const setSelectedId = useCallback((id: string | null) => setSelection(id ? { kind: 'machine', id } : null), []);
@@ -108,6 +110,8 @@ export function App() {
           listOpen={listOpen}
           onToggleLabels={() => setShowLabels((v) => !v)}
           onToggleList={() => setListOpen((v) => !v)}
+          energyOpen={energyOpen}
+          onOpenEnergy={() => setEnergyOpen(true)}
           linesVisible={showLines}
           onToggleLines={() => setShowLines((v) => !v)}
           onResetView={() => {
@@ -131,6 +135,7 @@ export function App() {
           onDeselect={deselect}
           onReady={() => setSceneReady(true)}
         />
+        {energyOpen && <EnergyPanel onClose={() => setEnergyOpen(false)} />}
         {!loaderGone && <LoadingScreen leaving={sceneReady} />}
         {selected && <EquipmentCard key={selected.id} eq={selected} onClose={deselect} />}
         {selectedLineEq && <LineCard key={`line-${selectedLineEq.id}`} eq={selectedLineEq} onClose={deselect} onOpenMachine={() => select(selectedLineEq.id)} />}
