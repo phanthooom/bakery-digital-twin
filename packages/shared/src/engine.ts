@@ -48,7 +48,7 @@ export class TwinEngine {
           pctOfNominal: null,
           imbalancePct: null,
           ratedCurrentA: ratedCurrentA(eq.nominalKw, eq.phases),
-          ai_check: { state: 'learning', deviationPct: null, baselineKw: null, currentKw: null, samples: 0, checkedAt: 0, message: 'обучение: нет данных' },
+          ai_check: { state: 'learning', deviationPct: null, baselineKw: null, currentKw: null, samples: 0, checkedAt: 0 },
           updatedAt: 0,
         },
       });

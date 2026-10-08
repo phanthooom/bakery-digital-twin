@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from 'react';
 import { FAULTS, faultsFor, type EquipmentConfig } from '@bakery/shared';
 import { useDataSource, useEquipmentState } from '../data/store';
-import { fmtAgo, fmtDuration, fmtKw, fmtPct } from './format';
+import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtPct } from './format';
 import { PhaseMeters } from './PhaseMeters';
 import { PowerChart } from './PowerChart';
-import { AI_LABEL, REASON_LABEL, STATUS_LABEL } from './statusMeta';
+import { REASON_LABEL, STATUS_LABEL } from './statusMeta';
 import { StatusIcon, WarnIcon } from './StatusIcon';
 import { useNow } from './useNow';
 
@@ -82,11 +82,11 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
           {aiLevel && <WarnIcon level={aiLevel} />}
           <div>
             <div>
-              <b>ИИ:</b> {ai.state === 'learning' ? AI_LABEL.learning : ai.message}
+              <b>ИИ:</b> {fmtAiHeadline(ai)}
             </div>
             <div className="ai-sub">
               {ai.state === 'learning'
-                ? ai.message
+                ? fmtAiLearning(ai, thresholds.ai.minBaselineSamples)
                 : `норма для этого часа ${fmtKw(ai.baselineKw ?? 0)} кВт · среднее за ${thresholds.ai.windowMin} мин ${fmtKw(ai.currentKw ?? 0)} кВт`}
             </div>
             {ai.checkedAt > 0 && <div className="ai-sub">проверка {fmtAgo(now - ai.checkedAt)}</div>}

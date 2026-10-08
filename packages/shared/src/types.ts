@@ -99,7 +99,6 @@ export interface AiCheck {
   currentKw: number | null;
   samples: number;
   checkedAt: number;
-  message: string;
 }
 
 /** Состояние станка, которое API отдаёт фронту. */
@@ -122,7 +121,3 @@ export interface PowerPoint {
   kw: number;
 }
 
-/** Сообщения WebSocket API → web. */
-export type WsMessage =
-  | { type: 'snapshot'; states: EquipmentState[] }
-  | { type: 'state'; state: EquipmentState };

@@ -10,7 +10,6 @@ describe('aiCheck', () => {
     const r = aiCheck({ currentKw: 1, baseline: { medianKw: 1, samples: 3 }, nominalKw: 1, idlePctOfNominal: 10, ai, nowMs: NOW });
     expect(r.state).toBe('learning');
     expect(r.deviationPct).toBeNull();
-    expect(r.message).toMatch(/обучение/);
     expect(r.checkedAt).toBe(NOW);
   });
 
@@ -19,29 +18,27 @@ describe('aiCheck', () => {
     expect(r.state).toBe('learning');
   });
 
-  it('+1,8 % от нормы → ok «в норме»', () => {
+  it('+1,8 % от нормы → ok', () => {
     const r = aiCheck({ currentKw: 1.018, baseline: { medianKw: 1, samples: 100 }, nominalKw: 1.2, idlePctOfNominal: 10, ai, nowMs: NOW });
     expect(r.state).toBe('ok');
     expect(r.deviationPct).toBeCloseTo(1.8, 5);
-    expect(r.message).toBe('потребление +1,8 % от нормы');
   });
 
-  it('отклонение ровно 0 → «в норме»', () => {
+  it('отклонение ровно 0 → ok, 0 %', () => {
     const r = aiCheck({ currentKw: 2, baseline: { medianKw: 2, samples: 100 }, nominalKw: 4, idlePctOfNominal: 10, ai, nowMs: NOW });
-    expect(r.message).toBe('в норме');
+    expect(r).toMatchObject({ state: 'ok', deviationPct: 0 });
   });
 
   it('от 15 до 40 % → deviation', () => {
     const r = aiCheck({ currentKw: 0.75, baseline: { medianKw: 1, samples: 100 }, nominalKw: 1.2, idlePctOfNominal: 10, ai, nowMs: NOW });
     expect(r.state).toBe('deviation');
     expect(r.deviationPct).toBeCloseTo(-25, 5);
-    expect(r.message).toBe('потребление −25,0 % от нормы');
   });
 
   it('больше 40 % → anomaly', () => {
     const r = aiCheck({ currentKw: 1.6, baseline: { medianKw: 1, samples: 100 }, nominalKw: 1.2, idlePctOfNominal: 10, ai, nowMs: NOW });
     expect(r.state).toBe('anomaly');
-    expect(r.message).toBe('аномалия: потребление +60,0 % от нормы');
+    expect(r.deviationPct).toBeCloseTo(60, 5);
   });
 
   it('если в этот час станок обычно простаивает, знаменатель не меньше порога простоя (нет «+2400 %»)', () => {

@@ -1,4 +1,5 @@
 /** Форматирование чисел и времени для интерфейса (русская локаль). */
+import type { AiCheck } from '@bakery/shared';
 
 const NB = ' ';
 const nf = new Map<number, Intl.NumberFormat>();
@@ -46,4 +47,18 @@ export function fmtTime(ts: number, timezone: string): string {
     tf.set(timezone, f);
   }
   return f.format(ts);
+}
+
+const signed = (v: number) => `${v > 0 ? '+' : v < 0 ? '\u2212' : ''}${fmtNum(Math.abs(v), 1)}`;
+
+/** Итог ИИ-проверки одной строкой: «в норме», «потребление +1,8 % от нормы», «аномалия: …», «обучение». */
+export function fmtAiHeadline(ai: AiCheck): string {
+  if (ai.state === 'learning' || ai.deviationPct === null) return 'обучение';
+  const text = `потребление ${signed(ai.deviationPct)}${NB}% от нормы`;
+  if (ai.state === 'anomaly') return `аномалия: ${text}`;
+  return Math.abs(ai.deviationPct) < 0.5 ? 'в норме' : text;
+}
+
+export function fmtAiLearning(ai: AiCheck, minSamples: number): string {
+  return `накоплено ${ai.samples} из ${minSamples}${NB}мин истории для этого часа`;
 }

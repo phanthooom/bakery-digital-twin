@@ -1,4 +1,4 @@
-import type { AiState, MachineStatus, StatusReason } from '@bakery/shared';
+import type { MachineStatus, StatusReason } from '@bakery/shared';
 
 /** Статусные цвета (зарезервированы только под статус, не под серии). */
 export const STATUS_COLOR: Record<MachineStatus, string> = {
@@ -23,11 +23,5 @@ export const REASON_LABEL: Record<StatusReason, string> = {
   ai_anomaly: 'аномалия потребления',
 };
 
-export const AI_LABEL: Record<AiState, string> = {
-  learning: 'обучение',
-  ok: 'в норме',
-  deviation: 'отклонение',
-  anomaly: 'аномалия',
-};
 
 export const STATUS_ORDER: MachineStatus[] = ['running', 'idle', 'alarm', 'offline'];

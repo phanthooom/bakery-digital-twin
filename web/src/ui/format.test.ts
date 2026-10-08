@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fmtAgo, fmtDuration, fmtKw, fmtNum, fmtPct, fmtTime } from './format';
+import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtNum, fmtPct, fmtTime } from './format';
 
 const NB = ' ';
 
@@ -39,5 +39,23 @@ describe('форматирование для карточки (ru-RU)', () => {
 
   it('fmtTime — часы и минуты в часовом поясе площадки', () => {
     expect(fmtTime(Date.UTC(2026, 9, 8, 4, 5), 'Asia/Tashkent')).toBe('09:05');
+  });
+});
+
+describe('fmtAiHeadline — строка «ИИ: …» в карточке', () => {
+  const base = { baselineKw: 1, currentKw: 1, samples: 100, checkedAt: 0 };
+  it('мелкое отклонение — «в норме»', () => {
+    expect(fmtAiHeadline({ ...base, state: 'ok', deviationPct: 0.2 })).toBe('в норме');
+  });
+  it('заметное, но обычное — со знаком и одной цифрой после запятой', () => {
+    expect(fmtAiHeadline({ ...base, state: 'ok', deviationPct: 1.84 })).toBe(`потребление +1,8${NB}% от нормы`);
+    expect(fmtAiHeadline({ ...base, state: 'deviation', deviationPct: -25 })).toBe(`потребление −25,0${NB}% от нормы`);
+  });
+  it('аномалия — с пометкой', () => {
+    expect(fmtAiHeadline({ ...base, state: 'anomaly', deviationPct: 60 })).toBe(`аномалия: потребление +60,0${NB}% от нормы`);
+  });
+  it('обучение — сколько истории накоплено', () => {
+    expect(fmtAiHeadline({ ...base, state: 'learning', deviationPct: null, samples: 3 })).toBe('обучение');
+    expect(fmtAiLearning({ ...base, state: 'learning', deviationPct: null, samples: 3 }, 10)).toBe(`накоплено 3 из 10${NB}мин истории для этого часа`);
   });
 });
