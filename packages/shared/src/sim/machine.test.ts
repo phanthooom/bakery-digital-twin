@@ -47,7 +47,7 @@ describe('isWorkingHour', () => {
 });
 
 describe('MachineSim', () => {
-  const kinds: EquipmentConfig['kind'][] = ['mixer', 'moulder', 'conveyor', 'proofer', 'oven', 'icemaker'];
+  const kinds: EquipmentConfig['kind'][] = ['mixer', 'moulder', 'conveyor', 'proofer', 'oven', 'icemaker', 'blastfreezer', 'coldroom'];
 
   for (const kind of kinds) {
     it(`${kind}: мощность в пределах 0…130 % номинала, токи согласованы с мощностью`, () => {
@@ -112,6 +112,17 @@ describe('MachineSim', () => {
     const sim = new MachineSim(eq({}), { rng: mulberry32(5), timezone: TZ, faultsPerHour: 0, energyKwh: 100 });
     const rs = run(sim, 30);
     expect(rs.at(-1)!.energyKwh!).toBeGreaterThan(100);
+  });
+});
+
+describe('MachineSim — холодильное оборудование', () => {
+  const night = Date.UTC(2026, 9, 8, 19, 0, 0); // 00:00 Ташкент, вне смены
+
+  it('морозильная камера работает круглосуточно: ночью компрессор включается и выключается', () => {
+    const sim = new MachineSim(eq({ id: 'coldroom-1', kind: 'coldroom', nominalKw: 3 }), { rng: mulberry32(4), timezone: TZ, faultsPerHour: 0 });
+    const loads = run(sim, 120, night).map((r) => r.powerKw / 3);
+    expect(Math.max(...loads)).toBeGreaterThan(0.8);
+    expect(Math.min(...loads)).toBeLessThan(0.1);
   });
 });
 

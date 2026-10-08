@@ -2,7 +2,7 @@
 
 export type StageId = string;
 
-export type MachineKind = 'mixer' | 'moulder' | 'conveyor' | 'proofer' | 'oven' | 'icemaker' | 'generic';
+export type MachineKind = 'mixer' | 'moulder' | 'conveyor' | 'proofer' | 'oven' | 'icemaker' | 'blastfreezer' | 'coldroom' | 'generic';
 
 export interface Vec3 {
   x: number;

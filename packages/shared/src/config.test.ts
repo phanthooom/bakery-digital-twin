@@ -6,12 +6,23 @@ import { validateSiteConfig } from './config';
 const realConfig = JSON.parse(readFileSync(fileURLToPath(new URL('../../../config/equipment.json', import.meta.url)), 'utf8'));
 
 describe('validateSiteConfig', () => {
-  it('стартовый config/equipment.json валиден и содержит все станки из ТЗ', () => {
+  it('config/equipment.json валиден и содержит все станки и этапы из ТЗ', () => {
     const res = validateSiteConfig(realConfig);
     expect(res.errors).toEqual([]);
     const ids = res.config!.equipment.map((e) => e.id);
-    expect(ids).toEqual(['mixer-1', 'mixer-2', 'icemaker-1', 'moulder-1', 'conveyor-1', 'proofer-1', 'oven-1', 'oven-2']);
-    expect(res.config!.stages.map((s) => s.name)).toEqual(['Замес', 'Формовка', 'Расстойка', 'Выпечка']);
+    expect(ids).toEqual(expect.arrayContaining(['mixer-1', 'mixer-2', 'icemaker-1', 'moulder-1', 'conveyor-1', 'proofer-1', 'oven-1', 'oven-2']));
+    expect(res.config!.stages.map((s) => s.name)).toEqual(expect.arrayContaining(['Замес', 'Формовка', 'Расстойка', 'Выпечка']));
+  });
+
+  it('каждый станок стоит внутри зоны своего этапа и внутри цеха', () => {
+    const { config } = validateSiteConfig(realConfig);
+    const half = config!.site.hall.width / 2;
+    for (const e of config!.equipment) {
+      const st = config!.stages.find((s) => s.id === e.stage)!;
+      expect(e.position.x, e.id).toBeGreaterThan(st.xFrom);
+      expect(e.position.x, e.id).toBeLessThan(st.xTo);
+      expect(Math.abs(e.position.x), e.id).toBeLessThan(half);
+    }
   });
 
   it('находит дубли id, неизвестный этап, неверные фазы и мощность', () => {

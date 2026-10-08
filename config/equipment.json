@@ -2,7 +2,11 @@
   "site": {
     "name": "ABC Trend Bakery — цех",
     "timezone": "Asia/Tashkent",
-    "hall": { "width": 32, "depth": 10, "height": 5 }
+    "hall": {
+      "width": 40,
+      "depth": 10,
+      "height": 5
+    }
   },
   "thresholds": {
     "offlineAfterSec": 30,
@@ -19,10 +23,46 @@
     }
   },
   "stages": [
-    { "id": "mixing",   "order": 1, "label": "01 ЗАМЕС",    "name": "Замес",    "xFrom": -15.5, "xTo": -7.5 },
-    { "id": "forming",  "order": 2, "label": "02 ФОРМОВКА", "name": "Формовка", "xFrom": -7.0,  "xTo": 0.5 },
-    { "id": "proofing", "order": 3, "label": "03 РАССТОЙКА","name": "Расстойка","xFrom": 1.0,   "xTo": 6.5 },
-    { "id": "baking",   "order": 4, "label": "04 ВЫПЕЧКА",  "name": "Выпечка",  "xFrom": 7.0,   "xTo": 15.5 }
+    {
+      "id": "mixing",
+      "order": 1,
+      "label": "01 ЗАМЕС",
+      "name": "Замес",
+      "xFrom": -19.5,
+      "xTo": -11.5
+    },
+    {
+      "id": "forming",
+      "order": 2,
+      "label": "02 ФОРМОВКА",
+      "name": "Формовка",
+      "xFrom": -11.0,
+      "xTo": -3.5
+    },
+    {
+      "id": "proofing",
+      "order": 3,
+      "label": "03 РАССТОЙКА",
+      "name": "Расстойка",
+      "xFrom": -3.0,
+      "xTo": 2.5
+    },
+    {
+      "id": "baking",
+      "order": 4,
+      "label": "04 ВЫПЕЧКА",
+      "name": "Выпечка",
+      "xFrom": 3.0,
+      "xTo": 11.5
+    },
+    {
+      "id": "freezing",
+      "order": 5,
+      "label": "05 ЗАМОРОЗКА",
+      "name": "Заморозка",
+      "xFrom": 12.0,
+      "xTo": 19.5
+    }
   ],
   "equipment": [
     {
@@ -33,7 +73,11 @@
       "stage": "mixing",
       "nominalKw": 4.5,
       "phases": 3,
-      "position": { "x": -13.6, "y": 0, "z": -2.6 },
+      "position": {
+        "x": -17.6,
+        "y": 0,
+        "z": -2.6
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_MIX1",
       "model": null
@@ -46,7 +90,11 @@
       "stage": "mixing",
       "nominalKw": 4.5,
       "phases": 3,
-      "position": { "x": -11.2, "y": 0, "z": -2.6 },
+      "position": {
+        "x": -15.2,
+        "y": 0,
+        "z": -2.6
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_MIX2",
       "model": null
@@ -59,7 +107,11 @@
       "stage": "mixing",
       "nominalKw": 1.0,
       "phases": 1,
-      "position": { "x": -8.9, "y": 0, "z": -3.2 },
+      "position": {
+        "x": -12.9,
+        "y": 0,
+        "z": -3.2
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_ICE1",
       "model": null
@@ -72,7 +124,11 @@
       "stage": "forming",
       "nominalKw": 1.0,
       "phases": 3,
-      "position": { "x": -5.2, "y": 0, "z": -2.6 },
+      "position": {
+        "x": -9.2,
+        "y": 0,
+        "z": -2.6
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_FRM1",
       "model": null
@@ -85,7 +141,11 @@
       "stage": "forming",
       "nominalKw": 0.37,
       "phases": 3,
-      "position": { "x": -2.4, "y": 0, "z": -2.6 },
+      "position": {
+        "x": -6.4,
+        "y": 0,
+        "z": -2.6
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_CNV1",
       "model": null
@@ -98,7 +158,11 @@
       "stage": "proofing",
       "nominalKw": 2.5,
       "phases": 3,
-      "position": { "x": 3.6, "y": 0, "z": -3.0 },
+      "position": {
+        "x": -0.4,
+        "y": 0,
+        "z": -3.0
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_PRF1",
       "model": null
@@ -111,7 +175,11 @@
       "stage": "baking",
       "nominalKw": 36,
       "phases": 3,
-      "position": { "x": 9.4, "y": 0, "z": -2.9 },
+      "position": {
+        "x": 5.4,
+        "y": 0,
+        "z": -2.9
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_OVN1",
       "model": null
@@ -124,9 +192,47 @@
       "stage": "baking",
       "nominalKw": 36,
       "phases": 3,
-      "position": { "x": 12.8, "y": 0, "z": -2.9 },
+      "position": {
+        "x": 8.8,
+        "y": 0,
+        "z": -2.9
+      },
       "rotationY": 0,
       "meterId": "ESP32_SIM_OVN2",
+      "model": null
+    },
+    {
+      "id": "blastfreezer-1",
+      "name": "Шкаф шоковой заморозки 1",
+      "vendorModel": "Шкаф шоковой заморозки на 1 тележку",
+      "kind": "blastfreezer",
+      "stage": "freezing",
+      "nominalKw": 4.2,
+      "phases": 3,
+      "position": {
+        "x": 13.9,
+        "y": 0,
+        "z": -3.0
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_BLF1",
+      "model": null
+    },
+    {
+      "id": "coldroom-1",
+      "name": "Морозильная камера 1",
+      "vendorModel": "Камера хранения −18 °C с моноблоком",
+      "kind": "coldroom",
+      "stage": "freezing",
+      "nominalKw": 3.0,
+      "phases": 3,
+      "position": {
+        "x": 17.2,
+        "y": 0,
+        "z": -2.9
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_CLD1",
       "model": null
     }
   ]

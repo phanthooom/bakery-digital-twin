@@ -172,7 +172,7 @@ export function Hall({ config }: { config: SiteConfig }) {
       ))}
 
       {/* электрощит между формовкой и расстойкой */}
-      <group position={[0.75, 0, -D / 2 + 0.35]}>
+      <group position={[-3.25, 0, -D / 2 + 0.35]}>
         <RoundedBox args={[0.9, 1.9, 0.35]} radius={0.03} position={[0, 0.95, 0]} material={M.steelLight} castShadow />
         {[-0.2, -0.05, 0.1].map((x, i) => (
           <mesh key={x} position={[x, 1.55, 0.18]}>
@@ -186,7 +186,7 @@ export function Hall({ config }: { config: SiteConfig }) {
       </group>
 
       {/* поддон с мешками муки у замеса */}
-      <group position={[-15.0, 0, -1.45]}>
+      <group position={[-19.0, 0, -1.45]}>
         <mesh position={[0, 0.07, 0]} material={M.wood} castShadow receiveShadow>
           <boxGeometry args={[1.0, 0.14, 0.8]} />
         </mesh>
@@ -201,7 +201,7 @@ export function Hall({ config }: { config: SiteConfig }) {
         ))}
       </group>
       {/* предупредительная разметка у формовки */}
-      <mesh position={[-3.8, 0.012, -4.05]} rotation={[-Math.PI / 2, 0, 0]}>
+      <mesh position={[-7.8, 0.012, -4.05]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[1.5, 0.5]} />
         <meshStandardMaterial map={stripes} roughness={0.8} />
       </mesh>

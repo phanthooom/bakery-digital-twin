@@ -121,6 +121,11 @@ export class MachineSim {
   private nextSegment(kind: MachineKind, prev: string | undefined, nowMs: number): Segment {
     const working = isWorkingHour(nowMs, this.opts.timezone);
     const d = (a: number, b: number) => nowMs + this.between(a, b) * MIN;
+    // морозильная камера хранения держит −18 °C круглосуточно: компрессор + периодическая оттайка
+    if (kind === 'coldroom') {
+      if (prev === 'on' && this.rand() < 0.08) return { mode: 'defrost', until: d(12, 18), level: 0.55, pulse: 0.01 };
+      return prev === 'on' ? { mode: 'standby', until: d(8, 14), level: 0.04 } : { mode: 'on', until: d(6, 12), level: 0.93, pulse: 0.01 };
+    }
     if (!working) {
       return { mode: 'off', until: d(10, 20), level: kind === 'oven' ? 0.03 : kind === 'icemaker' ? 0.02 : 0.005 };
     }
@@ -150,6 +155,11 @@ export class MachineSim {
         }
         if (this.bakesSinceRest >= 3) return { mode: 'rest', until: d(8, 15), level: 0.04 };
         return { mode: 'load', until: d(2, 4), level: 0.06 };
+      case 'blastfreezer':
+        // загрузка тележки после печи → шоковая заморозка → выдержка с циклами компрессора
+        if (prev === 'freeze') return { mode: 'hold', until: d(10, 20), level: 0.55, alt: { level: 0.08, onMs: [90_000, 180_000], offMs: [60_000, 150_000] } };
+        if (prev === 'load') return { mode: 'freeze', until: d(35, 60), level: 0.96, pulse: 0.015, order: this.product() };
+        return { mode: 'load', until: d(2, 5), level: 0.05 };
       case 'icemaker':
         return prev === 'on'
           ? { mode: 'standby', until: d(8, 15), level: 0.03 }

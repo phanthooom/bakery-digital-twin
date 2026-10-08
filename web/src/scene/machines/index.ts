@@ -1,5 +1,7 @@
 import type { ComponentType } from 'react';
 import type { MachineKind } from '@bakery/shared';
+import { BlastFreezer } from './BlastFreezer';
+import { ColdRoom } from './ColdRoom';
 import { Conveyor } from './Conveyor';
 import { Generic } from './Generic';
 import { IceMaker } from './IceMaker';
@@ -17,6 +19,8 @@ export const BODIES: Record<MachineKind, ComponentType<BodyProps>> = {
   proofer: Proofer,
   oven: Oven,
   icemaker: IceMaker,
+  blastfreezer: BlastFreezer,
+  coldroom: ColdRoom,
   generic: Generic,
 };
 
