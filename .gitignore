@@ -1,0 +1,16 @@
+node_modules/
+dist/
+build/
+coverage/
+*.log
+.env
+.env.local
+.DS_Store
+Thumbs.db
+.vscode/*
+!.vscode/extensions.json
+.idea/
+# состояние симулятора (последний опубликованный момент времени)
+simulator/.state.json
+# локальные данные docker-томов, если кто-то смонтирует их в папку проекта
+infra/data/

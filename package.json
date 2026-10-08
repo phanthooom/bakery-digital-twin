@@ -1,0 +1,35 @@
+{
+  "name": "bakery-digital-twin",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Цифровой двойник хлебопекарни: 3D-цех с живыми данными энергопотребления",
+  "type": "module",
+  "workspaces": [
+    "packages/shared",
+    "simulator",
+    "api",
+    "web"
+  ],
+  "engines": {
+    "node": ">=20.11"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n sim,api,web -c yellow,cyan,magenta \"npm:dev:sim\" \"npm:dev:api\" \"npm:dev:web\"",
+    "dev:sim": "npm run dev -w simulator",
+    "dev:api": "npm run dev -w api",
+    "dev:web": "npm run dev -w web",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "typecheck": "tsc -p packages/shared && tsc -p simulator && tsc -p api && tsc -p web",
+    "build": "npm run build -w web",
+    "infra:up": "docker compose up -d",
+    "infra:down": "docker compose down",
+    "infra:logs": "docker compose logs -f --tail=50"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.7",
+    "@types/node": "^22.10.0"
+  }
+}

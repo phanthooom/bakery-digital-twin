@@ -1,0 +1,133 @@
+{
+  "site": {
+    "name": "Хлебопекарня — цех №1",
+    "timezone": "Asia/Tashkent",
+    "hall": { "width": 32, "depth": 12, "height": 5 }
+  },
+  "thresholds": {
+    "offlineAfterSec": 30,
+    "idlePctOfNominal": 10,
+    "overloadPctOfNominal": 115,
+    "imbalanceAlarmPct": 40,
+    "imbalanceMinLoadPct": 30,
+    "ai": {
+      "windowMin": 15,
+      "minBaselineSamples": 10,
+      "deviationWarnPct": 15,
+      "anomalyPct": 40,
+      "historyDays": 7
+    }
+  },
+  "stages": [
+    { "id": "mixing",   "order": 1, "label": "01 ЗАМЕС",    "name": "Замес",    "xFrom": -15.5, "xTo": -7.5 },
+    { "id": "forming",  "order": 2, "label": "02 ФОРМОВКА", "name": "Формовка", "xFrom": -7.0,  "xTo": 0.5 },
+    { "id": "proofing", "order": 3, "label": "03 РАССТОЙКА","name": "Расстойка","xFrom": 1.0,   "xTo": 6.5 },
+    { "id": "baking",   "order": 4, "label": "04 ВЫПЕЧКА",  "name": "Выпечка",  "xFrom": 7.0,   "xTo": 15.5 }
+  ],
+  "equipment": [
+    {
+      "id": "mixer-1",
+      "name": "Тестомес 1",
+      "vendorModel": "Спиральный тестомес 60 кг",
+      "kind": "mixer",
+      "stage": "mixing",
+      "nominalKw": 4.5,
+      "phases": 3,
+      "position": { "x": -13.6, "y": 0, "z": -2.6 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_MIX1",
+      "model": null
+    },
+    {
+      "id": "mixer-2",
+      "name": "Тестомес 2",
+      "vendorModel": "Спиральный тестомес 60 кг",
+      "kind": "mixer",
+      "stage": "mixing",
+      "nominalKw": 4.5,
+      "phases": 3,
+      "position": { "x": -11.2, "y": 0, "z": -2.6 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_MIX2",
+      "model": null
+    },
+    {
+      "id": "icemaker-1",
+      "name": "Льдогенератор 1",
+      "vendorModel": "Чешуйчатый льдогенератор",
+      "kind": "icemaker",
+      "stage": "mixing",
+      "nominalKw": 1.0,
+      "phases": 1,
+      "position": { "x": -8.9, "y": 0, "z": -3.2 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_ICE1",
+      "model": null
+    },
+    {
+      "id": "moulder-1",
+      "name": "Формовщик 1",
+      "vendorModel": "König Mini Rex Multi",
+      "kind": "moulder",
+      "stage": "forming",
+      "nominalKw": 1.0,
+      "phases": 3,
+      "position": { "x": -5.2, "y": 0, "z": -2.6 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_FRM1",
+      "model": null
+    },
+    {
+      "id": "conveyor-1",
+      "name": "Конвейер формовки",
+      "vendorModel": "Ленточный конвейер 3 м",
+      "kind": "conveyor",
+      "stage": "forming",
+      "nominalKw": 0.37,
+      "phases": 3,
+      "position": { "x": -2.4, "y": 0, "z": -2.6 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_CNV1",
+      "model": null
+    },
+    {
+      "id": "proofer-1",
+      "name": "Расстоечный шкаф 1",
+      "vendorModel": "Расстоечный шкаф на 2 тележки",
+      "kind": "proofer",
+      "stage": "proofing",
+      "nominalKw": 2.5,
+      "phases": 3,
+      "position": { "x": 3.6, "y": 0, "z": -3.0 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_PRF1",
+      "model": null
+    },
+    {
+      "id": "oven-1",
+      "name": "Печь 1",
+      "vendorModel": "MIWE roll-in",
+      "kind": "oven",
+      "stage": "baking",
+      "nominalKw": 36,
+      "phases": 3,
+      "position": { "x": 9.4, "y": 0, "z": -2.9 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_OVN1",
+      "model": null
+    },
+    {
+      "id": "oven-2",
+      "name": "Печь 2",
+      "vendorModel": "MIWE roll-in",
+      "kind": "oven",
+      "stage": "baking",
+      "nominalKw": 36,
+      "phases": 3,
+      "position": { "x": 12.8, "y": 0, "z": -2.9 },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_OVN2",
+      "model": null
+    }
+  ]
+}
