@@ -36,7 +36,6 @@ export function meanSince(points: readonly PowerPoint[], fromMs: number): number
 }
 
 interface MinuteBucket {
-  hour: number;
   sum: number;
   count: number;
 }
@@ -52,23 +51,27 @@ export interface BaselineOptions {
  * Отсчёты можно добавлять не по порядку (догрузка буфера ESP32, backfill из InfluxDB).
  */
 export class HourlyBaseline {
-  private readonly minutes = new Map<number, MinuteBucket>();
+  /** Минутные корзины, разложенные по часу суток: hour → (minuteStartMs → корзина). */
+  private readonly byHour: Map<number, MinuteBucket>[] = Array.from({ length: 24 }, () => new Map());
+  private count = 0;
 
   constructor(private readonly opts: BaselineOptions) {}
 
   get size(): number {
-    return this.minutes.size;
+    return this.count;
   }
 
   add(tsMs: number, kw: number): void {
     if (!Number.isFinite(kw) || !Number.isFinite(tsMs)) return;
     const key = Math.floor(tsMs / MIN_MS) * MIN_MS;
-    const b = this.minutes.get(key);
+    const bucket = this.byHour[hourOfDay(key, this.opts.timezone)]!;
+    const b = bucket.get(key);
     if (b) {
       b.sum += kw;
       b.count++;
     } else {
-      this.minutes.set(key, { hour: hourOfDay(key, this.opts.timezone), sum: kw, count: 1 });
+      bucket.set(key, { sum: kw, count: 1 });
+      this.count++;
     }
   }
 
@@ -76,7 +79,9 @@ export class HourlyBaseline {
   addMinuteMean(minuteStartMs: number, meanKw: number): void {
     if (!Number.isFinite(meanKw)) return;
     const key = Math.floor(minuteStartMs / MIN_MS) * MIN_MS;
-    this.minutes.set(key, { hour: hourOfDay(key, this.opts.timezone), sum: meanKw, count: 1 });
+    const bucket = this.byHour[hourOfDay(key, this.opts.timezone)]!;
+    if (!bucket.has(key)) this.count++;
+    bucket.set(key, { sum: meanKw, count: 1 });
   }
 
   /**
@@ -84,17 +89,23 @@ export class HourlyBaseline {
    * excludeFromMs — не учитывать минуты начиная с этого момента (окно, с которым сравниваем).
    */
   baselineFor(tsMs: number, excludeFromMs = Number.POSITIVE_INFINITY): { medianKw: number | null; samples: number } {
-    const hour = hourOfDay(tsMs, this.opts.timezone);
     const oldest = tsMs - this.opts.historyDays * DAY_MS;
     const values: number[] = [];
-    for (const [key, b] of this.minutes) {
-      if (b.hour === hour && key >= oldest && key < excludeFromMs) values.push(b.sum / b.count);
+    for (const [key, b] of this.byHour[hourOfDay(tsMs, this.opts.timezone)]!) {
+      if (key >= oldest && key < excludeFromMs) values.push(b.sum / b.count);
     }
     return { medianKw: median(values), samples: values.length };
   }
 
   prune(nowMs: number): void {
     const oldest = nowMs - this.opts.historyDays * DAY_MS;
-    for (const key of this.minutes.keys()) if (key < oldest) this.minutes.delete(key);
+    for (const bucket of this.byHour) {
+      for (const key of bucket.keys()) {
+        if (key < oldest) {
+          bucket.delete(key);
+          this.count--;
+        }
+      }
+    }
   }
 }
