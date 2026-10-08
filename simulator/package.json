@@ -1,1 +1,18 @@
-{"name":"simulator","version":"0.1.0","private":true,"type":"module"}
+{
+  "name": "simulator",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Симулятор счётчиков ESP32: публикует показания станков в MQTT",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "start": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@bakery/shared": "*",
+    "mqtt": "^5.14.1"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.6"
+  }
+}
