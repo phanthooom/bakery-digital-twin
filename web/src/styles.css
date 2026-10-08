@@ -102,6 +102,7 @@ button { font: inherit; color: inherit; }
 .hero { margin-top: 12px; display: flex; align-items: baseline; gap: 6px; }
 .hero-value { font-size: 44px; font-weight: 650; letter-spacing: -0.02em; line-height: 1; }
 .hero-unit { color: var(--text-secondary); font-size: 15px; }
+.hero-value.is-empty { color: var(--text-muted); font-weight: 400; }
 .hero-sub { color: var(--text-secondary); font-size: 13px; margin-top: 4px; }
 
 .chart { position: relative; margin-top: 14px; }
@@ -193,3 +194,21 @@ details.table-view th { color: var(--text-muted); font-weight: 500; }
 .hint b { color: var(--text-primary); font-weight: 600; }
 .hint .card-close { width: 24px; height: 24px; flex: none; }
 @media (max-width: 760px), (pointer: coarse) { .hint { display: none; } }
+
+/* ── Заставка и «нет связи» (фигуры @lucasmarkes/hairline) ── */
+.loading {
+  position: absolute; inset: 0; z-index: 40; display: grid; place-content: center; justify-items: center; gap: 12px;
+  background: var(--page); transition: opacity 0.4s ease;
+  --hairline-plate: var(--page); --hairline-hi: #3d3d3a; --hairline-edge: #8f8d86; --hairline-mid: #b5b3ab; --hairline-lo: #d3d1ca;
+}
+.loading.is-leaving { opacity: 0; pointer-events: none; }
+.loading-figure { width: min(320px, 70vw); }
+.loading-text { color: var(--text-secondary); font-size: 13px; }
+.offline {
+  display: flex; gap: 12px; align-items: center; margin-top: 12px; padding: 10px 12px 10px 6px; border-radius: 10px; background: var(--surface-2);
+  --hairline-plate: var(--surface-2); --hairline-hi: #2b2a27; --hairline-edge: #8f8d86; --hairline-mid: #b5b3ab; --hairline-lo: #d8d6cf;
+}
+.offline-figure { width: 104px; flex: none; }
+.offline-title { font-size: 13px; font-weight: 600; }
+.offline-sub { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+@media (prefers-reduced-motion: reduce) { .loading { transition: none; } }

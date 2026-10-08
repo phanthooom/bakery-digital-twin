@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { FAULTS, faultsFor, type EquipmentConfig } from '@bakery/shared';
 import { useDataSource, useEquipmentState } from '../data/store';
 import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtPct } from './format';
+import { OfflineNotice } from './OfflineNotice';
 import { PhaseMeters } from './PhaseMeters';
 import { PowerChart } from './PowerChart';
 import { REASON_LABEL, STATUS_LABEL } from './statusMeta';
@@ -60,8 +61,10 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
         </div>
       )}
 
+      {offline && <OfflineNotice meterId={r?.meterId ?? eq.meterId} silentForMs={r ? now - r.ts : null} />}
+
       <div className="hero">
-        <span className="hero-value">{offline || !r ? '—' : fmtKw(r.powerKw)}</span>
+        <span className={`hero-value${offline || !r ? ' is-empty' : ''}`}>{offline || !r ? '—' : fmtKw(r.powerKw)}</span>
         <span className="hero-unit">кВт</span>
       </div>
       <div className="hero-sub">

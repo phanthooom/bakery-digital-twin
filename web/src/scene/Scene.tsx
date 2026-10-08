@@ -15,6 +15,8 @@ export interface SceneProps {
   cardOffset: [number, number];
   onSelect: (id: string) => void;
   onDeselect: () => void;
+  /** Первый кадр сцены отрисован. */
+  onReady?: () => void;
 }
 
 function Lights() {
@@ -41,7 +43,7 @@ function Lights() {
   );
 }
 
-export function Scene({ config, selectedId, showLabels, viewToken, cardOffset, onSelect, onDeselect }: SceneProps) {
+export function Scene({ config, selectedId, showLabels, viewToken, cardOffset, onSelect, onDeselect, onReady }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
 
@@ -70,6 +72,7 @@ export function Scene({ config, selectedId, showLabels, viewToken, cardOffset, o
           if (d && Math.hypot(e.clientX - d.x, e.clientY - d.y) < 5) onDeselect();
         }}
         aria-label="3D-схема цеха"
+        onCreated={() => requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()))}
       >
         <color attach="background" args={['#ecebe7']} />
         <Lights />

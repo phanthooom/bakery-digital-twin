@@ -7,6 +7,7 @@ import { Header } from './ui/Header';
 import { STATUS_LABEL, STATUS_ORDER } from './ui/statusMeta';
 import { StatusIcon } from './ui/StatusIcon';
 import { GestureHint } from './ui/GestureHint';
+import { LoadingScreen } from './ui/LoadingScreen';
 
 const NO_OFFSET: [number, number] = [0, 0];
 const SIDE_CARD_OFFSET: [number, number] = [1.1, 0];
@@ -19,6 +20,14 @@ export function App() {
   const [listOpen, setListOpen] = useState(false);
   const [viewToken, setViewToken] = useState(0);
   const [wide, setWide] = useState(() => window.innerWidth > 760);
+  const [sceneReady, setSceneReady] = useState(false);
+  const [loaderGone, setLoaderGone] = useState(false);
+
+  useEffect(() => {
+    if (!sceneReady) return;
+    const t = setTimeout(() => setLoaderGone(true), 400); // время на плавное исчезновение
+    return () => clearTimeout(t);
+  }, [sceneReady]);
 
   useEffect(() => {
     ds.start();
@@ -73,7 +82,9 @@ export function App() {
           cardOffset={!selected ? NO_OFFSET : wide ? SIDE_CARD_OFFSET : BOTTOM_SHEET_OFFSET}
           onSelect={select}
           onDeselect={deselect}
+          onReady={() => setSceneReady(true)}
         />
+        {!loaderGone && <LoadingScreen leaving={sceneReady} />}
         {selected && <EquipmentCard key={selected.id} eq={selected} onClose={deselect} />}
         {listOpen && <EquipmentList config={ds.config} selectedId={selectedId} onSelect={select} />}
         {!listOpen && <GestureHint />}

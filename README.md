@@ -97,4 +97,5 @@ docs/                      план, MQTT-контракт, ADR, настрой�
 ## Для разработчиков и агентов
 
 - `CLAUDE.md` — правила работы в репозитории; `GLOSSARY.md` — словарь предметной области; `docs/adr/` — принятые решения.
+- Заставка загрузки и пустое состояние «Нет связи» в карточке — фигуры [@lucasmarkes/hairline](https://github.com/lucasmarkes/hairline) (`Slow` — лента с ящиками, `Plug` — вилка не дотягивается до розетки). Версия зафиксирована точно (0.3.0): пакет очень свежий. Навык `hairline-create` нарисует свою фигуру, например печь.
 - В `.claude/skills/` лежат навыки [mattpocock/skills](https://github.com/mattpocock/skills) (tdd, code-review, domain-modeling, to-tickets и др.); логика меняется по TDD на стыках, перечисленных в `CLAUDE.md`.
