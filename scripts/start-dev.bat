@@ -19,8 +19,10 @@ if %NODE_MAJOR% LSS 20 (
   exit /b 1
 )
 
-if not exist node_modules (
-  echo === npm install ^(первый запуск, 1-2 минуты^) ===
+rem npm install — при первом запуске и когда package-lock.json новее установленных пакетов (добавили зависимость)
+node -e "const fs=require('fs');let b=0;try{b=fs.statSync('node_modules/.package-lock.json').mtimeMs}catch(e){};process.exit(b>=fs.statSync('package-lock.json').mtimeMs?0:1)"
+if errorlevel 1 (
+  echo === npm install ^(новые пакеты, 1-2 минуты^) ===
   call npm install
   if errorlevel 1 (
     echo [!] npm install завершился с ошибкой
