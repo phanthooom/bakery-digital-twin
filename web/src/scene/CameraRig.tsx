@@ -17,6 +17,9 @@ export function CameraRig({ config, selectedId, viewToken, cardOffset }: { confi
   const ref = useRef<CameraControls>(null);
   const { size, camera, gl } = useThree();
   const firstRun = useRef(true);
+  /** Вид до подлёта к станку — туда камера вернётся, когда карточку закроют. */
+  const savedPose = useRef<{ position: THREE.Vector3; target: THREE.Vector3 } | null>(null);
+  const prevSelected = useRef<string | null>(null);
 
   const overview = (smooth: boolean) => {
     const c = ref.current;
@@ -31,6 +34,7 @@ export function CameraRig({ config, selectedId, viewToken, cardOffset }: { confi
   };
 
   useEffect(() => {
+    savedPose.current = null; // «Весь цех» важнее возврата к прошлому виду
     overview(!firstRun.current);
     firstRun.current = false;
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -38,7 +42,17 @@ export function CameraRig({ config, selectedId, viewToken, cardOffset }: { confi
 
   useEffect(() => {
     const c = ref.current;
-    if (!c || !selectedId) return;
+    const prev = prevSelected.current;
+    prevSelected.current = selectedId;
+    if (!c) return;
+    if (!selectedId) {
+      // карточку закрыли (повторный клик, ×, Esc, клик мимо) — плавно назад, как подлетали
+      const pose = savedPose.current;
+      savedPose.current = null;
+      if (prev && pose) void c.setLookAt(pose.position.x, pose.position.y, pose.position.z, pose.target.x, pose.target.y, pose.target.z, true);
+      return;
+    }
+    if (!prev) savedPose.current = { position: c.getPosition(new THREE.Vector3()), target: c.getTarget(new THREE.Vector3()) };
     const eq = config.equipment.find((e) => e.id === selectedId);
     if (!eq) return;
     const h = (SPECS[eq.kind] ?? SPECS.generic).height;

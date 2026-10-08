@@ -47,7 +47,8 @@ export function App() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  const select = useCallback((id: string) => setSelectedId(id), []);
+  // повторный клик по выбранному станку закрывает карточку — камера плавно возвращается назад
+  const select = useCallback((id: string) => setSelectedId((cur) => (cur === id ? null : id)), []);
   const deselect = useCallback(() => setSelectedId(null), []);
   const selected = ds.config.equipment.find((e) => e.id === selectedId) ?? null;
 
