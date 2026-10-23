@@ -50,10 +50,14 @@ export function App() {
   const [floorFilter, setFloorFilter] = useState<'all' | 1 | 2>('all');
   const [customFocus, setCustomFocus] = useState<CameraFocus | null>(null);
   const [latestOrder, setLatestOrder] = useState<TelegramOrder | null>(null);
+  const [showOrderToast, setShowOrderToast] = useState(false);
 
   useEffect(() => {
     return setupTelegramBridge(ds, (ord) => {
       setLatestOrder(ord);
+      setShowOrderToast(true);
+      // Автоматически направляем камеру к печи oven-1 и открываем её карточку
+      setSelection({ kind: 'machine', id: 'oven-1' });
     });
   }, [ds]);
 
@@ -189,6 +193,8 @@ export function App() {
           onOpenGas={ds.config.gas ? selectGas : undefined}
           floorFilter={floorFilter}
           onFloorChange={handleFloorChange}
+          latestOrder={latestOrder}
+          onOpenOrder={() => setShowOrderToast(true)}
           onResetView={() => {
             setSelection(null);
             setCustomFocus(null);
@@ -236,9 +242,10 @@ export function App() {
           ))}
         </div>
         <TelegramOrderToast
-          order={latestOrder}
-          onClose={() => setLatestOrder(null)}
-          onClick={() => setSelection({ kind: 'vehicle', id: 'van-1' })}
+          order={showOrderToast ? latestOrder : null}
+          onClose={() => setShowOrderToast(false)}
+          onShowOven={() => setSelection({ kind: 'machine', id: 'oven-1' })}
+          onShowTruck={() => setSelection({ kind: 'vehicle', id: 'van-1' })}
         />
       </div>
     </DataSourceContext.Provider>

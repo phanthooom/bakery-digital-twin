@@ -281,9 +281,11 @@ export interface TruckProps {
   plate: string;
   /** Кабина: своя процедурная или Tesla Semi (GLB; пока грузится — процедурная). */
   cab?: 'classic' | 'semi';
+  /** Идёт ли погрузка заказа (мигает маячок) */
+  loading?: boolean;
 }
 
-export const Truck = memo(function Truck({ brand, tagline = '', color, plate, cab: cabKind = 'classic' }: TruckProps) {
+export const Truck = memo(function Truck({ brand, tagline = '', color, plate, cab: cabKind = 'classic', loading }: TruckProps) {
   const semi = cabKind === 'semi';
   const cab = useCabGeometry();
   const windshield = useMemo(() => windshieldGeometry(), []);
@@ -477,6 +479,16 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, ca
         {!semi && classicCab}
       </MergeStatic>
       {semi && <GltfModel url={SEMI_VAN_URL} keepOrigin fallback={classicCab} />}
+
+      {loading && (
+        <group position={[0, BODY_Y0 + BODY_H + 0.1, 1.8]}>
+          <mesh position={[0, 0, 0]}>
+            <cylinderGeometry args={[0.09, 0.11, 0.18, 16]} />
+            <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2.5} color="#f59e0b" toneMapped={false} />
+          </mesh>
+          <pointLight color="#f59e0b" intensity={2} distance={6} />
+        </group>
+      )}
 
     </group>
   );

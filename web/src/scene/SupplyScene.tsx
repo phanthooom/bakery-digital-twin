@@ -328,7 +328,7 @@ function ShippingDocks({ config, view, onOpen, showLabels, sel }: { config: Site
             <DockPlate x={x} front={FRONT_Z} />
             {present ? (
               <DockedVehicle id={id} x={x} front={FRONT_Z} sel={sel}>
-                <Truck cab="semi" brand={config.site.brand?.name ?? 'Bakery'} tagline={config.site.brand?.tagline} color={color} plate={v.vehicle.plate} />
+                <Truck cab="semi" brand={config.site.brand?.name ?? 'Bakery'} tagline={config.site.brand?.tagline} color={color} plate={v.vehicle.plate} loading={v.status === 'loading'} />
               </DockedVehicle>
             ) : (
               // машина в рейсе — пустое место у рампы, по нему тоже можно выбрать машину

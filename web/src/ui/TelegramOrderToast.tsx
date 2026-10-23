@@ -1,31 +1,57 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import type { TelegramOrder } from '@bakery/shared';
+
+function playOrderChime() {
+  try {
+    const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    // Нота 1: E5 (659.25 Гц)
+    const osc1 = ctx.createOscillator();
+    const gain1 = ctx.createGain();
+    osc1.frequency.setValueAtTime(659.25, now);
+    gain1.gain.setValueAtTime(0.12, now);
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+    osc1.connect(gain1);
+    gain1.connect(ctx.destination);
+    osc1.start(now);
+    osc1.stop(now + 0.35);
+
+    // Нота 2: G#5 (830.61 Гц)
+    const osc2 = ctx.createOscillator();
+    const gain2 = ctx.createGain();
+    osc2.frequency.setValueAtTime(830.61, now + 0.12);
+    gain2.gain.setValueAtTime(0.15, now + 0.12);
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+    osc2.connect(gain2);
+    gain2.connect(ctx.destination);
+    osc2.start(now + 0.12);
+    osc2.stop(now + 0.55);
+  } catch {
+    // аудио заблокировано политикой браузера до первого клика
+  }
+}
 
 export function TelegramOrderToast({
   order,
   onClose,
-  onClick,
+  onShowOven,
+  onShowTruck,
 }: {
   order: TelegramOrder | null;
   onClose: () => void;
-  onClick?: () => void;
+  onShowOven: () => void;
+  onShowTruck: () => void;
 }) {
-  const [visible, setVisible] = useState(false);
-
   useEffect(() => {
-    if (!order) {
-      setVisible(false);
-      return;
+    if (order) {
+      playOrderChime();
     }
-    setVisible(true);
-    const timer = setTimeout(() => {
-      setVisible(false);
-      onClose();
-    }, 9000);
-    return () => clearTimeout(timer);
-  }, [order, onClose]);
+  }, [order?.orderId]);
 
-  if (!order || !visible) return null;
+  if (!order) return null;
 
   const itemsSummary = order.items.map((i) => `${i.name} × ${i.quantity}`).join(', ');
 
@@ -34,58 +60,124 @@ export function TelegramOrderToast({
       style={{
         position: 'fixed',
         top: 'calc(var(--topbar-h, 56px) + 16px)',
-        right: '16px',
-        zIndex: 1000,
-        background: 'rgba(20, 24, 33, 0.95)',
-        border: '1px solid #3b82f6',
-        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(59, 130, 246, 0.3)',
-        borderRadius: '10px',
-        padding: '12px 16px',
-        maxWidth: '380px',
+        right: '20px',
+        zIndex: 9999,
+        background: 'linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(30, 41, 59, 0.98))',
+        border: '2px solid #38bdf8',
+        boxShadow: '0 12px 40px rgba(0, 0, 0, 0.7), 0 0 24px rgba(56, 189, 248, 0.45)',
+        borderRadius: '14px',
+        padding: '16px 20px',
+        maxWidth: '420px',
+        width: 'calc(100% - 40px)',
         color: '#f8fafc',
-        backdropFilter: 'blur(8px)',
-        cursor: onClick ? 'pointer' : 'default',
+        backdropFilter: 'blur(12px)',
       }}
-      onClick={onClick}
     >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600, color: '#60a5fa' }}>
-          <span>🛒</span>
-          <span>Новый заказ из Telegram</span>
-          <span style={{ fontSize: '11px', background: 'rgba(59, 130, 246, 0.2)', padding: '2px 6px', borderRadius: '4px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 700, color: '#38bdf8', fontSize: '15px' }}>
+          <span style={{ fontSize: '18px' }}>🛒</span>
+          <span>ЖИВОЙ ЗАКАЗ ИЗ TELEGRAM</span>
+          <span
+            style={{
+              fontSize: '12px',
+              background: '#0284c7',
+              color: '#ffffff',
+              padding: '2px 8px',
+              borderRadius: '6px',
+              fontWeight: 800,
+              letterSpacing: '0.5px',
+            }}
+          >
             {order.orderId}
           </span>
         </div>
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setVisible(false);
-            onClose();
-          }}
+          onClick={onClose}
           style={{
-            background: 'transparent',
+            background: 'rgba(255, 255, 255, 0.1)',
             border: 'none',
             color: '#94a3b8',
             cursor: 'pointer',
             fontSize: '16px',
             lineHeight: 1,
-            padding: '2px 4px',
+            borderRadius: '50%',
+            width: '26px',
+            height: '26px',
+            display: 'grid',
+            placeContent: 'center',
           }}
+          title="Скрыть"
         >
           ✕
         </button>
       </div>
-      <div style={{ fontSize: '13px', color: '#e2e8f0', marginBottom: '4px' }}>
-        <strong>{order.clientName || 'Покупатель'}</strong>
-        {order.address ? ` · ${order.address}` : ''}
+
+      <div style={{ fontSize: '14px', color: '#f1f5f9', marginBottom: '4px', fontWeight: 600 }}>
+        👤 {order.clientName || 'Покупатель'}
+        {order.phone ? ` · 📞 ${order.phone}` : ''}
       </div>
-      <div style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '6px' }}>
-        {itemsSummary}
+
+      <div style={{ fontSize: '13px', color: '#cbd5e1', marginBottom: '8px' }}>
+        📍 {order.address || 'Ташкент'}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '12px' }}>
-        <span style={{ color: '#fbbf24', fontWeight: 600 }}>{order.total.toLocaleString('ru-RU')} сум</span>
-        <span style={{ color: '#38bdf8', fontSize: '11px' }}>Печь готовит · Погрузка van-1 →</span>
+
+      <div style={{ background: 'rgba(0, 0, 0, 0.35)', padding: '8px 12px', borderRadius: '8px', marginBottom: '12px', borderLeft: '3px solid #38bdf8' }}>
+        <div style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: 500 }}>
+          {itemsSummary}
+        </div>
+        <div style={{ fontSize: '14px', color: '#facc15', fontWeight: 700, marginTop: '4px' }}>
+          Итого: {order.total.toLocaleString('ru-RU')} сум
+        </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          onClick={onShowOven}
+          style={{
+            flex: '1 1 auto',
+            background: 'linear-gradient(135deg, #ea580c, #c2410c)',
+            border: 'none',
+            color: '#ffffff',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontWeight: 600,
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 8px rgba(234, 88, 12, 0.4)',
+          }}
+        >
+          <span>🔥</span>
+          <span>Печь (oven-1)</span>
+        </button>
+        <button
+          type="button"
+          onClick={onShowTruck}
+          style={{
+            flex: '1 1 auto',
+            background: 'linear-gradient(135deg, #0284c7, #0369a1)',
+            border: 'none',
+            color: '#ffffff',
+            padding: '8px 12px',
+            borderRadius: '8px',
+            fontWeight: 600,
+            fontSize: '12px',
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '6px',
+            boxShadow: '0 2px 8px rgba(2, 132, 199, 0.4)',
+          }}
+        >
+          <span>🚚</span>
+          <span>Фургон (van-1)</span>
+        </button>
       </div>
     </div>
   );

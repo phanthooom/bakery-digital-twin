@@ -1,4 +1,4 @@
-import type { MachineStatus } from '@bakery/shared';
+import type { MachineStatus, TelegramOrder } from '@bakery/shared';
 import { useDataSource, useGas, useStates } from '../data/store';
 import { fmtAgo, fmtKw, fmtNum } from './format';
 import { STATUS_LABEL, STATUS_ORDER } from './statusMeta';
@@ -24,9 +24,11 @@ export interface HeaderProps {
   /** Текущий этаж */
   floorFilter?: 'all' | 1 | 2;
   onFloorChange?: (floor: 'all' | 1 | 2) => void;
+  latestOrder?: TelegramOrder | null;
+  onOpenOrder?: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder }: HeaderProps) {
   const gas = useGas();
   const ds = useDataSource();
   const states = useStates();
@@ -79,6 +81,23 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
       </div>
 
       <div className="topbar-actions">
+        {latestOrder && (
+          <button
+            type="button"
+            className="btn is-active"
+            onClick={onOpenOrder}
+            style={{
+              background: 'rgba(56, 189, 248, 0.2)',
+              border: '1px solid #38bdf8',
+              color: '#38bdf8',
+              fontWeight: 600,
+            }}
+            title={`Заказ ${latestOrder.orderId}: ${latestOrder.clientName || 'Клиент'} (${latestOrder.total.toLocaleString('ru-RU')} сум)`}
+          >
+            <span>🛒</span>
+            <span>Заказ {latestOrder.orderId}</span>
+          </button>
+        )}
         <span className="source-badge" title={ds.kind === 'mock' ? 'Данные генерируются в браузере (без API и счётчиков)' : 'Живые данные'}>
           <span className="pulse" aria-hidden />
           {ds.kind === 'mock' ? 'Демо-данные' : 'Онлайн'} · {lastTs ? fmtAgo(now - lastTs) : '—'}
