@@ -721,3 +721,231 @@ details.table-view th { color: var(--text-muted); font-weight: 500; }
   font-variant-numeric: tabular-nums;
 }
 
+/* ── Live Order Hub (Telegram Mini App Integration) ── */
+.order-hub-container {
+  position: absolute;
+  top: calc(var(--topbar-h, 56px) + 14px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 35;
+  width: min(540px, calc(100% - 32px));
+  animation: order-hub-in 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes order-hub-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -16px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+.order-hub {
+  background: var(--surface-1);
+  border: 1px solid rgba(183, 31, 62, 0.25);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(20, 20, 18, 0.16), 0 2px 8px rgba(20, 20, 18, 0.06);
+  padding: 14px 18px 12px;
+  backdrop-filter: blur(10px);
+}
+
+.order-hub-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+
+.order-hub-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-hub-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fff1f2;
+  border: 1px solid rgba(183, 31, 62, 0.3);
+  color: #b71f3e;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 2px 8px;
+  border-radius: 6px;
+}
+
+.order-hub-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.order-hub-total {
+  font-size: 15px;
+  font-weight: 700;
+  color: #b71f3e;
+  font-variant-numeric: tabular-nums;
+  margin-left: auto;
+}
+
+.order-hub-close {
+  width: 24px;
+  height: 24px;
+  border: none;
+  background: var(--surface-2);
+  border-radius: 50%;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: grid;
+  place-content: center;
+  font-size: 14px;
+  transition: all 0.15s ease;
+}
+
+.order-hub-close:hover {
+  background: var(--grid);
+  color: var(--text-primary);
+}
+
+.order-hub-body {
+  background: var(--surface-2);
+  border-radius: 10px;
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+}
+
+.order-hub-items {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+.order-hub-client {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+/* 4-step production tracker */
+.order-pipeline {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.order-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 6px 4px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  border: 1px solid transparent;
+  font-size: 11px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.order-step:hover {
+  background: #ffffff;
+  border-color: var(--border);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+}
+
+.order-step.is-active {
+  background: #ffffff;
+  border-color: rgba(183, 31, 62, 0.4);
+  color: #b71f3e;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(183, 31, 62, 0.12);
+}
+
+.order-step.is-done {
+  color: #1e7e34;
+}
+
+.order-step-icon {
+  font-size: 14px;
+  margin-bottom: 2px;
+}
+
+.order-hub-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.order-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  color: var(--text-primary);
+}
+
+.order-btn:hover {
+  background: var(--surface-2);
+}
+
+.order-btn-primary {
+  background: #b71f3e;
+  color: #ffffff;
+  border-color: #b71f3e;
+}
+
+.order-btn-primary:hover {
+  background: #9c1733;
+}
+
+/* 3D Scene Badge */
+.order-scene-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #b71f3e;
+  border: 1.5px solid #b71f3e;
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 4px 16px rgba(183, 31, 62, 0.25), 0 1px 3px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+  pointer-events: auto;
+  animation: badge-pulse 2s infinite ease-in-out;
+}
+
+.order-scene-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #b71f3e;
+}
+
+@keyframes badge-pulse {
+  0%, 100% { transform: scale(1); box-shadow: 0 4px 16px rgba(183, 31, 62, 0.25); }
+  50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(183, 31, 62, 0.45); }
+}
+

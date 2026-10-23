@@ -55,9 +55,12 @@ export function App() {
   useEffect(() => {
     return setupTelegramBridge(ds, (ord) => {
       setLatestOrder(ord);
-      setShowOrderToast(true);
-      // Автоматически направляем камеру к печи oven-1 и открываем её карточку
-      setSelection({ kind: 'machine', id: 'oven-1' });
+      const isFresh = Math.abs(Date.now() - (ord.createdAt || 0)) < 4 * 60_000;
+      if (isFresh) {
+        setShowOrderToast(true);
+        // Автоматически направляем камеру к печи oven-1 и открываем её карточку
+        setSelection({ kind: 'machine', id: 'oven-1' });
+      }
     });
   }, [ds]);
 
@@ -246,6 +249,12 @@ export function App() {
           onClose={() => setShowOrderToast(false)}
           onShowOven={() => setSelection({ kind: 'machine', id: 'oven-1' })}
           onShowTruck={() => setSelection({ kind: 'vehicle', id: 'van-1' })}
+          onShowSupply={ds.config.supply ? () => setSupplyTab('goods') : undefined}
+          onResetView={() => {
+            setSelection(null);
+            setCustomFocus(null);
+            setViewToken((v) => v + 1);
+          }}
         />
       </div>
     </DataSourceContext.Provider>

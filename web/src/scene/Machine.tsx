@@ -71,6 +71,23 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
         </group>
       </Select>
       <StatusRing status={status} color={color} radius={spec.ringRadius} highlighted={selected || hovered} />
+      {state?.lastReading?.order && (
+        <Html position={[0, top + (showLabel || (hovered && !selected) ? 0.8 : 0.4), 0]} center zIndexRange={[25, 0]}>
+          <button
+            type="button"
+            className="order-scene-badge"
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelect(eq.id);
+            }}
+            style={{ border: 'none', font: 'inherit' }}
+            title={state.lastReading.order}
+          >
+            <span className="order-scene-dot" />
+            <span>🥐 {state.lastReading.order.split(':')[0]} в работе</span>
+          </button>
+        </Html>
+      )}
       {(showLabel || (hovered && !selected)) && (
         <Html position={[0, top + 0.25, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
           <div className={`scene-tag${hovered ? ' is-hovered' : ''}`}>
