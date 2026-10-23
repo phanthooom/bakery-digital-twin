@@ -11,6 +11,11 @@ export function toPayload(r: Reading): string {
     powerFactor: r.powerFactor,
     energyKwh: r.energyKwh,
     ...(r.order ? { order: r.order } : {}),
+    ...(r.temperatureC !== undefined ? { temperatureC: r.temperatureC } : {}),
+    ...(r.targetTempC !== undefined ? { targetTempC: r.targetTempC } : {}),
+    ...(r.humidityPct !== undefined ? { humidityPct: r.humidityPct } : {}),
+    ...(r.targetHumidityPct !== undefined ? { targetHumidityPct: r.targetHumidityPct } : {}),
+    ...(r.coreTempC !== undefined ? { coreTempC: r.coreTempC } : {}),
   });
 }
 

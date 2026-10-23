@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FAULTS, faultsFor, type EquipmentConfig } from '@bakery/shared';
+import { FAULTS, faultsFor, type EquipmentConfig, type SiloConfig } from '@bakery/shared';
 import { useDataSource, useEquipmentState } from '../data/store';
 import { EquipmentChartModal } from './EquipmentChartModal';
 import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtPct } from './format';
@@ -46,6 +46,7 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
   const offline = state.status === 'offline';
   const ai = state.ai_check;
   const aiLevel = ai.state === 'anomaly' ? 'critical' : ai.state === 'deviation' ? 'warning' : null;
+  const silo = eq.kind === 'silo' ? ds.config.mezzanine?.silos?.find((s: SiloConfig) => s.id === eq.id) : null;
 
   return (
     <>
@@ -57,7 +58,7 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
         <div className="card-head">
           <div>
             <h2 className="card-title">{eq.name}</h2>
-            {eq.vendorModel && <div className="card-sub">{eq.vendorModel}</div>}
+            {eq.vendorModel && <div className="card-sub">{eq.vendorModel}{eq.floor === 2 ? ' · 2-й этаж (мезонин)' : ''}</div>}
           </div>
           <div className="card-head-actions">
             <button
@@ -139,6 +140,97 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
               imbalancePct={state.imbalancePct}
               imbalanceLimit={thresholds.imbalanceAlarmPct}
             />
+          </div>
+        )}
+
+        {state.climate && (
+          <div className="section climate-section">
+            <div className="climate-head">
+              <span className="climate-title">Технологический климат</span>
+              <span className={`climate-badge is-${state.climate.status}`}>
+                {state.climate.status === 'ok'
+                  ? 'В норме'
+                  : state.climate.status === 'warning'
+                    ? 'Отклонение'
+                    : state.climate.status === 'critical'
+                      ? 'Авария климата'
+                      : 'Отключен'}
+              </span>
+            </div>
+            <div className="climate-grid">
+              {state.climate.temperatureC !== null && (
+                <div className="climate-metric">
+                  <span className="climate-metric-label">Температура камеры</span>
+                  <div className="climate-metric-val">
+                    <span className="climate-val-num">{state.climate.temperatureC.toFixed(1)}</span>
+                    <span className="climate-val-unit">°C</span>
+                    {state.climate.targetTempC !== null && (
+                      <span className="climate-target">цель {state.climate.targetTempC} °C</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {state.climate.humidityPct !== null && (
+                <div className="climate-metric">
+                  <span className="climate-metric-label">Относительная влажность</span>
+                  <div className="climate-metric-val">
+                    <span className="climate-val-num">{state.climate.humidityPct.toFixed(1)}</span>
+                    <span className="climate-val-unit">%</span>
+                    {state.climate.targetHumidityPct !== null && (
+                      <span className="climate-target">цель {state.climate.targetHumidityPct} %</span>
+                    )}
+                  </div>
+                </div>
+              )}
+              {state.climate.coreTempC !== null && (
+                <div className="climate-metric">
+                  <span className="climate-metric-label">Сердцевина продукта</span>
+                  <div className="climate-metric-val">
+                    <span className="climate-val-num">{state.climate.coreTempC.toFixed(1)}</span>
+                    <span className="climate-val-unit">°C</span>
+                    <span className="climate-target">цель −18 °C</span>
+                  </div>
+                </div>
+              )}
+            </div>
+            {state.climate.alert && (
+              <div className="climate-alert" role="alert">
+                <WarnIcon level={state.climate.status === 'critical' ? 'critical' : 'warning'} />
+                <span>{state.climate.alert}</span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {silo && (
+          <div className="section climate-section">
+            <div className="climate-head">
+              <span className="climate-title">Бункер бестарного хранения</span>
+              <span className="climate-badge is-ok">
+                {silo.currentTons} т / {silo.capacityTons} т
+              </span>
+            </div>
+            <div style={{ marginTop: 8 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 4 }}>
+                <span style={{ color: 'var(--text-sub)' }}>{silo.grade}</span>
+                <span style={{ fontWeight: 600 }}>{((silo.currentTons / silo.capacityTons) * 100).toFixed(0)} %</span>
+              </div>
+              <div style={{ height: 8, background: 'var(--bg-sub, rgba(255,255,255,0.08))', borderRadius: 4, overflow: 'hidden' }}>
+                <div
+                  style={{
+                    height: '100%',
+                    width: `${Math.min(100, (silo.currentTons / silo.capacityTons) * 100)}%`,
+                    background: eq.id === 'silo-3' ? '#b07038' : eq.id === 'silo-2' ? '#d99c2b' : '#3f88c5',
+                    borderRadius: 4,
+                  }}
+                />
+              </div>
+              {silo.connectedMixers && silo.connectedMixers.length > 0 && (
+                <div style={{ fontSize: 12, color: 'var(--text-sub)', marginTop: 8 }}>
+                  Подача в тестомесы: {silo.connectedMixers.map((m: string) => (m === 'mixer-1' ? 'Тестомес 1' : 'Тестомес 2')).join(', ')}
+                </div>
+              )}
+            </div>
           </div>
         )}
 

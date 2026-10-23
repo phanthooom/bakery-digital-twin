@@ -1,4 +1,4 @@
-import type { MachineKind, MachineStatus } from '@bakery/shared';
+import type { EquipmentConfig, MachineKind, MachineStatus } from '@bakery/shared';
 
 export interface MachineSpec {
   /** Высота корпуса, м (до верха без сигнальной колонны). */
@@ -21,6 +21,8 @@ export const SPECS: Record<MachineKind, MachineSpec> = {
   blastfreezer: { depth: 1.05, height: 2.35, ringRadius: 0.9, tower: [-0.3, 2.35, 0.3] },
   coldroom: { depth: 2.0, height: 2.92, ringRadius: 1.75, tower: [-1.15, 2.5, 0.85] },
   packer: { depth: 0.72, height: 1.8, ringRadius: 1.6, tower: [0.55, 1.48, -0.25] },
+  silo: { depth: 2.3, height: 4.8, ringRadius: 1.5, tower: [0.95, 4.8, 0.95] },
+  hvac: { depth: 2.2, height: 1.8, ringRadius: 2.0, tower: [1.2, 1.8, 0.8] },
   generic: { depth: 0.8, height: 1.2, ringRadius: 0.8, tower: [0.3, 1.2, 0.3] },
 };
 
@@ -35,4 +37,5 @@ export interface MachineLive {
 
 export interface BodyProps {
   live: MachineLive;
+  eq?: EquipmentConfig;
 }

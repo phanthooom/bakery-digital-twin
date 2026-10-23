@@ -100,22 +100,28 @@ function buildMixer() {
   cap.position.set(0, H - 0.03, 0.05);
   root.add(cap);
 
-  // 1.5. Круглая дежа (полированная нержавеющая сталь) с тестом внутри
+  // 1.5. Круглая дежа (полированная нержавеющая сталь) с тестом внутри (вращается)
   const bowlR = 0.44;
   const bowlH = 0.52;
   const bowlY = 0.08 + bowlH / 2 + 0.25;
   const bowlZ = 0.18;
 
+  const bowlGroup = new THREE.Group();
+  bowlGroup.name = 'anim_bowl';
+  bowlGroup.userData = { animated: true };
+  bowlGroup.position.set(0, bowlY, bowlZ);
+
   // Чаша дежи
   const bowl = new THREE.Mesh(new THREE.CylinderGeometry(bowlR, bowlR * 0.82, bowlH, 36, 1, false), M.chrome);
-  bowl.position.set(0, bowlY, bowlZ);
-  root.add(bowl);
+  bowl.userData = { animated: true };
+  bowlGroup.add(bowl);
 
   // Верхний массивный обод дежи
   const bowlRim = new THREE.Mesh(new THREE.TorusGeometry(bowlR, 0.022, 12, 36), M.chrome);
   bowlRim.rotation.x = Math.PI / 2;
-  bowlRim.position.set(0, bowlY + bowlH / 2, bowlZ);
-  root.add(bowlRim);
+  bowlRim.position.set(0, bowlH / 2, 0);
+  bowlRim.userData = { animated: true };
+  bowlGroup.add(bowlRim);
 
   // Опорный поворотный фрикционный стол под дежой
   const table = new THREE.Mesh(new THREE.CylinderGeometry(bowlR * 0.9, bowlR * 0.92, 0.25, 32), M.stainlessDark);
@@ -124,22 +130,33 @@ function buildMixer() {
 
   // Тесто внутри дежи
   const dough = new THREE.Mesh(new THREE.CylinderGeometry(bowlR * 0.78, bowlR * 0.72, 0.22, 24), M.doughRaw);
-  dough.position.set(0, bowlY - 0.05, bowlZ);
-  root.add(dough);
+  dough.position.set(0, -0.05, 0);
+  dough.userData = { animated: true };
+  bowlGroup.add(dough);
 
-  // 1.6. Спиральный месильный орган и отсекатель
+  root.add(bowlGroup);
+
+  // 1.6. Спиральный месильный орган (вращается)
+  const hookGroup = new THREE.Group();
+  hookGroup.name = 'anim_hook';
+  hookGroup.userData = { animated: true };
+  hookGroup.position.set(0.12, bowlY + 0.12, bowlZ);
+
   const hookShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.48, 16), M.chrome);
-  hookShaft.position.set(0.12, bowlY + 0.12, bowlZ);
-  root.add(hookShaft);
+  hookShaft.userData = { animated: true };
+  hookGroup.add(hookShaft);
 
   // Спиральный виток крюка
   for (let s = 0; s < 3; s++) {
     const hookLoop = new THREE.Mesh(new THREE.TorusGeometry(0.1, 0.02, 10, 24, Math.PI * 1.6), M.chrome);
     hookLoop.rotation.x = Math.PI / 2;
     hookLoop.rotation.y = (s * Math.PI) / 3;
-    hookLoop.position.set(0.12, bowlY + 0.05 - s * 0.08, bowlZ);
-    root.add(hookLoop);
+    hookLoop.position.set(0, -0.07 - s * 0.08, 0);
+    hookLoop.userData = { animated: true };
+    hookGroup.add(hookLoop);
   }
+
+  root.add(hookGroup);
 
   // Центральный нож-отсекатель теста (guide bar)
   const knife = new THREE.Mesh(new THREE.BoxGeometry(0.02, 0.42, 0.04), M.chrome);

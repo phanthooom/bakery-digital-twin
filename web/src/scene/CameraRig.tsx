@@ -19,6 +19,8 @@ export interface CameraFocus {
   z: number;
   lookY: number;
   dist: number;
+  /** Откуда смотреть (направление от точки к камере); по умолчанию — спереди и чуть со стороны центра цеха. */
+  dir?: [number, number, number];
 }
 
 export function CameraRig({ config, focus, viewToken, cardOffset }: { config: SiteConfig; focus: CameraFocus | null; viewToken: number; cardOffset: [number, number] }) {
@@ -32,13 +34,30 @@ export function CameraRig({ config, focus, viewToken, cardOffset }: { config: Si
   const overview = (smooth: boolean) => {
     const c = ref.current;
     if (!c) return;
-    const { width: W } = config.site.hall;
-    const cam = camera as THREE.PerspectiveCamera;
-    const vfov = THREE.MathUtils.degToRad(cam.fov);
-    const hfov = 2 * Math.atan(Math.tan(vfov / 2) * (size.width / Math.max(1, size.height)));
-    // запас по краям: косой ракурс и машины у рамп перед цехом
-    const dist = Math.max((W / 2 + 3.5) * 1.12 / Math.tan(hfov / 2), 11 / Math.tan(vfov / 2));
-    const pos = OVERVIEW_DIR.clone().multiplyScalar(dist).add(OVERVIEW_TARGET);
+    // весь корпус в кадре: подбираем расстояние так, чтобы углы корпуса (и полоса двора с рампами) попали в кадр
+    const { width: W, depth: D, height: H } = config.site.hall;
+    const cam = (camera as THREE.PerspectiveCamera).clone();
+    cam.aspect = size.width / Math.max(1, size.height);
+    cam.updateProjectionMatrix();
+    const corners: THREE.Vector3[] = [];
+    for (const x of [-W / 2 - 1, W / 2 + 1]) for (const z of [-D / 2 - 1, D / 2 + 4]) for (const y of [0, H]) corners.push(new THREE.Vector3(x, y, z));
+    const fits = (d: number) => {
+      cam.position.copy(OVERVIEW_DIR).multiplyScalar(d).add(OVERVIEW_TARGET);
+      cam.lookAt(OVERVIEW_TARGET);
+      cam.updateMatrixWorld();
+      return corners.every((c) => {
+        const v = c.clone().project(cam);
+        return v.z < 1 && Math.abs(v.x) <= 0.96 && Math.abs(v.y) <= 0.9;
+      });
+    };
+    let lo = 5;
+    let hi = 400;
+    for (let i = 0; i < 24; i++) {
+      const mid = (lo + hi) / 2;
+      if (fits(mid)) hi = mid;
+      else lo = mid;
+    }
+    const pos = OVERVIEW_DIR.clone().multiplyScalar(hi).add(OVERVIEW_TARGET);
     void c.setLookAt(pos.x, pos.y, pos.z, OVERVIEW_TARGET.x, OVERVIEW_TARGET.y, OVERVIEW_TARGET.z, smooth);
   };
 
@@ -67,7 +86,7 @@ export function CameraRig({ config, focus, viewToken, cardOffset }: { config: Si
     const d = focus.dist * (narrow ? 1.5 : 1);
     // смотрим спереди и чуть со стороны центра цеха, чтобы у стен камера не упиралась в стену
     const side = x > 0 ? -1 : 1;
-    const dir = new THREE.Vector3(side * 0.42, 0.55, 1).normalize().multiplyScalar(d);
+    const dir = (focus.dir ? new THREE.Vector3(...focus.dir) : new THREE.Vector3(side * 0.42, 0.55, 1)).normalize().multiplyScalar(d);
     void c.setLookAt(x + dir.x, lookY + dir.y, z + dir.z, x, lookY, z, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus?.key]);
@@ -82,9 +101,9 @@ export function CameraRig({ config, focus, viewToken, cardOffset }: { config: Si
     const c = ref.current;
     if (!c) return;
     const el = gl.domElement;
-    const { width: W, depth: D } = config.site.hall;
+    const { width: W, depth: D, height: H } = config.site.hall;
     c.mouseButtons.wheel = CameraControlsImpl.ACTION.NONE;
-    c.setBoundary(new THREE.Box3(new THREE.Vector3(-W / 2 - 3, 0, -D / 2 - 3), new THREE.Vector3(W / 2 + 3, 4, D / 2 + 9)));
+    c.setBoundary(new THREE.Box3(new THREE.Vector3(-W / 2 - 4, -1, -D / 2 - 4), new THREE.Vector3(W / 2 + 4, H + 6, D / 2 + 10)));
 
     const interpret = createWheelInterpreter();
     const raycaster = new THREE.Raycaster();
@@ -157,7 +176,7 @@ export function CameraRig({ config, focus, viewToken, cardOffset }: { config: Si
       ref={ref}
       makeDefault
       minDistance={2}
-      maxDistance={60}
+      maxDistance={140}
       minPolarAngle={0.15}
       maxPolarAngle={Math.PI * 0.46}
       smoothTime={0.45}

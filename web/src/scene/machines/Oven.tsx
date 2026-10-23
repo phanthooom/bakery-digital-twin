@@ -9,7 +9,7 @@ import type { BodyProps } from './specs';
 const PUFFS = 8;
 
 /** Пар из вытяжки — только когда печь работает. */
-function Steam({ active, y }: { active: boolean; y: number }) {
+export function Steam({ active, y }: { active: boolean; y: number }) {
   const group = useRef<THREE.Group>(null);
   const seeds = useRef(Array.from({ length: PUFFS }, (_, i) => ({ phase: i / PUFFS, dx: Math.random() - 0.5, dz: Math.random() - 0.5 })));
   const strength = useRef(0);

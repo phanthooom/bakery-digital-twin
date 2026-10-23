@@ -78,6 +78,9 @@ export class MachineSim {
   private readonly shares: number[];
   private energy: number;
   private bakesSinceRest = 0;
+  private tempC: number | null = null;
+  private humidityPct: number | null = null;
+  private coreTempC: number | null = null;
 
   constructor(readonly eq: EquipmentConfig, private readonly opts: SimOptions) {
     const spread = eq.kind === 'moulder' ? 0.2 : 0.1;
@@ -85,6 +88,19 @@ export class MachineSim {
     const mean = raw.reduce((s, v) => s + v, 0) / raw.length;
     this.shares = raw.map((v) => v / mean);
     this.energy = opts.energyKwh ?? Math.round(this.rand() * 5000);
+
+    if (eq.kind === 'oven') {
+      this.tempC = 226 + this.rand() * 8;
+    } else if (eq.kind === 'proofer') {
+      this.tempC = 36.6 + this.rand() * 1.2;
+      this.humidityPct = 78 + this.rand() * 4;
+    } else if (eq.kind === 'blastfreezer') {
+      this.tempC = -34 - this.rand() * 2;
+      this.coreTempC = -14 - this.rand() * 4;
+    } else if (eq.kind === 'coldroom') {
+      const isRaw = eq.id.includes('raw');
+      this.tempC = isRaw ? 3.8 + this.rand() * 0.8 : -18.2 + this.rand() * 0.8;
+    }
   }
 
   get energyKwh(): number {
@@ -170,6 +186,14 @@ export class MachineSim {
         return prev === 'on'
           ? { mode: 'standby', until: d(8, 15), level: 0.03 }
           : { mode: 'on', until: d(12, 20), level: 0.97, pulse: 0.01 };
+      case 'silo':
+        // виброразгрузка и пневмоподача муки в тестомесы короткими циклами
+        return prev === 'feed'
+          ? { mode: 'idle', until: d(8, 20), level: 0.01 }
+          : { mode: 'feed', until: d(3, 7), level: 0.72, pulse: 0.03 };
+      case 'hvac':
+        // приточно-вытяжная вентиляция с рекуперацией тепла печей работает стабильно всю смену
+        return { mode: 'running', until: d(30, 60), level: 0.82, pulse: 0.02 };
       default:
         return prev === 'work' ? { mode: 'idle', until: d(5, 10), level: 0.02 } : { mode: 'work', until: d(10, 20), level: 0.7, pulse: 0.05 };
     }
@@ -225,6 +249,48 @@ export class MachineSim {
     const uFactor = a?.type === 'undervoltage' ? a.factor : 1;
     const voltageV = shares.map(() => round(230 * uFactor + 2 * this.gauss(), 1));
 
+    const dtMin = Math.min(dtMs / 60_000, 5);
+    let climateTemp: number | undefined;
+    let targetTemp: number | undefined;
+    let climateHum: number | undefined;
+    let targetHum: number | undefined;
+    let climateCore: number | undefined;
+
+    if (this.eq.kind === 'oven') {
+      const active = level > 0.2;
+      const target = active ? 230 : 25;
+      const rate = active ? 0.08 : 0.02;
+      this.tempC = (this.tempC ?? target) + (target - (this.tempC ?? target)) * Math.min(1, dtMin * rate) + (active ? 0.15 * this.gauss() : 0);
+      climateTemp = round(this.tempC, 1);
+      targetTemp = 230;
+    } else if (this.eq.kind === 'proofer') {
+      const active = level > 0.15;
+      const targetT = active ? 37 : 24;
+      const targetH = active ? 80 : 45;
+      this.tempC = (this.tempC ?? targetT) + (targetT - (this.tempC ?? targetT)) * Math.min(1, dtMin * 0.1) + 0.08 * this.gauss();
+      this.humidityPct = (this.humidityPct ?? targetH) + (targetH - (this.humidityPct ?? targetH)) * Math.min(1, dtMin * 0.1) + 0.15 * this.gauss();
+      climateTemp = round(this.tempC, 1);
+      targetTemp = 37;
+      climateHum = Math.min(100, Math.max(0, round(this.humidityPct, 1)));
+      targetHum = 80;
+    } else if (this.eq.kind === 'blastfreezer') {
+      const active = level > 0.2;
+      const targetT = active ? -35 : 15;
+      this.tempC = (this.tempC ?? targetT) + (targetT - (this.tempC ?? targetT)) * Math.min(1, dtMin * 0.12) + 0.1 * this.gauss();
+      const targetCore = active ? -18 : 10;
+      this.coreTempC = (this.coreTempC ?? 15) + (targetCore - (this.coreTempC ?? 15)) * Math.min(1, dtMin * 0.04) + 0.05 * this.gauss();
+      climateTemp = round(this.tempC, 1);
+      targetTemp = -35;
+      climateCore = round(this.coreTempC, 1);
+    } else if (this.eq.kind === 'coldroom') {
+      const isRaw = this.eq.id.includes('raw');
+      const targetT = isRaw ? 4 : -18;
+      const cycle = Math.sin(nowMs / (6 * MIN) + (isRaw ? 0 : 2)) * (isRaw ? 0.8 : 1.2);
+      this.tempC = targetT + cycle + 0.08 * this.gauss();
+      climateTemp = round(this.tempC, 1);
+      targetTemp = targetT;
+    }
+
     const reading: Reading = {
       equipmentId: this.eq.id,
       ts: nowMs,
@@ -233,6 +299,11 @@ export class MachineSim {
       voltageV,
       powerFactor: round(pf, 2),
       energyKwh: round(this.energy, 3),
+      ...(climateTemp !== undefined ? { temperatureC: climateTemp } : {}),
+      ...(targetTemp !== undefined ? { targetTempC: targetTemp } : {}),
+      ...(climateHum !== undefined ? { humidityPct: climateHum } : {}),
+      ...(targetHum !== undefined ? { targetHumidityPct: targetHum } : {}),
+      ...(climateCore !== undefined ? { coreTempC: climateCore } : {}),
     };
     if (this.eq.meterId) reading.meterId = this.eq.meterId;
     if (seg.order && level > 0.1) reading.order = seg.order;

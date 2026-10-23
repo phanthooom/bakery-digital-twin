@@ -50,6 +50,26 @@ describe('parseReading', () => {
     });
   });
 
+  it('разбирает климатические поля (температура, влажность, температура ядра)', () => {
+    const payload = JSON.stringify({
+      powerKw: 2.5,
+      currentsA: [3.8, 3.7, 3.8],
+      temperatureC: 37.2,
+      targetTempC: 37,
+      humidityPct: 81.5,
+      targetHumidityPct: 80,
+      coreTempC: -18.2,
+    });
+    const r = parseReading('bakery/proofer-1/power', payload, { nowMs: NOW });
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.reading.temperatureC).toBe(37.2);
+    expect(r.reading.targetTempC).toBe(37);
+    expect(r.reading.humidityPct).toBe(81.5);
+    expect(r.reading.targetHumidityPct).toBe(80);
+    expect(r.reading.coreTempC).toBe(-18.2);
+  });
+
   it('принимает Buffer', () => {
     const r = parseReading(topic, Buffer.from('{"powerKw":1,"currentsA":[1,1,1]}'), { nowMs: NOW });
     expect(r.ok).toBe(true);

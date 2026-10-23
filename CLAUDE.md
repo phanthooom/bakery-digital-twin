@@ -4,9 +4,10 @@
 
 ## Где что
 - `config/equipment.json` — единственный источник правды о цехе: этапы, станки, пороги. Новый станок = новая запись; сцена, мок и симулятор подхватят её сами.
-- `packages/shared` — вся предметная логика (чистый TS, импортируется исходниками без сборки). Ядро — `TwinEngine` (`engine.ts`); `status`, `baseline`, `aiCheck`, `electrical` — его внутренние модули. Модель станков для мока и симулятора — `sim/machine.ts`. Цепочка поставок — `inventory.ts` и `logistics.ts`, демо-события цепочки — `web/src/data/mockSupply.ts`. Линии питания от щита — `feeder.ts` и `lineHealth.ts` (маршруты кабелей в сцене — `web/src/scene/powerRoutes.ts`). `node/` — только для Node (чтение конфига, `.env`).
+- `packages/shared` — вся предметная логика (чистый TS, импортируется исходниками без сборки). Ядро — `TwinEngine` (`engine.ts`); `status`, `baseline`, `aiCheck`, `electrical` — его внутренние модули. Модель станков для мока и симулятора — `sim/machine.ts`. Газ — `gas.ts` (утечки — ADR-0006), модель ввода газа для мока — `sim/gas.ts`. Цепочка поставок — `inventory.ts` и `logistics.ts`, демо-события цепочки — `web/src/data/mockSupply.ts`. Линии питания от щита — `feeder.ts` и `lineHealth.ts` (маршруты кабелей в сцене — `web/src/scene/powerRoutes.ts`). `node/` — только для Node (чтение конфига, `.env`).
 - `web` — React + Vite + React Three Fiber. Данные приходят только через интерфейс `DataSource` (`web/src/data/`); сцена и карточки не знают, мок это или живые данные.
 - `web/src/scene/machines/` — процедурные формы по `kind` (+ высоты и место сигнальной колонны в `specs.ts`). GLB: файл в `web/public/models/`, у станка `"model": "/models/x.glb"`.
+- Производительность: неподвижное оборачиваем в `MergeStatic` (`web/src/scene/merge.ts` склеивает меши по материалу), GLB через `GltfModel` склеиваются сами. Сторонние модели перед добавлением ужимаем скриптом в `scripts/build-*.mjs` (авторство — `web/public/models/CREDITS.md`).
 - `simulator` — публикует показания в MQTT по `docs/mqtt-contract.md` (нужен `docker compose up -d`). Фронт от него сейчас не зависит.
 
 ## Правила
@@ -42,5 +43,6 @@ Single-context: `GLOSSARY.md` в корне + `docs/adr/`. See `docs/agents/doma
 6. Учёт энергии: `packages/shared/src/energy.ts` (тариф по дате и зоне суток, смены, журнал кВт·ч по часам, сводки) и `web/src/ui/energyReport.ts` (выпуск, удельный расход, прогноз, листы Excel).
 7. Цепочка поставок: `Inventory` (`packages/shared/src/inventory.ts`: приход, выпуск по рецептуре FEFO, упаковка, отгрузка, списание, дни запаса, прослеживаемость), `tripStatus`/`vehicleState` (`logistics.ts`), `supplyView` (`web/src/ui/supplyView.ts`: уровни запаса и предупреждения).
 8. Чистые функции фронта: `web/src/ui/format.ts`, `web/src/ui/chartMath.ts`, `web/src/ui/useChartViewport.ts` (окно графика и жесты), `web/src/scene/gestures.ts` (жесты тачпада и колесо → камера).
+9. Газ: `GasMonitor` и `expectedGasFlow` (`packages/shared/src/gas.ts`: ожидаемый расход по горелкам, сигнализатор, расход без потребителей, перерасход, «нет связи», история и объём); газ в `MockDataSource` (`getGas`, `simulateGas`).
 
 Внутренние модули движка (`status`, `baseline`, `aiCheck`, `electrical`) — internal seams `TwinEngine`, их тесты допустимы. 3D-сцену и React-компоненты проверяем в браузере (скриншоты Playwright), без unit-тестов.

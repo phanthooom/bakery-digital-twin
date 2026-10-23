@@ -1,5 +1,5 @@
 import type { SupplySnapshot } from './mockSupply';
-import type { EnergyEntry, FaultType, EquipmentState, PowerPoint, SiteConfig } from '@bakery/shared';
+import type { EnergyEntry, FaultType, EquipmentState, GasEvent, GasPoint, GasState, PowerPoint, SiteConfig, TelegramOrder } from '@bakery/shared';
 
 export interface HistoryResult {
   points: PowerPoint[];
@@ -26,4 +26,16 @@ export interface DataSource {
   getSupply?(now: number): SupplySnapshot | null;
   /** Только для демо: вызвать демо-событие (неисправность модели) на станке. */
   simulate?(id: string, type: FaultType): void;
+  /** Газ на вводе: расход, ожидаемое по горелкам, загазованность, тревоги. null — газа в конфиге нет. */
+  getGas?(): GasState | null;
+  /** Расход и ожидаемое для графика за hours часов. */
+  getGasHistory?(hours: number, bucketMs?: number): GasPoint[];
+  /** Объём газа за период, м³ (по счётному механизму). */
+  getGasVolume?(fromMs: number, toMs: number): number;
+  /** Только для демо: утечка газа. */
+  simulateGas?(type: GasEvent): void;
+  /** Передать заказ из Telegram (для отображения на станках, списания сырья и отгрузки). */
+  dispatchTelegramOrder?(order: TelegramOrder): void;
+  /** Подписка на уведомления о заказах из Telegram */
+  onTelegramOrder?(listener: (order: TelegramOrder) => void): () => void;
 }

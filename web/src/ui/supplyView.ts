@@ -1,7 +1,12 @@
 import { vehicleState, type MaterialConfig, type ProductConfig, type SiteConfig, type Trip, type VehicleConfig } from '@bakery/shared';
 import type { SupplySnapshot } from '../data/mockSupply';
 
-const HOUR = 3_600_000;
+const MIN = 60_000;
+const HOUR = 60 * MIN;
+/** Тележка-шпилька: 18 противней по ~2,5 кг. */
+export const TROLLEY_KG = 45;
+const OVEN_AHEAD_MIN = 75;
+const COOLING_MIN = 45;
 
 export type SupplyLevel = 'ok' | 'low' | 'critical';
 
@@ -30,6 +35,10 @@ export interface GoodsRow {
   writtenOff7d: number;
 }
 
+/** Машина поставщика у рампы приёмки — её id в выборе (у фургонов — id из config.supply.vehicles) и номер. */
+export const SUPPLIER_VEHICLE = 'supplier';
+export const SUPPLIER_PLATE = '01 X 555 SA';
+
 export type SupplyTab = 'overview' | 'raw' | 'goods' | 'trips' | 'lots';
 
 export interface SupplyAlert {
@@ -45,10 +54,40 @@ export interface VehicleRow {
   next: Trip | null;
 }
 
+/** Поставка сырья для приёмки: когда, что и сколько. */
+export interface DeliveryRow {
+  at: number;
+  material: MaterialConfig;
+  qty: number;
+  supplier: string;
+}
+
+export interface ReceivingView {
+  /** Поставка, под которую машина поставщика стоит у рампы (за 15 мин до и 45 мин после). */
+  atDock: DeliveryRow | null;
+  /** Ближайшие будущие поставки по времени. */
+  upcoming: DeliveryRow[];
+}
+
+/** Тележки на полу цеха: сколько кг и тележек (≈ TROLLEY_KG на тележку). */
+export interface TrolleyLoad {
+  kg: number;
+  trolleys: number;
+}
+
+export interface FloorView {
+  /** Тесто в расстойке и перед печами — партии, которые испекутся в ближайшие OVEN_AHEAD_MIN. */
+  ovenQueue: TrolleyLoad;
+  /** Хлеб на остывании — испечён за последние COOLING_MIN. */
+  cooling: TrolleyLoad;
+}
+
 export interface SupplyView {
   raw: RawRow[];
   goods: GoodsRow[];
   vehicles: VehicleRow[];
+  receiving: ReceivingView;
+  floor: FloorView;
   alerts: SupplyAlert[];
   /** Рейсы с выездом в ближайшие/прошедшие 12 ч. */
   tripsToday: Trip[];
@@ -97,6 +136,17 @@ export function supplyView(snap: SupplySnapshot, config: SiteConfig, startOfToda
 
   const vehicles: VehicleRow[] = supply.vehicles.map((v) => ({ vehicle: v, ...vehicleState(v.id, snap.trips, now) }));
 
+  const deliveries: DeliveryRow[] = snap.deliveries
+    .flatMap((d) => {
+      const material = supply.materials.find((m) => m.id === d.materialId);
+      return material ? [{ at: d.at, material, qty: d.qty, supplier: d.supplier }] : [];
+    })
+    .sort((a, b) => a.at - b.at);
+  const receiving: ReceivingView = {
+    atDock: deliveries.find((d) => d.at > now - 45 * MIN && d.at < now + 15 * MIN) ?? null,
+    upcoming: deliveries.filter((d) => d.at > now).slice(0, 4),
+  };
+
   const alerts: SupplyAlert[] = [];
   for (const r of raw) {
     if (r.level === 'ok') continue;
@@ -122,5 +172,11 @@ export function supplyView(snap: SupplySnapshot, config: SiteConfig, startOfToda
   alerts.sort((a, b) => (a.level === b.level ? 0 : a.level === 'critical' ? -1 : 1));
 
   const tripsToday = snap.trips.filter((t) => t.departAt > now - 12 * HOUR && t.departAt < now + 12 * HOUR).sort((a, b) => a.departAt - b.departAt);
-  return { raw, goods, vehicles, alerts, tripsToday };
+  const load = (kg: number): TrolleyLoad => ({ kg, trolleys: Math.ceil(kg / TROLLEY_KG) });
+  const floor: FloorView = {
+    ovenQueue: load((snap.planned ?? []).filter((p) => p.at > now && p.at <= now + OVEN_AHEAD_MIN * MIN).reduce((a, p) => a + p.kg, 0)),
+    cooling: load(snap.production.filter((p) => p.at > now - COOLING_MIN * MIN && p.at <= now).reduce((a, p) => a + p.kg, 0)),
+  };
+
+  return { raw, goods, vehicles, receiving, floor, alerts, tripsToday };
 }

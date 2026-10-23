@@ -48,4 +48,32 @@ describe('supplyView — что показать по цепочке', () => {
     expect(v.alerts[1]!.text).toBe('Просрочено и не отгружено: 50 кг — на списание');
     expect(v.goods.find((g) => g.product.id === 'baguette')).toMatchObject({ packed: 90, expiringSoon: 40, expired: 50 });
   });
+
+  it('приёмка: машина поставщика у рампы за 15 мин до и 45 мин после поставки; дальше — ближайшие поставки по времени', () => {
+    const d = (materialId: string, at: number, qty = 100) => ({ at, materialId, qty, supplier: 'S', lotId: null });
+    const deliveries = [d('flour', NOW - 2 * H), d('milk', NOW - 30 * 60_000, 40), d('eggs', NOW + 5 * H), d('butter', NOW + 3 * H)];
+    const v = supplyView(snapshot(() => {}, { deliveries }), config, NOW - 5 * H);
+    expect(v.receiving.atDock).toMatchObject({ at: NOW - 30 * 60_000, qty: 40, material: { id: 'milk' } });
+    expect(v.receiving.upcoming.map((r) => r.material.id)).toEqual(['butter', 'eggs']);
+
+    const later = supplyView(snapshot(() => {}, { deliveries, now: NOW + 20 * 60_000 }), config, NOW - 5 * H);
+    expect(later.receiving.atDock).toBeNull(); // разгрузка молока закончилась (45 мин)
+    const before = supplyView(snapshot(() => {}, { deliveries, now: NOW + 3 * H - 10 * 60_000 }), config, NOW - 5 * H);
+    expect(before.receiving.atDock?.material.id).toBe('butter'); // приехал за 15 мин до поставки
+  });
+
+  it('цех: перед печами — партии, что испекутся в ближайшие 75 мин; на остывании — испечённые за 45 мин; тележка ≈ 45 кг', () => {
+    const M = 60_000;
+    const production = [
+      { at: NOW - 30 * M, productId: 'baguette', kg: 70, lotId: 'L1', shiftKey: 's' },
+      { at: NOW - 50 * M, productId: 'toast', kg: 60, lotId: 'L2', shiftKey: 's' }, // уже остыл
+    ];
+    const planned = [
+      { at: NOW + 40 * M, productId: 'croissant', kg: 100 },
+      { at: NOW + 3 * H, productId: 'baguette', kg: 80 }, // ещё не начинали
+    ];
+    const v = supplyView(snapshot(() => {}, { production, planned }), config, NOW - 5 * H);
+    expect(v.floor.ovenQueue).toEqual({ kg: 100, trolleys: 3 });
+    expect(v.floor.cooling).toEqual({ kg: 70, trolleys: 2 });
+  });
 });

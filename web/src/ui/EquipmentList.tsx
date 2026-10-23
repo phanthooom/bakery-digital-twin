@@ -40,6 +40,16 @@ export function EquipmentList({ config, selectedId, onSelect }: { config: SiteCo
                           <button className="row-btn" onClick={(ev) => { ev.stopPropagation(); onSelect(e.id); }}>
                             {e.name}
                           </button>
+                          {e.floor === 2 && (
+                            <span className="row-climate-pill" style={{ background: '#eaf2fd', color: '#1c5cab', borderColor: 'rgba(28,92,171,0.2)' }} title="Размещено на 2-м этаже (антресоли)">
+                              2 эт.
+                            </span>
+                          )}
+                          {s?.climate?.temperatureC != null && !off && (
+                            <span className="row-climate-pill" title={s.climate.alert ?? `Температура ${s.climate.temperatureC.toFixed(1)} °C`}>
+                              {s.climate.temperatureC.toFixed(0)}°C
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td>

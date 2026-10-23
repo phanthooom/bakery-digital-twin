@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useMemo, useSyncExternalStore } from 'react';
 import { useNow } from '../ui/useNow';
 import type { SupplySnapshot } from './mockSupply';
-import { validateSiteConfig, type EquipmentState } from '@bakery/shared';
+import { validateSiteConfig, type EquipmentState, type GasState } from '@bakery/shared';
 import rawConfig from '../../../config/equipment.json';
 import type { DataSource } from './DataSource';
 import { MockDataSource } from './MockDataSource';
@@ -44,4 +44,13 @@ export function useSupply(): SupplySnapshot | null {
   const ds = useDataSource();
   const now = useNow(30_000);
   return useMemo(() => ds.getSupply?.(now) ?? null, [ds, now]);
+}
+
+/** Газ на вводе: расход, ожидаемое, загазованность и тревоги. null — газа в конфиге нет. */
+export function useGas(): GasState | null {
+  const ds = useDataSource();
+  return useSyncExternalStore(
+    useCallback((cb) => ds.subscribe(cb), [ds]),
+    () => ds.getGas?.() ?? null,
+  );
 }

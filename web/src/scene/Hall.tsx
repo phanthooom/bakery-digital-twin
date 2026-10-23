@@ -1,16 +1,17 @@
 import { useMemo } from 'react';
-import { Line, RoundedBox } from '@react-three/drei';
+import { Line } from '@react-three/drei';
 import * as THREE from 'three';
-import type { SiteConfig, StageConfig } from '@bakery/shared';
+import type { FloorPoint, FloorRect, SiteConfig } from '@bakery/shared';
 import { M } from './materials';
-import { makeLabelTexture, makeStripeTexture } from './textures';
+import { makeLabelTexture } from './textures';
+import { TRAY_Y, trayOf } from './powerRoutes';
+import { MergeStatic } from './MergeStatic';
+import { Walls } from './Walls';
 
-/** Линия потока и подписи этапов идут по полу перед станками. */
-const FLOW_Z = 0.55;
-const LABEL_Z = 1.25;
-const ZONE_Z: [number, number] = [-4.45, -0.85];
+/** Шаг стрелок на линии потока, м. */
+const CHEVRON_STEP = 4;
 
-function FloorLabel({ text, x, z, height = 0.62, color = '#3d3d3a', align = 'left', font }: { text: string; x: number; z: number; height?: number; color?: string; align?: 'left' | 'center'; font?: string }) {
+export function FloorLabel({ text, x, z, height = 0.62, color = '#3d3d3a', align = 'left', font }: { text: string; x: number; z: number; height?: number; color?: string; align?: 'left' | 'center'; font?: string }) {
   const { texture, aspect } = useMemo(() => makeLabelTexture(text, { fontSize: 110, weight: 650, color, letterSpacing: font ? 2 : 10, font }), [text, color, font]);
   // x — левый край подписи
   return (
@@ -21,10 +22,12 @@ function FloorLabel({ text, x, z, height = 0.62, color = '#3d3d3a', align = 'lef
   );
 }
 
-function StageZone({ stage }: { stage: StageConfig }) {
-  const x0 = stage.xFrom + 0.25;
-  const x1 = stage.xTo - 0.25;
-  const [z0, z1] = ZONE_Z;
+/** Контур зоны на полу со скруглёнными углами (отступ 0,25 м внутрь). */
+export function ZoneOutline({ zone, color = '#4a4a46' }: { zone: FloorRect; color?: string }) {
+  const x0 = zone.x0 + 0.25;
+  const x1 = zone.x1 - 0.25;
+  const z0 = zone.z0 + 0.25;
+  const z1 = zone.z1 - 0.25;
   const r = 0.35;
   const pts = useMemo(() => {
     const shape = new THREE.Shape();
@@ -39,163 +42,88 @@ function StageZone({ stage }: { stage: StageConfig }) {
     shape.quadraticCurveTo(x0, z0, x0 + r, z0);
     return shape.getPoints(8).map((p) => new THREE.Vector3(p.x, 0.011, p.y));
   }, [x0, x1, z0, z1]);
-  return <Line points={pts} color="#4a4a46" lineWidth={1.6} />;
+  return <Line points={pts} color={color} lineWidth={1.6} />;
 }
 
-function FlowLine({ stages, xFrom, xTo }: { stages: StageConfig[]; xFrom: number; xTo: number }) {
-  const chevrons = stages.slice(1).map((s) => s.xFrom - 0.25);
+/** Линия потока по полу: ломаная от приёмки до отгрузки со стрелками по ходу. */
+function FlowLine({ points }: { points: FloorPoint[] }) {
+  const chevrons = useMemo(() => {
+    const out: { x: number; z: number; a: number }[] = [];
+    let carry = CHEVRON_STEP / 2;
+    for (let i = 1; i < points.length; i++) {
+      const [ax, az] = points[i - 1]!;
+      const [bx, bz] = points[i]!;
+      const len = Math.hypot(bx - ax, bz - az);
+      const a = Math.atan2(bz - az, bx - ax);
+      for (let d = carry; d < len; d += CHEVRON_STEP) out.push({ x: ax + ((bx - ax) * d) / len, z: az + ((bz - az) * d) / len, a });
+      carry = CHEVRON_STEP - ((len - carry) % CHEVRON_STEP);
+    }
+    const [lx, lz] = points.at(-1)!;
+    const [px, pz] = points.at(-2)!;
+    out.push({ x: lx, z: lz, a: Math.atan2(lz - pz, lx - px) });
+    return out;
+  }, [points]);
   return (
     <group>
-      <Line points={[[xFrom, 0.012, FLOW_Z], [xTo, 0.012, FLOW_Z]]} color="#c79a2a" lineWidth={2} />
-      {[...chevrons, xTo].map((x) => (
-        <Line
-          key={x}
-          points={[[x - 0.22, 0.012, FLOW_Z - 0.14], [x, 0.012, FLOW_Z], [x - 0.22, 0.012, FLOW_Z + 0.14]]}
-          color="#c79a2a"
-          lineWidth={2}
-        />
-      ))}
-    </group>
-  );
-}
-
-function Windows({ length, y0, y1, along }: { length: number; y0: number; y1: number; along: 'x' | 'z' }) {
-  const bays = Math.round(length / 4);
-  const bay = length / bays;
-  const h = y1 - y0;
-  return (
-    <group>
-      {Array.from({ length: bays }, (_, i) => {
-        const c = -length / 2 + bay * (i + 0.5);
-        const panes = 4;
-        return (
-          <group key={i} position={along === 'x' ? [c, (y0 + y1) / 2, 0] : [0, (y0 + y1) / 2, c]} rotation={along === 'z' ? [0, Math.PI / 2, 0] : [0, 0, 0]}>
-            <mesh material={M.frame}>
-              <boxGeometry args={[bay - 0.9, h + 0.08, 0.04]} />
-            </mesh>
-            {Array.from({ length: panes }, (_, k) => {
-              const pw = (bay - 0.9 - 0.04 * (panes + 1)) / panes;
-              return (
-                <mesh key={k} position={[-(bay - 0.9) / 2 + 0.04 + pw / 2 + k * (pw + 0.04), 0, 0.025]} material={M.window}>
-                  <planeGeometry args={[pw, h - 0.08]} />
-                </mesh>
-              );
-            })}
-          </group>
-        );
-      })}
-    </group>
-  );
-}
-
-/** Цех: пол, стены с окнами, колонны, трубы и кабель-канал, зоны этапов и подписи. */
-export function Hall({ config }: { config: SiteConfig }) {
-  const { width: W, depth: D, height: H } = config.site.hall;
-  const stripes = useMemo(() => {
-    const t = makeStripeTexture();
-    t.repeat.set(3, 1);
-    return t;
-  }, []);
-  const stages = [...config.stages].sort((a, b) => a.order - b.order);
-  const xs = config.equipment.map((e) => e.position.x);
-  const T = 0.25;
-
-  return (
-    <group>
-      {/* пол и цоколь */}
-      <mesh position={[0, -0.13, 0]} material={M.floorEdge} receiveShadow>
-        <boxGeometry args={[W + 1.2, 0.2, D + 1.2]} />
-      </mesh>
-      <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} material={M.floor} receiveShadow>
-        <planeGeometry args={[W, D]} />
-      </mesh>
-
-      {/* задняя стена с окнами */}
-      <mesh position={[0, H / 2, -D / 2 - T / 2]} material={M.wall} receiveShadow>
-        <boxGeometry args={[W + 2 * T, H, T]} />
-      </mesh>
-      <mesh position={[0, 0.6, -D / 2 + 0.01]} material={M.wallPanel}>
-        <boxGeometry args={[W, 1.2, 0.02]} />
-      </mesh>
-      <group position={[0, 0, -D / 2 + 0.02]}>
-        <Windows length={W} y0={3.0} y1={4.4} along="x" />
-      </group>
-      {/* боковые стены */}
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <mesh position={[s * (W / 2 + T / 2), H / 2, 0]} material={M.wall} receiveShadow>
-            <boxGeometry args={[T, H, D]} />
-          </mesh>
-          <group position={[s * (W / 2 - 0.02), 0, 0]} rotation={[0, s < 0 ? 0 : Math.PI, 0]}>
-            <Windows length={D} y0={3.0} y1={4.4} along="z" />
-          </group>
+      <Line points={points.map(([x, z]) => [x, 0.012, z] as [number, number, number])} color="#c79a2a" lineWidth={2} />
+      {chevrons.map((c, i) => (
+        <group key={i} position={[c.x, 0.012, c.z]} rotation={[0, -c.a, 0]}>
+          <Line points={[[-0.22, 0, -0.14], [0, 0, 0], [-0.22, 0, 0.14]]} color="#c79a2a" lineWidth={2} />
         </group>
       ))}
-      {/* дверь в левой стене */}
-      <group position={[-W / 2 + 0.03, 0, 2.0]}>
-        <mesh position={[0, 1.1, 0]} material={M.frame}>
-          <boxGeometry args={[0.04, 2.2, 1.3]} />
-        </mesh>
-        <mesh position={[0.01, 1.08, 0]} material={M.steelLight}>
-          <boxGeometry args={[0.04, 2.1, 1.2]} />
-        </mesh>
-        <mesh position={[0.05, 1.05, 0.45]} material={M.chrome}>
-          <boxGeometry args={[0.03, 0.04, 0.18]} />
-        </mesh>
-      </group>
-      {/* передний бортик — цех открыт к зрителю, как на схеме */}
-      <mesh position={[0, 0.15, D / 2 + T / 2]} material={M.wall} castShadow receiveShadow>
-        <boxGeometry args={[W + 2 * T, 0.3, T]} />
-      </mesh>
+    </group>
+  );
+}
 
-      {/* колонны по задней стене */}
-      {Array.from({ length: Math.round(W / 4) + 1 }, (_, i) => -W / 2 + i * (W / Math.round(W / 4))).map((x) => (
-        <mesh key={x} position={[x, H / 2, -D / 2 + 0.2]} material={M.column} castShadow receiveShadow>
-          <boxGeometry args={[0.4, H, 0.4]} />
-        </mesh>
-      ))}
+/** Цех: пол, стены (Walls), колонны, кабельный лоток, зоны этапов, линия потока и подписи. */
+export function Hall({ config }: { config: SiteConfig }) {
+  const { width: W, depth: D, height: H } = config.site.hall;
+  const stages = [...config.stages].sort((a, b) => a.order - b.order);
+  const tray = trayOf(config);
+  const cols = config.site.hall.columns;
 
-      {/* трубы и кабель-канал вдоль задней стены */}
-      {[3.45, 3.7].map((y, i) => (
-        <mesh key={y} position={[0, y, -D / 2 + 0.55 + i * 0.22]} rotation={[0, 0, Math.PI / 2]} material={M.pipe} castShadow>
-          <cylinderGeometry args={[0.07 - i * 0.02, 0.07 - i * 0.02, W, 16]} />
+  return (
+    <group>
+      <Walls config={config} />
+      <MergeStatic>
+        {/* пол и цоколь */}
+        <mesh position={[0, -0.13, 0]} material={M.floorEdge} receiveShadow>
+          <boxGeometry args={[W + 1.2, 0.2, D + 1.2]} />
         </mesh>
-      ))}
-      <mesh position={[0, 2.85, -D / 2 + 1.25]} material={M.steelDark} castShadow>
-        <boxGeometry args={[W - 1, 0.05, 0.35]} />
-      </mesh>
+        <mesh position={[0, 0.001, 0]} rotation={[-Math.PI / 2, 0, 0]} material={M.floor} receiveShadow>
+          <planeGeometry args={[W, D]} />
+        </mesh>
+
+        {/* кабельный лоток под потолком — по ломаной из конфига */}
+        {tray.slice(1).map(([bx, bz], i) => {
+          const [ax, az] = tray[i]!;
+          const len = Math.hypot(bx - ax, bz - az);
+          return (
+            <mesh key={i} position={[(ax + bx) / 2, TRAY_Y - 0.05, (az + bz) / 2]} rotation={[0, -Math.atan2(bz - az, bx - ax), 0]} material={M.steelDark} castShadow>
+              <boxGeometry args={[len + 0.35, 0.05, 0.35]} />
+            </mesh>
+          );
+        })}
+        {/* колонны внутри корпуса */}
+        {cols?.xs.flatMap((x) =>
+          cols.zs.map((z) => (
+            <mesh key={`${x}:${z}`} position={[x, H / 2, z]} material={M.column} castShadow receiveShadow>
+              <boxGeometry args={[0.4, H, 0.4]} />
+            </mesh>
+          )),
+        )}
 
 
-      {/* поддон с мешками муки у замеса */}
-      <group position={[-19.0, 0, -1.45]}>
-        <mesh position={[0, 0.07, 0]} material={M.wood} castShadow receiveShadow>
-          <boxGeometry args={[1.0, 0.14, 0.8]} />
-        </mesh>
-        {[
-          [-0.24, 0.24, -0.18],
-          [0.24, 0.24, -0.18],
-          [-0.24, 0.24, 0.18],
-          [0.24, 0.24, 0.18],
-          [0, 0.43, 0],
-        ].map(([x, y, z], i) => (
-          <RoundedBox key={i} args={[0.46, 0.18, 0.34]} radius={0.07} position={[x!, y!, z!]} material={M.sack} castShadow />
+        {/* зоны этапов, линия потока, подписи */}
+        {stages.map((s) => (
+          <ZoneOutline key={s.id} zone={s.zone} />
         ))}
-      </group>
-      {/* предупредительная разметка у формовки */}
-      <mesh position={[-7.8, 0.012, -4.05]} rotation={[-Math.PI / 2, 0, 0]}>
-        <planeGeometry args={[1.5, 0.5]} />
-        <meshStandardMaterial map={stripes} roughness={0.8} />
-      </mesh>
+        {config.site.flow && config.site.flow.length >= 2 && <FlowLine points={config.site.flow} />}
+        {stages.map((s) => (
+          <FloorLabel key={s.id} text={s.label} x={s.zone.x0 + 0.45} z={s.zone.z1 - 0.75} />
+        ))}
 
-      {/* зоны этапов, линия потока, подписи */}
-      {stages.map((s) => (
-        <StageZone key={s.id} stage={s} />
-      ))}
-      <FlowLine stages={stages} xFrom={Math.min(...xs, stages[0]!.xFrom) - 0.3} xTo={stages.at(-1)!.xTo - 0.2} />
-      {stages.map((s) => (
-        <FloorLabel key={s.id} text={s.label} x={s.xFrom + 0.2} z={LABEL_Z} />
-      ))}
-
+      </MergeStatic>
     </group>
   );
 }

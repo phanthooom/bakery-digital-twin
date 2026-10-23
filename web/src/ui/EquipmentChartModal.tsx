@@ -150,6 +150,42 @@ export function EquipmentChartModal({ eq, isOpen, onClose }: EquipmentChartModal
             </div>
           </div>
 
+          {state.climate && (
+            <div className="modal-metric-card">
+              <div className="metric-card-title">Технологический микроклимат</div>
+              <div className="modal-stat-list">
+                {state.climate.temperatureC !== null && (
+                  <div className="stat-row">
+                    <span className="stat-label">Температура в камере:</span>
+                    <span className="stat-val font-bold">
+                      {state.climate.temperatureC.toFixed(1)} °C {state.climate.targetTempC !== null && `(цель ${state.climate.targetTempC} °C)`}
+                    </span>
+                  </div>
+                )}
+                {state.climate.humidityPct !== null && (
+                  <div className="stat-row">
+                    <span className="stat-label">Относительная влажность:</span>
+                    <span className="stat-val font-bold">
+                      {state.climate.humidityPct.toFixed(1)} % {state.climate.targetHumidityPct !== null && `(цель ${state.climate.targetHumidityPct} %)`}
+                    </span>
+                  </div>
+                )}
+                {state.climate.coreTempC !== null && (
+                  <div className="stat-row">
+                    <span className="stat-label">Температура сердцевины:</span>
+                    <span className="stat-val font-bold">{state.climate.coreTempC.toFixed(1)} °C (цель −18 °C)</span>
+                  </div>
+                )}
+                <div className="stat-row">
+                  <span className="stat-label">Статус режима:</span>
+                  <span className={`climate-badge is-${state.climate.status}`}>
+                    {state.climate.alert ?? (state.climate.status === 'ok' ? 'В пределах нормы' : state.climate.status)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Сводка по пикам и счётчику */}
           <div className="modal-metric-card">
             <div className="metric-card-title">Параметры датчика и пиков</div>

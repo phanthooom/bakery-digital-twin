@@ -1,4 +1,4 @@
-import type { SiteConfig } from './types';
+import { AREA_KINDS, type FloorRect, type SiteConfig } from './types';
 
 const ID_RE = /^[a-z0-9][a-z0-9_-]{0,63}$/;
 const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
@@ -28,6 +28,10 @@ export function validateSiteConfig(raw: unknown): { config: SiteConfig | null; e
   if (!Array.isArray(c.equipment)) errors.push('equipment должен быть массивом');
   if (errors.length) return { config: null, errors };
 
+  const hall = c.site!.hall;
+  c.stages!.forEach((s, i) => {
+    if (!rectInHall(s.zone, hall)) errors.push(`stages[${i}] (${s.id}): zone — прямоугольник x0 < x1, z0 < z1 внутри цеха`);
+  });
   const stageIds = new Set(c.stages!.map((s) => s.id));
   const seen = new Set<string>();
   c.equipment!.forEach((e, i) => {
@@ -46,9 +50,48 @@ export function validateSiteConfig(raw: unknown): { config: SiteConfig | null; e
     const p = e.position as unknown as Record<string, unknown> | undefined;
     if (!p || !isNum(p.x) || !isNum(p.y) || !isNum(p.z)) errors.push(`${at}: position должен быть {x, y, z} числами`);
     if (e.model != null && typeof e.model !== 'string') errors.push(`${at}: model — строка (путь к .glb) или null`);
+    if (e.gasM3h !== undefined && (!isNum(e.gasM3h) || e.gasM3h <= 0)) errors.push(`${at}: gasM3h — расход горелки, м³/ч, должен быть > 0`);
+    if (e.climate !== undefined) {
+      const cl = e.climate as unknown as Record<string, unknown>;
+      if (!isNum(cl.targetTempC) || !isNum(cl.minTempC) || !isNum(cl.maxTempC) || cl.minTempC >= cl.maxTempC) {
+        errors.push(`${at}: climate — нужны targetTempC, minTempC < maxTempC`);
+      }
+    }
+  });
+  const gas = (c as { gas?: Record<string, unknown> }).gas;
+  if (gas !== undefined) errors.push(...validateGas(gas));
+  (c.staff ?? []).forEach((s, i) => {
+    if (s.spot) return;
+    if (!Array.isArray(s.at) || !s.at.length) errors.push(`staff[${i}]: at — хотя бы один станок (или spot — место без станка)`);
+    else for (const id of s.at) if (!seen.has(id)) errors.push(`staff[${i}]: неизвестный станок "${id}"`);
+  });
+  (c.areas ?? []).forEach((a, i) => {
+    const at = `areas[${i}] (${a.id})`;
+    if (!(AREA_KINDS as readonly string[]).includes(a.kind)) errors.push(`${at}: kind — одно из ${AREA_KINDS.join(', ')}`);
+    if (!rectInHall(a.zone, hall)) errors.push(`${at}: zone — прямоугольник x0 < x1, z0 < z1 внутри цеха`);
   });
 
   return errors.length ? { config: null, errors } : { config: c as SiteConfig, errors };
+}
+
+function rectInHall(z: FloorRect | undefined, hall: { width: number; depth: number }): boolean {
+  const inside = (v: number, half: number) => isNum(v) && Math.abs(v) <= half + 1e-9;
+  return !!z && z.x0 < z.x1 && z.z0 < z.z1 && [z.x0, z.x1].every((v) => inside(v, hall.width / 2)) && [z.z0, z.z1].every((v) => inside(v, hall.depth / 2));
+}
+
+function validateGas(gas: Record<string, unknown>): string[] {
+  const errors: string[] = [];
+  const meter = gas.meter as Record<string, unknown> | undefined;
+  if (!meter || typeof meter.id !== 'string' || !isNum(meter.maxM3h) || meter.maxM3h <= 0) errors.push('gas.meter: нужны id и maxM3h > 0');
+  const det = gas.detector as Record<string, unknown> | undefined;
+  if (det !== undefined && (!isNum(det.warnLel) || !isNum(det.alarmLel) || det.warnLel <= 0 || det.alarmLel <= det.warnLel || det.alarmLel > 100)) {
+    errors.push('gas.detector: пороги в % НКПР, 0 < warnLel < alarmLel ≤ 100');
+  }
+  const leak = gas.leak as Record<string, unknown> | undefined;
+  const keys = ['idleFlowM3h', 'idleMinutes', 'overPct', 'overMinM3h', 'overMinutes'];
+  if (!leak || keys.some((k) => !isNum(leak[k]) || (leak[k] as number) <= 0)) errors.push(`gas.leak: ${keys.join(', ')} — числа > 0`);
+  if (!isNum(gas.offlineAfterSec) || gas.offlineAfterSec <= 0) errors.push('gas.offlineAfterSec должен быть > 0');
+  return errors;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;

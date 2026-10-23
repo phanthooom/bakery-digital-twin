@@ -77,6 +77,8 @@ export interface SupplySnapshot {
   deliveries: DeliveryRecord[];
   /** Выпуск: партия, продукция, кг, смена. */
   production: { at: number; productId: string; kg: number; lotId: string; shiftKey: string }[];
+  /** Партии, которые испекутся в ближайшие часы (тесто замешано, в расстойке, ждёт печь). */
+  planned?: { at: number; productId: string; kg: number }[];
   shortages: ShortageRecord[];
 }
 
@@ -152,9 +154,11 @@ export class SupplySim {
     const deliveries: DeliveryRecord[] = [];
     const production: SupplySnapshot['production'] = [];
     const shortages: ShortageRecord[] = [];
+    const planned: NonNullable<SupplySnapshot['planned']> = [];
     const shifts = this.config.energy?.shifts;
     this.events.forEach((e) => {
       if (e.at > now) {
+        if (e.type === 'produce' && e.at < now + 3 * HOUR) planned.push({ at: e.at, productId: e.productId, kg: e.kg });
         if (e.type === 'receive' && e.at < now + 7 * DAY && e.at > this.origin) deliveries.push({ at: e.at, materialId: e.materialId, qty: e.qty, supplier: e.supplier, lotId: null });
         return;
       }
@@ -178,7 +182,7 @@ export class SupplySim {
         for (const sh of r.shortages) shortages.push({ at: e.at, kind: 'product', itemId: sh.productId, missing: sh.missing, ref: e.order.orderId });
       }
     });
-    const snap: SupplySnapshot = { now, inventory: inv, trips: this.trips, deliveries, production, shortages };
+    const snap: SupplySnapshot = { now, inventory: inv, trips: this.trips, deliveries, production, shortages, planned };
     this.cache = { at: now, snap };
     return snap;
   }

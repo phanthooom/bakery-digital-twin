@@ -1,7 +1,9 @@
 import { memo, useMemo } from 'react';
-import { RoundedBox } from '@react-three/drei';
+import { RoundedBox, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { drawEmblem } from '../ui/brandEmblem';
+import { GltfModel } from './GltfModel';
+import { MergeStatic } from './MergeStatic';
 import { M } from './materials';
 import { makeGrilleTexture } from './textures';
 
@@ -10,6 +12,8 @@ import { makeGrilleTexture } from './textures';
  * кабина с наклонным стеклом, фары, зеркала, колёса с дисками, задние двери с запорами,
  * холодильный агрегат и фирменная ливрея по борту.
  * Локальные координаты: зад кузова в z = 0 (к рампе), кабина — к +z, ширина по x.
+ * cab="semi" — кабина и колёса Tesla Semi из GLB (tesla-semi-van.glb, «Tesla semi truck» by iZnoGouD,
+ * CC BY 4.0; собирается scripts/build-tesla-semi.mjs под размеры будки ниже), будка — своя.
  */
 
 const W = 2.1; // ширина кузова
@@ -24,6 +28,14 @@ const WHEEL_R = 0.42;
 const REAR_WHEEL_Z = 0.95;
 const FRONT_WHEEL_LOCAL = 0.95; // от начала кабины
 const ARCH_R = 0.53;
+/** Кабина Semi: задняя ось под будкой и длина кабины — как в scripts/build-tesla-semi.mjs. */
+const SEMI_VAN_URL = '/models/tesla-semi-van.glb';
+const SEMI_REAR_AXLE_Z = 1.1;
+const SEMI_CAB_L = 3.05;
+useGLTF.preload(SEMI_VAN_URL);
+
+/** Длина машины от заднего торца будки до переда кабины, м. */
+export const TRUCK_LENGTH = { classic: CAB_Z0 + 1.68, semi: CAB_Z0 + SEMI_CAB_L } as const;
 
 const tireMat = new THREE.MeshStandardMaterial({ color: '#1d1f21', roughness: 0.92 });
 const rimInner = new THREE.MeshStandardMaterial({ color: '#8f959b', roughness: 0.35, metalness: 0.7 });
@@ -118,19 +130,28 @@ function plateTexture(text: string) {
   return t;
 }
 
-/** Ливрея борта: белый кузов, фирменная волна снизу, эмблема, название и слоган. */
-function liveryTexture(brand: string, tagline: string, color: string, mirror: boolean) {
+/**
+ * Ливрея борта: белый кузов, фирменная волна снизу, эмблема, название и слоган.
+ * Рисуется в логических единицах высотой 880; aspect — отношение длины борта к высоте,
+ * px — высота текстуры в пикселях, center — блок с названием по центру борта (длинный прицеп).
+ */
+function liveryTexture(brand: string, tagline: string, color: string, mirror: boolean, { aspect = 1400 / 880, px = 880, center = false } = {}) {
+  const w = Math.round(880 * aspect);
+  const k = px / 880;
   const c = document.createElement('canvas');
-  c.width = 1400;
-  c.height = 880;
+  c.width = Math.round(w * k);
+  c.height = px;
   const ctx = c.getContext('2d')!;
+  ctx.scale(k, k);
   ctx.fillStyle = '#f7f7f5';
-  ctx.fillRect(0, 0, c.width, c.height);
+  ctx.fillRect(0, 0, w, 880);
+  ctx.save();
   if (mirror) {
     // левый борт: кабина слева — волна зеркально, текст читается как обычно
-    ctx.translate(c.width, 0);
+    ctx.translate(w, 0);
     ctx.scale(-1, 1);
   }
+  ctx.scale(w / 1400, 1); // волна растягивается по длине борта
   ctx.fillStyle = color;
   ctx.beginPath();
   ctx.moveTo(0, 880);
@@ -147,8 +168,9 @@ function liveryTexture(brand: string, tagline: string, color: string, mirror: bo
   ctx.bezierCurveTo(900, 620, 420, 450, 0, 540);
   ctx.closePath();
   ctx.fill();
-  if (mirror) ctx.setTransform(1, 0, 0, 1, 0, 0);
-  // эмблема и надписи — всегда слева направо
+  ctx.restore();
+  // эмблема и надписи — всегда слева направо; блок шириной 1400 — у кабины или по центру
+  ctx.translate(center ? (w - 1400) / 2 : mirror ? w - 1400 : 0, 0);
   const ex = mirror ? 1080 : 120;
   const emb = document.createElement('canvas');
   emb.width = emb.height = 256;
@@ -166,6 +188,27 @@ function liveryTexture(brand: string, tagline: string, color: string, mirror: bo
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
   return t;
+}
+
+/**
+ * Фирменная ливрея на оба борта: плоскости по бокам кузова (x = right и x = −left),
+ * центр борта (y, z), размер length × height. Ориентация — как у Truck: кабина к +z.
+ */
+export function BrandLivery({ brand, tagline, color, right, left, y, z, length, height, px, center }: { brand: string; tagline: string; color: string; right: number; left: number; y: number; z: number; length: number; height: number; px?: number; center?: boolean }) {
+  const [tr, tl] = useMemo(() => {
+    const opts = { aspect: length / height, px, center };
+    return [liveryTexture(brand, tagline, color, false, opts), liveryTexture(brand, tagline, color, true, opts)];
+  }, [brand, tagline, color, length, height, px, center]);
+  return (
+    <>
+      {[1, -1].map((s) => (
+        <mesh key={s} position={[s > 0 ? right : -left, y, z]} rotation={[0, s * (Math.PI / 2), 0]}>
+          <planeGeometry args={[length, height]} />
+          <meshStandardMaterial map={s > 0 ? tr : tl} roughness={0.4} metalness={0.05} />
+        </mesh>
+      ))}
+    </>
+  );
 }
 
 /** Колесо: шина со скруглённой боковиной, стальной диск с выемкой, ступица и 6 гаек — снаружи. */
@@ -236,16 +279,16 @@ export interface TruckProps {
   tagline?: string;
   color: string;
   plate: string;
-  highlighted?: boolean;
+  /** Кабина: своя процедурная или Tesla Semi (GLB; пока грузится — процедурная). */
+  cab?: 'classic' | 'semi';
 }
 
-export const Truck = memo(function Truck({ brand, tagline = '', color, plate, highlighted }: TruckProps) {
+export const Truck = memo(function Truck({ brand, tagline = '', color, plate, cab: cabKind = 'classic' }: TruckProps) {
+  const semi = cabKind === 'semi';
   const cab = useCabGeometry();
   const windshield = useMemo(() => windshieldGeometry(), []);
   const sideWin = useMemo(() => sideGeometry([[0.12, 1.62], [0.12, 2.26], [0.58, 2.26], [0.98, 1.62]]), []);
   const plateTex = useMemo(() => plateTexture(plate), [plate]);
-  const liveryR = useMemo(() => (brand ? liveryTexture(brand, tagline, color, false) : null), [brand, tagline, color]);
-  const liveryL = useMemo(() => (brand ? liveryTexture(brand, tagline, color, true) : null), [brand, tagline, color]);
   const grille = useMemo(() => makeGrilleTexture(), []);
   const emblem = useMemo(() => {
     const c = document.createElement('canvas');
@@ -256,182 +299,185 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, hi
     return t;
   }, [color]);
   const cabMat = brand ? paint : supplierPaint;
-  const total = CAB_Z0 + 1.68;
+  const total = TRUCK_LENGTH[cabKind];
+  // боковая защита — от задних колёс до передних (у Semi — до кабины)
+  const guardZ0 = (semi ? SEMI_REAR_AXLE_Z : REAR_WHEEL_Z) + 0.55;
+  const guardZ1 = semi ? CAB_Z0 - 0.05 : CAB_Z0 + FRONT_WHEEL_LOCAL - 0.6;
+
+  // процедурная кабина и колёса; для Semi — запасной вариант, пока GLB не загрузился
+  const classicCab = (
+    <>
+        {/* кабина */}
+        <group position={[0, 0, CAB_Z0]}>
+          <mesh geometry={cab} material={cabMat} castShadow receiveShadow />
+          <mesh geometry={windshield} material={glassMat} />
+          {[-1, 1].map((s) => (
+            <group key={s}>
+              <mesh geometry={sideWin} position={[s * (CAB_W / 2 + 0.002), 0, 0]} material={glassMat} />
+              {/* шов двери и ручка */}
+              <mesh position={[s * (CAB_W / 2 + 0.003), 1.3, 1.02]} material={trimMat}>
+                <boxGeometry args={[0.01, 1.3, 0.02]} />
+              </mesh>
+              <mesh position={[s * (CAB_W / 2 + 0.02), 1.42, 0.25]} material={trimMat}>
+                <boxGeometry args={[0.03, 0.04, 0.18]} />
+              </mesh>
+              {/* зеркало */}
+              <mesh position={[s * (CAB_W / 2 + 0.14), 1.8, 1.0]} material={trimMat}>
+                <boxGeometry args={[0.24, 0.03, 0.03]} />
+              </mesh>
+              <RoundedBox args={[0.08, 0.3, 0.18]} radius={0.03} position={[s * (CAB_W / 2 + 0.27), 1.8, 1.0]} material={plasticMat} castShadow />
+              {/* фирменная полоса по низу кабины */}
+              {brand && (
+                <mesh position={[s * (CAB_W / 2 + 0.004), 0.88, 0.8]} rotation={[0, s * (Math.PI / 2), 0]}>
+                  <planeGeometry args={[1.6, 0.12]} />
+                  <meshStandardMaterial color={color} roughness={0.5} />
+                </mesh>
+              )}
+            </group>
+          ))}
+          {/* перед: решётка, эмблема, фары, поворотники, бампер, номер */}
+          <group position={[0, 0, 1.69]}>
+            <RoundedBox args={[1.2, 0.34, 0.04]} radius={0.04} position={[0, 0.98, 0]} material={trimMat} />
+            {[-1.5, -0.5, 0.5, 1.5].map((k) => (
+              <mesh key={k} position={[0, 0.98 + k * 0.06, 0.022]} material={plasticMat}>
+                <boxGeometry args={[1.1, 0.02, 0.01]} />
+              </mesh>
+            ))}
+            {brand && (
+              <mesh position={[0, 0.98, 0.03]}>
+                <circleGeometry args={[0.13, 28]} />
+                <meshBasicMaterial map={emblem} toneMapped={false} />
+              </mesh>
+            )}
+            {[-1, 1].map((s) => (
+              <group key={s}>
+                <RoundedBox args={[0.3, 0.16, 0.05]} radius={0.04} position={[s * 0.8, 1.02, 0]} material={headMat} />
+                <mesh position={[s * 0.8, 0.9, 0.01]} material={amberMat}>
+                  <boxGeometry args={[0.24, 0.05, 0.03]} />
+                </mesh>
+              </group>
+            ))}
+            <RoundedBox args={[CAB_W + 0.06, 0.24, 0.16]} radius={0.06} position={[0, 0.66, 0.02]} material={plasticMat} castShadow />
+            <mesh position={[0, 0.66, 0.105]}>
+              <planeGeometry args={[0.52, 0.11]} />
+              <meshBasicMaterial map={plateTex} />
+            </mesh>
+          </group>
+        </group>
+
+        {/* колёса */}
+        {[REAR_WHEEL_Z, CAB_Z0 + FRONT_WHEEL_LOCAL].map((z) => [1, -1].map((s) => <Wheel key={`${z}${s}`} z={z} side={s as 1 | -1} />))}
+        <ArchLiner />
+        <RearFender side={1} />
+        <RearFender side={-1} />
+    </>
+  );
 
   return (
     <group>
-      {/* рама, подножки, защитные боковые брусья */}
-      <mesh position={[0, 0.5, total / 2]} material={trimMat} castShadow>
-        <boxGeometry args={[W - 0.5, 0.2, total - 0.1]} />
-      </mesh>
-      {/* подрамник под будкой и поперечины */}
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * 0.52, 0.8, BODY_L / 2]} material={trimMat} castShadow>
-          <boxGeometry args={[0.12, 0.34, BODY_L - 0.1]} />
+      {/* неподвижная машина: меши склеиваются по материалу; GLB-кабина — снаружи (она грузится позже) */}
+      <MergeStatic>
+        {/* рама, подножки, защитные боковые брусья */}
+        <mesh position={[0, 0.5, total / 2]} material={trimMat} castShadow>
+          <boxGeometry args={[W - 0.5, 0.2, total - 0.1]} />
         </mesh>
-      ))}
-      {[0.3, 1.6, 2.4, 3.3].map((z) => (
-        <mesh key={z} position={[0, 0.9, z]} material={trimMat}>
-          <boxGeometry args={[W - 0.1, 0.12, 0.1]} />
-        </mesh>
-      ))}
-      {/* боковая защита между колёсами */}
-      {[-1, 1].map((s) =>
-        [0.56, 0.78].map((y) => (
-          <mesh key={`${s}${y}`} position={[s * (W / 2 - 0.05), y, (REAR_WHEEL_Z + 0.55 + CAB_Z0 + FRONT_WHEEL_LOCAL - 0.6) / 2]} material={rimMat}>
-            <boxGeometry args={[0.04, 0.07, CAB_Z0 + FRONT_WHEEL_LOCAL - 0.6 - REAR_WHEEL_Z - 0.55]} />
-          </mesh>
-        )),
-      )}
-
-      {/* кузов */}
-      <RoundedBox args={[W, BODY_H, BODY_L]} radius={0.05} smoothness={3} position={[0, BODY_Y0 + BODY_H / 2, BODY_L / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow />
-      {brand ? (
-        <>
-          {[1, -1].map((s) => (
-            <mesh key={s} position={[s * (W / 2 + 0.004), BODY_Y0 + BODY_H / 2, BODY_L / 2]} rotation={[0, s * (Math.PI / 2), 0]}>
-              <planeGeometry args={[BODY_L - 0.1, BODY_H - 0.1]} />
-              <meshStandardMaterial map={s > 0 ? liveryR : liveryL} roughness={0.4} metalness={0.05} />
-            </mesh>
-          ))}
-          {/* угловые профили кузова */}
-          {[-1, 1].map((sx) =>
-            [0.03, BODY_L - 0.03].map((z) => (
-              <mesh key={`${sx}${z}`} position={[sx * (W / 2 - 0.01), BODY_Y0 + BODY_H / 2, z]} material={seamMat}>
-                <boxGeometry args={[0.05, BODY_H, 0.05]} />
-              </mesh>
-            )),
-          )}
-          {/* холодильный агрегат на передней стенке будки */}
-          <group position={[0, BODY_Y0 + BODY_H - 0.38, BODY_L + 0.2]}>
-            <RoundedBox args={[1.5, 0.62, 0.36]} radius={0.08} material={M.steelLight} castShadow />
-            {[-0.38, 0.38].map((x) => (
-              <mesh key={x} position={[x, 0, 0.185]}>
-                <circleGeometry args={[0.22, 28]} />
-                <meshStandardMaterial map={grille} roughness={0.6} />
-              </mesh>
-            ))}
-          </group>
-          {/* габаритные огни на крыше */}
-          {[-1, 1].map((s) => (
-            <mesh key={s} position={[s * (W / 2 - 0.12), BODY_Y0 + BODY_H + 0.03, BODY_L - 0.12]} material={amberMat}>
-              <boxGeometry args={[0.14, 0.05, 0.08]} />
-            </mesh>
-          ))}
-        </>
-      ) : (
-        // тент: рёбра каркаса
-        Array.from({ length: 6 }, (_, i) => (
-          <mesh key={i} position={[0, BODY_Y0 + BODY_H / 2, 0.3 + i * ((BODY_L - 0.6) / 5)]} material={tarpRib}>
-            <boxGeometry args={[W + 0.02, BODY_H + 0.02, 0.06]} />
-          </mesh>
-        ))
-      )}
-
-      {/* задние двери: шов, запоры, петли, фонари */}
-      <group position={[0, BODY_Y0 + BODY_H / 2, -0.004]}>
-        <mesh rotation={[0, Math.PI, 0]} material={seamMat}>
-          <planeGeometry args={[W - 0.1, BODY_H - 0.1]} />
-        </mesh>
-        <mesh position={[0, 0, -0.006]} material={trimMat}>
-          <boxGeometry args={[0.025, BODY_H - 0.12, 0.01]} />
-        </mesh>
-        {[-0.62, -0.22, 0.22, 0.62].map((x) => (
-          <mesh key={x} position={[x, 0, -0.03]} material={M.chrome}>
-            <cylinderGeometry args={[0.018, 0.018, BODY_H - 0.25, 8]} />
+        {/* подрамник под будкой и поперечины */}
+        {[-1, 1].map((s) => (
+          <mesh key={s} position={[s * 0.52, 0.8, BODY_L / 2]} material={trimMat} castShadow>
+            <boxGeometry args={[0.12, 0.34, BODY_L - 0.1]} />
           </mesh>
         ))}
+        {[0.3, 1.6, 2.4, 3.3].map((z) => (
+          <mesh key={z} position={[0, 0.9, z]} material={trimMat}>
+            <boxGeometry args={[W - 0.1, 0.12, 0.1]} />
+          </mesh>
+        ))}
+        {/* боковая защита между колёсами */}
         {[-1, 1].map((s) =>
-          [-0.7, 0.7].map((y) => (
-            <mesh key={`${s}${y}`} position={[s * (W / 2 - 0.08), y, -0.03]} material={trimMat}>
-              <boxGeometry args={[0.1, 0.16, 0.05]} />
+          [0.56, 0.78].map((y) => (
+            <mesh key={`${s}${y}`} position={[s * (W / 2 - 0.05), y, (guardZ0 + guardZ1) / 2]} material={rimMat}>
+              <boxGeometry args={[0.04, 0.07, guardZ1 - guardZ0]} />
             </mesh>
           )),
         )}
-      </group>
-      {[-1, 1].map((s) => (
-        <mesh key={s} position={[s * (W / 2 - 0.22), 0.62, -0.02]} material={tailMat}>
-          <boxGeometry args={[0.32, 0.14, 0.06]} />
-        </mesh>
-      ))}
-      <mesh position={[0, 0.46, -0.05]} material={trimMat} castShadow>
-        <boxGeometry args={[W - 0.2, 0.12, 0.1]} />
-      </mesh>
-      <mesh position={[0, 0.66, -0.04]}>
-        <planeGeometry args={[0.52, 0.11]} />
-        <meshBasicMaterial map={plateTex} side={THREE.DoubleSide} />
-      </mesh>
 
-      {/* кабина */}
-      <group position={[0, 0, CAB_Z0]}>
-        <mesh geometry={cab} material={cabMat} castShadow receiveShadow />
-        <mesh geometry={windshield} material={glassMat} />
-        {[-1, 1].map((s) => (
-          <group key={s}>
-            <mesh geometry={sideWin} position={[s * (CAB_W / 2 + 0.002), 0, 0]} material={glassMat} />
-            {/* шов двери и ручка */}
-            <mesh position={[s * (CAB_W / 2 + 0.003), 1.3, 1.02]} material={trimMat}>
-              <boxGeometry args={[0.01, 1.3, 0.02]} />
-            </mesh>
-            <mesh position={[s * (CAB_W / 2 + 0.02), 1.42, 0.25]} material={trimMat}>
-              <boxGeometry args={[0.03, 0.04, 0.18]} />
-            </mesh>
-            {/* зеркало */}
-            <mesh position={[s * (CAB_W / 2 + 0.14), 1.8, 1.0]} material={trimMat}>
-              <boxGeometry args={[0.24, 0.03, 0.03]} />
-            </mesh>
-            <RoundedBox args={[0.08, 0.3, 0.18]} radius={0.03} position={[s * (CAB_W / 2 + 0.27), 1.8, 1.0]} material={plasticMat} castShadow />
-            {/* фирменная полоса по низу кабины */}
-            {brand && (
-              <mesh position={[s * (CAB_W / 2 + 0.004), 0.88, 0.8]} rotation={[0, s * (Math.PI / 2), 0]}>
-                <planeGeometry args={[1.6, 0.12]} />
-                <meshStandardMaterial color={color} roughness={0.5} />
-              </mesh>
+        {/* кузов */}
+        <RoundedBox args={[W, BODY_H, BODY_L]} radius={0.05} smoothness={3} position={[0, BODY_Y0 + BODY_H / 2, BODY_L / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow />
+        {brand ? (
+          <>
+            <BrandLivery brand={brand} tagline={tagline} color={color} right={W / 2 + 0.004} left={W / 2 + 0.004} y={BODY_Y0 + BODY_H / 2} z={BODY_L / 2} length={BODY_L - 0.1} height={BODY_H - 0.1} />
+            {/* угловые профили кузова */}
+            {[-1, 1].map((sx) =>
+              [0.03, BODY_L - 0.03].map((z) => (
+                <mesh key={`${sx}${z}`} position={[sx * (W / 2 - 0.01), BODY_Y0 + BODY_H / 2, z]} material={seamMat}>
+                  <boxGeometry args={[0.05, BODY_H, 0.05]} />
+                </mesh>
+              )),
             )}
-          </group>
-        ))}
-        {/* перед: решётка, эмблема, фары, поворотники, бампер, номер */}
-        <group position={[0, 0, 1.69]}>
-          <RoundedBox args={[1.2, 0.34, 0.04]} radius={0.04} position={[0, 0.98, 0]} material={trimMat} />
-          {[-1.5, -0.5, 0.5, 1.5].map((k) => (
-            <mesh key={k} position={[0, 0.98 + k * 0.06, 0.022]} material={plasticMat}>
-              <boxGeometry args={[1.1, 0.02, 0.01]} />
-            </mesh>
-          ))}
-          {brand && (
-            <mesh position={[0, 0.98, 0.03]}>
-              <circleGeometry args={[0.13, 28]} />
-              <meshBasicMaterial map={emblem} toneMapped={false} />
-            </mesh>
-          )}
-          {[-1, 1].map((s) => (
-            <group key={s}>
-              <RoundedBox args={[0.3, 0.16, 0.05]} radius={0.04} position={[s * 0.8, 1.02, 0]} material={headMat} />
-              <mesh position={[s * 0.8, 0.9, 0.01]} material={amberMat}>
-                <boxGeometry args={[0.24, 0.05, 0.03]} />
+            {/* холодильный агрегат на передней стенке будки (у Semi её закрывает обтекатель кабины) */}
+            {!semi && <group position={[0, BODY_Y0 + BODY_H - 0.38, BODY_L + 0.2]}>
+              <RoundedBox args={[1.5, 0.62, 0.36]} radius={0.08} material={M.steelLight} castShadow />
+              {[-0.38, 0.38].map((x) => (
+                <mesh key={x} position={[x, 0, 0.185]}>
+                  <circleGeometry args={[0.22, 28]} />
+                  <meshStandardMaterial map={grille} roughness={0.6} />
+                </mesh>
+              ))}
+            </group>}
+            {/* габаритные огни на крыше */}
+            {[-1, 1].map((s) => (
+              <mesh key={s} position={[s * (W / 2 - 0.12), BODY_Y0 + BODY_H + 0.03, BODY_L - 0.12]} material={amberMat}>
+                <boxGeometry args={[0.14, 0.05, 0.08]} />
               </mesh>
-            </group>
-          ))}
-          <RoundedBox args={[CAB_W + 0.06, 0.24, 0.16]} radius={0.06} position={[0, 0.66, 0.02]} material={plasticMat} castShadow />
-          <mesh position={[0, 0.66, 0.105]}>
-            <planeGeometry args={[0.52, 0.11]} />
-            <meshBasicMaterial map={plateTex} />
+            ))}
+          </>
+        ) : (
+          // тент: рёбра каркаса
+          Array.from({ length: 6 }, (_, i) => (
+            <mesh key={i} position={[0, BODY_Y0 + BODY_H / 2, 0.3 + i * ((BODY_L - 0.6) / 5)]} material={tarpRib}>
+              <boxGeometry args={[W + 0.02, BODY_H + 0.02, 0.06]} />
+            </mesh>
+          ))
+        )}
+
+        {/* задние двери: шов, запоры, петли, фонари */}
+        <group position={[0, BODY_Y0 + BODY_H / 2, -0.004]}>
+          <mesh rotation={[0, Math.PI, 0]} material={seamMat}>
+            <planeGeometry args={[W - 0.1, BODY_H - 0.1]} />
           </mesh>
+          <mesh position={[0, 0, -0.006]} material={trimMat}>
+            <boxGeometry args={[0.025, BODY_H - 0.12, 0.01]} />
+          </mesh>
+          {[-0.62, -0.22, 0.22, 0.62].map((x) => (
+            <mesh key={x} position={[x, 0, -0.03]} material={M.chrome}>
+              <cylinderGeometry args={[0.018, 0.018, BODY_H - 0.25, 8]} />
+            </mesh>
+          ))}
+          {[-1, 1].map((s) =>
+            [-0.7, 0.7].map((y) => (
+              <mesh key={`${s}${y}`} position={[s * (W / 2 - 0.08), y, -0.03]} material={trimMat}>
+                <boxGeometry args={[0.1, 0.16, 0.05]} />
+              </mesh>
+            )),
+          )}
         </group>
-      </group>
-
-      {/* колёса */}
-      {[REAR_WHEEL_Z, CAB_Z0 + FRONT_WHEEL_LOCAL].map((z) => [1, -1].map((s) => <Wheel key={`${z}${s}`} z={z} side={s as 1 | -1} />))}
-      <ArchLiner />
-      <RearFender side={1} />
-      <RearFender side={-1} />
-
-      {highlighted && (
-        <mesh position={[0, 1.45, total / 2]}>
-          <boxGeometry args={[W + 0.4, 3.0, total + 0.4]} />
-          <meshBasicMaterial color="#2f7bff" transparent opacity={0.07} depthWrite={false} />
+        {[-1, 1].map((s) => (
+          <mesh key={s} position={[s * (W / 2 - 0.22), 0.62, -0.02]} material={tailMat}>
+            <boxGeometry args={[0.32, 0.14, 0.06]} />
+          </mesh>
+        ))}
+        <mesh position={[0, 0.46, -0.05]} material={trimMat} castShadow>
+          <boxGeometry args={[W - 0.2, 0.12, 0.1]} />
         </mesh>
-      )}
+        <mesh position={[0, 0.66, -0.04]}>
+          <planeGeometry args={[0.52, 0.11]} />
+          <meshBasicMaterial map={plateTex} side={THREE.DoubleSide} />
+        </mesh>
+
+        {!semi && classicCab}
+      </MergeStatic>
+      {semi && <GltfModel url={SEMI_VAN_URL} keepOrigin fallback={classicCab} />}
+
     </group>
   );
 });

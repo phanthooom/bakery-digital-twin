@@ -3,16 +3,48 @@
     "name": "ABC Trend Bakery — цех",
     "timezone": "Asia/Tashkent",
     "hall": {
-      "width": 72,
-      "depth": 10,
-      "height": 5
+      "width": 54,
+      "depth": 35,
+      "height": 6,
+      "columns": {
+        "xs": [
+          -18,
+          -12,
+          -6,
+          0,
+          6,
+          12,
+          18
+        ],
+        "zs": [
+          0
+        ]
+      }
     },
     "brand": {
       "name": "Trénd Bakery",
       "tagline": "With love…",
       "color": "#B71F3E",
       "logo": null
-    }
+    },
+    "flow": [
+      [
+        -15,
+        15.4
+      ],
+      [
+        -15,
+        -5.6
+      ],
+      [
+        14.2,
+        -5.6
+      ],
+      [
+        14.2,
+        15.4
+      ]
+    ]
   },
   "power": {
     "panel": {
@@ -20,10 +52,54 @@
       "name": "Щит распределительный цеха",
       "inputBreakerA": 250,
       "position": {
-        "x": -3.25,
-        "z": -4.65
+        "x": -2.3,
+        "z": -17.15
       }
-    }
+    },
+    "tray": [
+      [
+        -26,
+        3
+      ],
+      [
+        -26,
+        -16.3
+      ],
+      [
+        26,
+        -16.3
+      ],
+      [
+        26,
+        8
+      ]
+    ]
+  },
+  "gas": {
+    "meter": {
+      "id": "GAS-1",
+      "name": "Счётчик газа на вводе",
+      "vendorModel": "BK-G10 с импульсным выходом",
+      "maxM3h": 16,
+      "position": {
+        "x": -1,
+        "z": -17.25
+      }
+    },
+    "detector": {
+      "id": "SZ-1",
+      "name": "Сигнализатор загазованности (метан)",
+      "warnLel": 10,
+      "alarmLel": 20
+    },
+    "leak": {
+      "idleFlowM3h": 0.05,
+      "idleMinutes": 10,
+      "overPct": 30,
+      "overMinM3h": 0.5,
+      "overMinutes": 15
+    },
+    "offlineAfterSec": 60
   },
   "energy": {
     "currency": "сум",
@@ -86,64 +162,96 @@
       "order": 0,
       "label": "00 ПРИЁМКА · СЫРЬЁ",
       "name": "Приёмка и склад сырья",
-      "xFrom": -35.5,
-      "xTo": -20.0
+      "zone": {
+        "x0": -26.8,
+        "z0": -6.2,
+        "x1": -15.6,
+        "z1": 17.2
+      }
     },
     {
       "id": "mixing",
       "order": 1,
       "label": "01 ЗАМЕС",
       "name": "Замес",
-      "xFrom": -19.5,
-      "xTo": -11.5
+      "zone": {
+        "x0": -26.8,
+        "z0": -17.2,
+        "x1": -12.4,
+        "z1": -7.6
+      }
     },
     {
       "id": "forming",
       "order": 2,
       "label": "02 ФОРМОВКА",
       "name": "Формовка",
-      "xFrom": -11.0,
-      "xTo": -3.5
+      "zone": {
+        "x0": -12,
+        "z0": -17.2,
+        "x1": -3,
+        "z1": -7.6
+      }
     },
     {
       "id": "proofing",
       "order": 3,
       "label": "03 РАССТОЙКА",
       "name": "Расстойка",
-      "xFrom": -3.0,
-      "xTo": 2.5
+      "zone": {
+        "x0": 0,
+        "z0": -17.2,
+        "x1": 6.4,
+        "z1": -7.6
+      }
     },
     {
       "id": "baking",
       "order": 4,
       "label": "04 ВЫПЕЧКА",
       "name": "Выпечка",
-      "xFrom": 3.0,
-      "xTo": 11.5
+      "zone": {
+        "x0": 6.8,
+        "z0": -17.2,
+        "x1": 17.2,
+        "z1": -7.6
+      }
     },
     {
       "id": "freezing",
       "order": 5,
       "label": "05 ЗАМОРОЗКА",
       "name": "Заморозка",
-      "xFrom": 12.0,
-      "xTo": 16.5
+      "zone": {
+        "x0": 17.6,
+        "z0": -17.2,
+        "x1": 26.8,
+        "z1": -7.6
+      }
     },
     {
       "id": "packing",
       "order": 6,
       "label": "06 УПАКОВКА",
       "name": "Упаковка",
-      "xFrom": 17.0,
-      "xTo": 23.0
+      "zone": {
+        "x0": 15.6,
+        "z0": -6.6,
+        "x1": 26.8,
+        "z1": 3.8
+      }
     },
     {
       "id": "shipping",
       "order": 7,
       "label": "07 СКЛАД · ОТГРУЗКА",
       "name": "Склад готовой продукции и отгрузка",
-      "xFrom": 23.5,
-      "xTo": 35.5
+      "zone": {
+        "x0": 15.6,
+        "z0": 4.2,
+        "x1": 26.8,
+        "z1": 17.2
+      }
     }
   ],
   "equipment": [
@@ -156,12 +264,18 @@
       "nominalKw": 2.2,
       "phases": 3,
       "position": {
-        "x": -33.4,
+        "x": -24.6,
         "y": 0,
-        "z": -2.9
+        "z": -2.8
       },
-      "rotationY": 0,
+      "rotationY": 1.5708,
       "meterId": "ESP32_SIM_CLR1",
+      "climate": {
+        "mode": "coldroom",
+        "targetTempC": 4,
+        "minTempC": 2,
+        "maxTempC": 6
+      },
       "model": null
     },
     {
@@ -173,9 +287,9 @@
       "nominalKw": 4.5,
       "phases": 3,
       "position": {
-        "x": -17.6,
+        "x": -23,
         "y": 0,
-        "z": -2.6
+        "z": -15.4
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_MIX1",
@@ -190,9 +304,9 @@
       "nominalKw": 4.5,
       "phases": 3,
       "position": {
-        "x": -15.2,
+        "x": -19.8,
         "y": 0,
-        "z": -2.6
+        "z": -15.4
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_MIX2",
@@ -204,12 +318,12 @@
       "vendorModel": "Чешуйчатый льдогенератор",
       "kind": "icemaker",
       "stage": "mixing",
-      "nominalKw": 1.0,
+      "nominalKw": 1,
       "phases": 1,
       "position": {
-        "x": -12.9,
+        "x": -16.2,
         "y": 0,
-        "z": -3.2
+        "z": -15.9
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_ICE1",
@@ -221,12 +335,12 @@
       "vendorModel": "König Mini Rex Multi",
       "kind": "moulder",
       "stage": "forming",
-      "nominalKw": 1.0,
+      "nominalKw": 1,
       "phases": 3,
       "position": {
-        "x": -9.2,
+        "x": -9.5,
         "y": 0,
-        "z": -2.6
+        "z": -15.6
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_FRM1",
@@ -241,9 +355,9 @@
       "nominalKw": 0.37,
       "phases": 3,
       "position": {
-        "x": -6.4,
+        "x": -5.6,
         "y": 0,
-        "z": -2.6
+        "z": -15.7
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_CNV1",
@@ -258,12 +372,21 @@
       "nominalKw": 2.5,
       "phases": 3,
       "position": {
-        "x": -0.4,
+        "x": 3.2,
         "y": 0,
-        "z": -3.0
+        "z": -15.8
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_PRF1",
+      "climate": {
+        "mode": "proofer",
+        "targetTempC": 37,
+        "minTempC": 34,
+        "maxTempC": 40,
+        "targetHumidityPct": 80,
+        "minHumidityPct": 70,
+        "maxHumidityPct": 90
+      },
       "model": "/models/proofer.glb"
     },
     {
@@ -275,12 +398,19 @@
       "nominalKw": 36,
       "phases": 3,
       "position": {
-        "x": 5.4,
+        "x": 9.8,
         "y": 0,
-        "z": -2.9
+        "z": -15.7
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_OVN1",
+      "gasM3h": 6,
+      "climate": {
+        "mode": "oven",
+        "targetTempC": 230,
+        "minTempC": 190,
+        "maxTempC": 260
+      },
       "model": "/models/oven.glb"
     },
     {
@@ -292,12 +422,19 @@
       "nominalKw": 36,
       "phases": 3,
       "position": {
-        "x": 8.8,
+        "x": 14,
         "y": 0,
-        "z": -2.9
+        "z": -15.7
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_OVN2",
+      "gasM3h": 6,
+      "climate": {
+        "mode": "oven",
+        "targetTempC": 230,
+        "minTempC": 190,
+        "maxTempC": 260
+      },
       "model": "/models/oven.glb"
     },
     {
@@ -309,12 +446,20 @@
       "nominalKw": 4.2,
       "phases": 3,
       "position": {
-        "x": 13.9,
+        "x": 22.2,
         "y": 0,
-        "z": -3.0
+        "z": -15.8
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_BLF1",
+      "climate": {
+        "mode": "blastfreezer",
+        "targetTempC": -35,
+        "minTempC": -40,
+        "maxTempC": -28,
+        "hasCoreTemp": true,
+        "targetCoreTempC": -18
+      },
       "model": "/models/blastfreezer.glb"
     },
     {
@@ -326,9 +471,9 @@
       "nominalKw": 3.5,
       "phases": 3,
       "position": {
-        "x": 20.0,
+        "x": 21.5,
         "y": 0,
-        "z": -2.7
+        "z": -1
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_PCK1",
@@ -340,15 +485,93 @@
       "vendorModel": "Камера хранения −18 °C с моноблоком",
       "kind": "coldroom",
       "stage": "shipping",
-      "nominalKw": 3.0,
+      "nominalKw": 3,
       "phases": 3,
       "position": {
-        "x": 26.0,
+        "x": 24.6,
         "y": 0,
-        "z": -2.9
+        "z": 6.8
+      },
+      "rotationY": -1.5708,
+      "meterId": "ESP32_SIM_CLD1",
+      "climate": {
+        "mode": "coldroom",
+        "targetTempC": -18,
+        "minTempC": -22,
+        "maxTempC": -15
+      },
+      "model": null
+    },
+    {
+      "id": "silo-1",
+      "name": "Силос №1: Мука пшеничная в/с (25 т)",
+      "vendorModel": "Силос бестарного хранения 25 т с пневмовыгрузкой",
+      "kind": "silo",
+      "stage": "mixing",
+      "floor": 2,
+      "nominalKw": 2.2,
+      "phases": 3,
+      "position": {
+        "x": -23.0,
+        "y": 3.2,
+        "z": -12.75
       },
       "rotationY": 0,
-      "meterId": "ESP32_SIM_CLD1",
+      "meterId": "ESP32_SIM_SILO1",
+      "model": null
+    },
+    {
+      "id": "silo-2",
+      "name": "Силос №2: Мука пшеничная 1/с (25 т)",
+      "vendorModel": "Силос бестарного хранения 25 т с пневмовыгрузкой",
+      "kind": "silo",
+      "stage": "mixing",
+      "floor": 2,
+      "nominalKw": 2.2,
+      "phases": 3,
+      "position": {
+        "x": -19.75,
+        "y": 3.2,
+        "z": -12.75
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_SILO2",
+      "model": null
+    },
+    {
+      "id": "silo-3",
+      "name": "Силос №3: Мука ржаная обдирная (15 т)",
+      "vendorModel": "Силос бестарного хранения 15 т с пневмовыгрузкой",
+      "kind": "silo",
+      "stage": "mixing",
+      "floor": 2,
+      "nominalKw": 1.8,
+      "phases": 3,
+      "position": {
+        "x": -16.5,
+        "y": 3.2,
+        "z": -12.75
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_SILO3",
+      "model": null
+    },
+    {
+      "id": "hvac-1",
+      "name": "ПВУ с рекуперацией тепла",
+      "vendorModel": "Приточно-вытяжная установка 8500 м³/ч с утилизацией тепла печей",
+      "kind": "hvac",
+      "stage": "baking",
+      "floor": 2,
+      "nominalKw": 5.5,
+      "phases": 3,
+      "position": {
+        "x": 11.4,
+        "y": 3.2,
+        "z": -11.0
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_HVAC1",
       "model": null
     }
   ],
@@ -519,21 +742,361 @@
       }
     ],
     "layout": {
-      "receivingDockX": -27.0,
-      "shippingDockXs": [
-        29.0,
-        31.8,
-        34.6
+      "receivingDock": {
+        "x": -21
+      },
+      "shippingDocks": [
+        {
+          "x": 17.5
+        },
+        {
+          "x": 20.3
+        },
+        {
+          "x": 23.1
+        }
       ],
       "dryRacks": {
-        "xFrom": -31.0,
-        "xTo": -21.0
+        "x": -25.6,
+        "z": 6,
+        "bays": 4,
+        "rotationY": 1.5708
       },
       "goodsRacks": {
-        "xFrom": 28.6,
-        "xTo": 35.0
+        "x": 25.6,
+        "z": 12.6,
+        "bays": 2,
+        "rotationY": -1.5708
       },
-      "packingQueueX": 22.4
+      "packingQueue": {
+        "x": 18.4,
+        "z": -4.4
+      },
+      "routes": [
+        {
+          "points": [
+            [
+              -21,
+              15.1
+            ],
+            [
+              -21,
+              5
+            ],
+            [
+              -23.5,
+              5
+            ]
+          ],
+          "offset": 0
+        },
+        {
+          "points": [
+            [
+              -23.5,
+              1.5
+            ],
+            [
+              -21.4,
+              1.5
+            ],
+            [
+              -21.4,
+              -10.8
+            ]
+          ],
+          "offset": 9
+        },
+        {
+          "points": [
+            [
+              17.2,
+              -2.3
+            ],
+            [
+              17.2,
+              11.5
+            ],
+            [
+              23.5,
+              11.5
+            ]
+          ],
+          "offset": 4
+        },
+        {
+          "points": [
+            [
+              23.5,
+              14.2
+            ],
+            [
+              20.3,
+              14.2
+            ],
+            [
+              20.3,
+              15.6
+            ]
+          ],
+          "offset": 15
+        }
+      ]
+    }
+  },
+  "staff": [
+    {
+      "role": "Тестомес",
+      "at": [
+        "mixer-1",
+        "mixer-2"
+      ]
+    },
+    {
+      "role": "Формовщик",
+      "at": [
+        "moulder-1"
+      ]
+    },
+    {
+      "role": "Формовщик",
+      "at": [
+        "conveyor-1"
+      ],
+      "side": 0.6
+    },
+    {
+      "role": "Пекарь",
+      "at": [
+        "proofer-1",
+        "oven-1",
+        "oven-2"
+      ]
+    },
+    {
+      "role": "Оператор заморозки",
+      "at": [
+        "blastfreezer-1"
+      ]
+    },
+    {
+      "role": "Упаковщик",
+      "at": [
+        "packer-1"
+      ],
+      "side": -1
+    },
+    {
+      "role": "Упаковщик",
+      "at": [
+        "packer-1"
+      ],
+      "side": 1
+    },
+    {
+      "role": "Весовщик",
+      "spot": {
+        "x": -11.4,
+        "z": -2.3,
+        "faceDeg": 180
+      }
+    },
+    {
+      "role": "Мойщица",
+      "spot": {
+        "x": 7.2,
+        "z": 13,
+        "faceDeg": 180
+      }
+    },
+    {
+      "role": "Мастер смены",
+      "spot": {
+        "x": -0.45,
+        "z": 5.2,
+        "faceDeg": 200
+      }
+    }
+  ],
+  "areas": [
+    {
+      "id": "weighing",
+      "kind": "weighing",
+      "label": "ВЕСОВАЯ",
+      "zone": {
+        "x0": -14.2,
+        "z0": -4.8,
+        "x1": -8.6,
+        "z1": -0.8
+      }
+    },
+    {
+      "id": "oven-queue",
+      "kind": "ovenQueue",
+      "label": "ТЕСТО → ПЕЧЬ",
+      "zone": {
+        "x0": 1.4,
+        "z0": -4.8,
+        "x1": 7.8,
+        "z1": -0.8
+      }
+    },
+    {
+      "id": "cooling",
+      "kind": "cooling",
+      "label": "ОСТЫВАНИЕ",
+      "zone": {
+        "x0": 8.4,
+        "z0": -4.8,
+        "x1": 13.8,
+        "z1": -0.8
+      }
+    },
+    {
+      "id": "office",
+      "kind": "office",
+      "label": "МАСТЕР",
+      "zone": {
+        "x0": -4,
+        "z0": 4,
+        "x1": 1,
+        "z1": 8
+      }
+    },
+    {
+      "id": "washing",
+      "kind": "washing",
+      "label": "МОЙКА ТАРЫ",
+      "zone": {
+        "x0": 4.2,
+        "z0": 10.6,
+        "x1": 12.6,
+        "z1": 16.8
+      }
+    },
+    {
+      "id": "amenities",
+      "kind": "amenities",
+      "label": "БЫТОВЫЕ",
+      "zone": {
+        "x0": -14.2,
+        "z0": 9.4,
+        "x1": -4.6,
+        "z1": 16.8
+      }
+    },
+    {
+      "id": "control-room",
+      "kind": "controlRoom",
+      "label": "ДИСПЕТЧЕРСКАЯ SCADA",
+      "zone": {
+        "x0": -14.2,
+        "z0": 9.4,
+        "x1": -4.6,
+        "z1": 16.8
+      }
+    }
+  ],
+  "mezzanine": {
+    "elevationY": 3.2,
+    "floorThickness": 0.25,
+    "decks": [
+      {
+        "id": "deck-silos",
+        "name": "Технологическая площадка силосов муки",
+        "zone": {
+          "x0": -26.0,
+          "z0": -16.5,
+          "x1": -13.5,
+          "z1": -9.0
+        }
+      },
+      {
+        "id": "deck-control",
+        "name": "АБК: Диспетчерская SCADA и лаборатория",
+        "zone": {
+          "x0": -14.2,
+          "z0": 9.4,
+          "x1": -4.6,
+          "z1": 16.8
+        }
+      },
+      {
+        "id": "deck-hvac",
+        "name": "Инженерная площадка рекуперации тепла",
+        "zone": {
+          "x0": 8.5,
+          "z0": -16.5,
+          "x1": 15.5,
+          "z1": -9.0
+        }
+      }
+    ],
+    "stairs": [
+      {
+        "id": "stair-silos",
+        "from": [-13.0, -9.0],
+        "to": [-13.0, -12.5],
+        "width": 1.1
+      },
+      {
+        "id": "stair-control",
+        "from": [-4.0, 9.4],
+        "to": [-4.0, 12.8],
+        "width": 1.1
+      }
+    ],
+    "catwalk": {
+      "points": [
+        [-13.5, -9.5],
+        [-10.0, -9.5],
+        [-10.0, 9.4],
+        [-4.6, 9.4]
+      ],
+      "width": 1.2
+    },
+    "silos": [
+      {
+        "id": "silo-1",
+        "name": "Силос №1: Мука пшеничная в/с (25 т)",
+        "grade": "Мука пшеничная в/с",
+        "capacityTons": 25,
+        "currentTons": 19.4,
+        "position": { "x": -23.0, "z": -12.75 },
+        "diameter": 2.3,
+        "height": 4.8,
+        "connectedMixers": ["mixer-1", "mixer-2"]
+      },
+      {
+        "id": "silo-2",
+        "name": "Силос №2: Мука пшеничная 1/с (25 т)",
+        "grade": "Мука пшеничная 1/с",
+        "capacityTons": 25,
+        "currentTons": 14.8,
+        "position": { "x": -19.75, "z": -12.75 },
+        "diameter": 2.3,
+        "height": 4.8,
+        "connectedMixers": ["mixer-1", "mixer-2"]
+      },
+      {
+        "id": "silo-3",
+        "name": "Силос №3: Мука ржаная обдирная (15 т)",
+        "grade": "Мука ржаная обдирная",
+        "capacityTons": 15,
+        "currentTons": 9.2,
+        "position": { "x": -16.5, "z": -12.75 },
+        "diameter": 1.9,
+        "height": 4.2,
+        "connectedMixers": ["mixer-1"]
+      }
+    ],
+    "hvac": {
+      "id": "hvac-1",
+      "name": "Приточно-вытяжная вентиляция с рекуперацией тепла ПВУ-1",
+      "position": { "x": 11.4, "z": -11.0 },
+      "airflowM3h": 8500,
+      "heatRecoveryKw": 24.5,
+      "efficiencyPct": 78
     }
   }
 }

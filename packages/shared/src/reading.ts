@@ -101,5 +101,10 @@ export function parseReading(topic: string, payload: string | Uint8Array, opts: 
   if (isNum(d.powerFactor) && d.powerFactor >= 0 && d.powerFactor <= 1) reading.powerFactor = d.powerFactor;
   const order = sanitizeStr(d.order, 120);
   if (order) reading.order = order;
+  if (isNum(d.temperatureC) && d.temperatureC >= -100 && d.temperatureC <= 450) reading.temperatureC = d.temperatureC;
+  if (isNum(d.targetTempC) && d.targetTempC >= -100 && d.targetTempC <= 450) reading.targetTempC = d.targetTempC;
+  if (isNum(d.humidityPct) && d.humidityPct >= 0 && d.humidityPct <= 100) reading.humidityPct = d.humidityPct;
+  if (isNum(d.targetHumidityPct) && d.targetHumidityPct >= 0 && d.targetHumidityPct <= 100) reading.targetHumidityPct = d.targetHumidityPct;
+  if (isNum(d.coreTempC) && d.coreTempC >= -100 && d.coreTempC <= 100) reading.coreTempC = d.coreTempC;
   return { ok: true, reading };
 }

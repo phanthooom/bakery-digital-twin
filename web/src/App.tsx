@@ -2,8 +2,9 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'reac
 import { DataSourceContext, createDataSource } from './data/store';
 import type { CameraFocus } from './scene/CameraRig';
 import { SPECS } from './scene/machines';
-import { TRAY_FROM_WALL } from './scene/powerRoutes';
+import { backOf, projectOnPolyline, trayOf } from './scene/powerRoutes';
 import { Scene } from './scene/Scene';
+import { vehicleFocus } from './scene/SupplyScene';
 import { LineCard } from './ui/LineCard';
 import { PanelCard } from './ui/PanelCard';
 import { EquipmentCard } from './ui/EquipmentCard';
@@ -11,17 +12,22 @@ import { EquipmentList } from './ui/EquipmentList';
 import { Header } from './ui/Header';
 import { EnergyPanel } from './ui/EnergyPanel';
 import { SupplyPanel } from './ui/SupplyPanel';
+import { VehicleCard } from './ui/VehicleCard';
+import { GasCard } from './ui/GasCard';
 import type { SupplyTab } from './ui/supplyView';
 import { STATUS_LABEL, STATUS_ORDER, applyStatusCssVars } from './ui/statusMeta';
 import { StatusIcon } from './ui/StatusIcon';
 import { GestureHint } from './ui/GestureHint';
 import { LoadingScreen } from './ui/LoadingScreen';
+import { setupTelegramBridge } from './data/telegramBridge';
+import { TelegramOrderToast } from './ui/TelegramOrderToast';
+import type { TelegramOrder } from '@bakery/shared';
 
 const NO_OFFSET: [number, number] = [0, 0];
 const SIDE_CARD_OFFSET: [number, number] = [1.1, 0];
 const BOTTOM_SHEET_OFFSET: [number, number] = [0, 2.0];
 
-type Selection = { kind: 'machine' | 'line'; id: string } | { kind: 'panel'; id: 'panel' } | null;
+type Selection = { kind: 'machine' | 'line' | 'vehicle'; id: string } | { kind: 'panel'; id: 'panel' } | { kind: 'gas'; id: 'gas' } | null;
 
 export function App() {
   const ds = useMemo(() => createDataSource(), []);
@@ -41,6 +47,15 @@ export function App() {
   const [wide, setWide] = useState(() => window.innerWidth > 760);
   const [sceneReady, setSceneReady] = useState(false);
   const [loaderGone, setLoaderGone] = useState(false);
+  const [floorFilter, setFloorFilter] = useState<'all' | 1 | 2>('all');
+  const [customFocus, setCustomFocus] = useState<CameraFocus | null>(null);
+  const [latestOrder, setLatestOrder] = useState<TelegramOrder | null>(null);
+
+  useEffect(() => {
+    return setupTelegramBridge(ds, (ord) => {
+      setLatestOrder(ord);
+    });
+  }, [ds]);
 
   useEffect(() => {
     applyStatusCssVars();
@@ -91,17 +106,44 @@ export function App() {
   }, []);
 
   // повторный клик по выбранному станку закрывает карточку — камера плавно возвращается назад
-  const toggle = (next: NonNullable<Selection>) => setSelection((cur) => (cur && cur.kind === next.kind && cur.id === next.id ? null : next));
+  const toggle = (next: NonNullable<Selection>) => {
+    setCustomFocus(null);
+    setSelection((cur) => (cur && cur.kind === next.kind && cur.id === next.id ? null : next));
+  };
   const select = useCallback((id: string) => toggle({ kind: 'machine', id }), []);
   const selectLine = useCallback((id: string) => toggle({ kind: 'line', id }), []);
   const selectPanel = useCallback(() => toggle({ kind: 'panel', id: 'panel' }), []);
-  const deselect = useCallback(() => setSelection(null), []);
+  const selectVehicle = useCallback((id: string) => toggle({ kind: 'vehicle', id }), []);
+  const selectGas = useCallback(() => toggle({ kind: 'gas', id: 'gas' }), []);
+  const deselect = useCallback(() => {
+    setCustomFocus(null);
+    setSelection(null);
+  }, []);
   const selected = ds.config.equipment.find((e) => e.id === selectedId) ?? null;
   const selectedLineEq = ds.config.equipment.find((e) => e.id === selectedLineId) ?? null;
 
+  const handleFloorChange = useCallback((f: 'all' | 1 | 2) => {
+    setFloorFilter(f);
+    setSelection(null);
+    if (f === 2) {
+      setCustomFocus({ key: `mezzanine-${Date.now()}`, x: -10, z: -2, lookY: 3.5, dist: 30, dir: [-0.15, 0.65, 0.75] });
+    } else if (f === 1) {
+      setCustomFocus({ key: `floor1-${Date.now()}`, x: 0, z: 0, lookY: 1.0, dist: 38, dir: [-0.14, 0.7, 0.7] });
+    } else {
+      setCustomFocus(null);
+      setViewToken((v) => v + 1);
+    }
+  }, []);
+
   const focus = useMemo<CameraFocus | null>(() => {
+    if (!selection) return customFocus;
     const { config } = ds;
-    if (!selection) return null;
+    if (selection.kind === 'vehicle') return vehicleFocus(config, selection.id);
+    if (selection.kind === 'gas' && config.gas) {
+      const m = config.gas.meter.position;
+      // слева спереди: справа счётчик закрывает соседний станок
+      return { key: 'gas', x: m.x + 0.3, z: m.z + 0.6, lookY: 1.9, dist: 6, dir: [-0.75, 0.5, 1] };
+    }
     if (selection.kind === 'panel' && config.power) {
       const p = config.power.panel.position;
       return { key: 'panel', x: p.x, z: p.z + 0.6, lookY: 1.5, dist: 6 };
@@ -110,11 +152,24 @@ export function App() {
     if (!eq) return null;
     const h = (SPECS[eq.kind] ?? SPECS.generic).height;
     if (selection.kind === 'line') {
-      const trayZ = -config.site.hall.depth / 2 + TRAY_FROM_WALL;
-      return { key: `line:${eq.id}`, x: eq.position.x, z: (trayZ + eq.position.z) / 2, lookY: 2.1, dist: 7.5 };
+      // между станком и точкой лотка, к которой идёт его кабель
+      const b = backOf(eq);
+      const t = projectOnPolyline(trayOf(config), b.x, b.z);
+      return { key: `line:${eq.id}`, x: (t.x + eq.position.x) / 2, z: (t.z + eq.position.z) / 2, lookY: 2.1, dist: 7.5 };
     }
-    return { key: `machine:${eq.id}`, x: eq.position.x, z: eq.position.z, lookY: h * 0.45, dist: 4.6 + h * 1.6 };
-  }, [ds, selection]);
+    const baseY = eq.position.y ?? 0;
+    if (eq.kind === 'silo') {
+      return {
+        key: `machine:${eq.id}`,
+        x: eq.position.x,
+        z: eq.position.z,
+        lookY: baseY + h * 0.48,
+        dist: 8.8,
+        dir: [0.06, 0.22, 0.97],
+      };
+    }
+    return { key: `machine:${eq.id}`, x: eq.position.x, z: eq.position.z, lookY: baseY + h * 0.45, dist: 4.6 + h * 1.6 };
+  }, [ds, selection, customFocus]);
 
   return (
     <DataSourceContext.Provider value={ds}>
@@ -130,8 +185,13 @@ export function App() {
           onOpenSupply={ds.config.supply ? () => setSupplyTab('overview') : undefined}
           linesVisible={showLines}
           onToggleLines={() => setShowLines((v) => !v)}
+          gasOpen={selection?.kind === 'gas'}
+          onOpenGas={ds.config.gas ? selectGas : undefined}
+          floorFilter={floorFilter}
+          onFloorChange={handleFloorChange}
           onResetView={() => {
             setSelection(null);
+            setCustomFocus(null);
             setViewToken((v) => v + 1);
           }}
         />
@@ -151,6 +211,11 @@ export function App() {
           onDeselect={deselect}
           onReady={() => setSceneReady(true)}
           onOpenSupply={ds.config.supply ? setSupplyTab : undefined}
+          selectedVehicle={selection?.kind === 'vehicle' ? selection.id : null}
+          onSelectVehicle={selectVehicle}
+          gasSelected={selection?.kind === 'gas'}
+          onSelectGas={selectGas}
+          floorFilter={floorFilter}
         />
         {energyOpen && <EnergyPanel onClose={() => setEnergyOpen(false)} />}
         {supplyTab && <SupplyPanel initialTab={supplyTab} onClose={() => setSupplyTab(null)} />}
@@ -158,6 +223,8 @@ export function App() {
         {selected && <EquipmentCard key={selected.id} eq={selected} onClose={deselect} />}
         {selectedLineEq && <LineCard key={`line-${selectedLineEq.id}`} eq={selectedLineEq} onClose={deselect} onOpenMachine={() => select(selectedLineEq.id)} />}
         {selection?.kind === 'panel' && <PanelCard onClose={deselect} onOpenLine={selectLine} />}
+        {selection?.kind === 'gas' && <GasCard onClose={deselect} />}
+        {selection?.kind === 'vehicle' && <VehicleCard key={selection.id} id={selection.id} onClose={deselect} onOpenSupply={setSupplyTab} />}
         {listOpen && <EquipmentList config={ds.config} selectedId={selectedId} onSelect={select} />}
         {!listOpen && <GestureHint />}
         <div className="legend" aria-label="Обозначения сигнальных колонн">
@@ -168,6 +235,11 @@ export function App() {
             </span>
           ))}
         </div>
+        <TelegramOrderToast
+          order={latestOrder}
+          onClose={() => setLatestOrder(null)}
+          onClick={() => setSelection({ kind: 'vehicle', id: 'van-1' })}
+        />
       </div>
     </DataSourceContext.Provider>
   );

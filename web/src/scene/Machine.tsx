@@ -8,7 +8,7 @@ import { fmtKw } from '../ui/format';
 import { STATUS_COLOR, STATUS_LABEL } from '../ui/statusMeta';
 import { StatusIcon } from '../ui/StatusIcon';
 import { GltfModel } from './GltfModel';
-import { BODIES, SPECS, type MachineLive } from './machines';
+import { BODIES, SPECS, Steam, type MachineLive } from './machines';
 import { SignalTower } from './SignalTower';
 import { StatusRing } from './StatusRing';
 
@@ -36,7 +36,7 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
   const spec = SPECS[eq.kind] ?? SPECS.generic;
   const [glbHeight, setGlbHeight] = useState<number | null>(null);
   const Body = BODIES[eq.kind] ?? BODIES.generic;
-  const body = <Body live={live} />;
+  const body = <Body live={live} eq={eq} />;
   const towerPos: [number, number, number] = eq.model && glbHeight ? [0, glbHeight, 0] : spec.tower;
   const top = Math.max(spec.height, towerPos[1] + 0.45, eq.kind === 'oven' ? 3.1 : 0);
 
@@ -50,11 +50,23 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
     onSelect(eq.id);
   };
 
+  const isHeating = status === 'running' || status === 'alarm';
+
   return (
     <group position={[eq.position.x, eq.position.y, eq.position.z]} rotation={[0, eq.rotationY ?? 0, 0]}>
       <Select enabled={selected || hovered}>
         <group onPointerOver={over} onPointerOut={out} onClick={click}>
-          {eq.model ? <GltfModel url={eq.model} scale={eq.modelScale} onHeight={setGlbHeight} fallback={body} /> : body}
+          {eq.model ? (
+            <GltfModel url={eq.model} scale={eq.modelScale} onHeight={setGlbHeight} live={live} fallback={body}>
+              {eq.kind === 'oven' && (
+                <group position={[-0.35, 0, -0.3]}>
+                  <Steam active={isHeating} y={glbHeight ?? 2.95} />
+                </group>
+              )}
+            </GltfModel>
+          ) : (
+            body
+          )}
           <SignalTower position={towerPos} status={status} />
         </group>
       </Select>
@@ -64,7 +76,11 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
           <div className={`scene-tag${hovered ? ' is-hovered' : ''}`}>
             <StatusIcon status={status} size={12} />
             <span className="scene-tag-name">{eq.name}</span>
-            <span className="scene-tag-value">{status === 'offline' ? STATUS_LABEL.offline : `${fmtKw(powerKw)} кВт`}</span>
+            <span className="scene-tag-value">
+              {status === 'offline'
+                ? STATUS_LABEL.offline
+                : `${fmtKw(powerKw)} кВт${state?.climate?.temperatureC != null ? ` · ${state.climate.temperatureC.toFixed(0)} °C` : ''}`}
+            </span>
           </div>
         </Html>
       )}

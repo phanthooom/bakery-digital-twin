@@ -214,33 +214,45 @@ root.add(winFrame);
 
 // Внутреннее светящееся теплое свечение за окном (имитация освещения камеры 230 °C)
 const chamberGlow = new THREE.Mesh(new THREE.PlaneGeometry(winW - 0.04, winH - 0.04), mats.interiorGlow);
+chamberGlow.name = 'anim_glow';
+chamberGlow.userData = { animated: true };
 chamberGlow.position.set(doorX, doorY + 0.05, doorZ - doorD / 2 + 0.01);
 root.add(chamberGlow);
 
-// Ротационная тележка с противнями за стеклом
+// Ротационная тележка с противнями за стеклом (вращается вокруг вертикальной оси)
+const rackGroup = new THREE.Group();
+rackGroup.name = 'anim_rack';
+rackGroup.userData = { animated: true };
+rackGroup.position.set(doorX, doorY - 0.05, doorZ - 0.05);
+
 const rackTiers = 9;
 for (let t = 0; t < rackTiers; t++) {
-  const trayY = doorY - 0.6 + t * 0.14;
+  const trayY = -0.55 + t * 0.14;
   // Противень
   const tray = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.012, 0.35), mats.tray);
-  tray.position.set(doorX, trayY, doorZ - 0.05);
-  root.add(tray);
+  tray.position.set(0, trayY, 0);
+  tray.userData = { animated: true };
+  rackGroup.add(tray);
 
   // Хлебные багеты на противнях (по 2 заготовки на противне)
   for (const bx of [-0.06, 0.06]) {
     const loaf = new THREE.Mesh(new THREE.CylinderGeometry(0.022, 0.024, 0.28, 12), mats.bread);
     loaf.rotation.x = Math.PI / 2;
-    loaf.position.set(doorX + bx, trayY + 0.02, doorZ - 0.05);
-    root.add(loaf);
+    loaf.position.set(bx, trayY + 0.02, 0);
+    loaf.userData = { animated: true };
+    rackGroup.add(loaf);
   }
 }
 
 // Вертикальные направляющие стойки тележки
 for (const sx of [-0.12, 0.12]) {
   const post = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 1.3, 10), mats.tray);
-  post.position.set(doorX + sx, doorY + 0.02, doorZ - 0.05);
-  root.add(post);
+  post.position.set(sx, 0.07, 0);
+  post.userData = { animated: true };
+  rackGroup.add(post);
 }
+
+root.add(rackGroup);
 
 // 6. Массивная хромированная дверная ручка
 const handleL = 0.95;

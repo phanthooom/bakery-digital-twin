@@ -1,13 +1,26 @@
 import { Component, Suspense, useLayoutEffect, useMemo, type ReactNode } from 'react';
 import { useGLTF } from '@react-three/drei';
+import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import { mergeStatic } from './merge';
+import type { MachineLive } from './machines';
 
 /**
- * GLB-модель станка (поле `model` в config/equipment.json).
- * Модель ставится «на пол» (низ bbox → y=0) и центрируется по X/Z.
+ * GLB-модель станка (поле `model` в config/equipment.json) или машины.
+ * Модель ставится «на пол» (низ bbox → y=0) и центрируется по X/Z;
+ * keepOrigin — начало координат уже задано в самом файле, не сдвигать.
  * onHeight сообщает высоту, чтобы сигнальная колонна встала на крышу.
+ * Механизмы с префиксом anim_ вращаются/светятся в реальном времени.
  */
-function Model({ url, scale = 1, onHeight }: { url: string; scale?: number; onHeight?: (h: number) => void }) {
+interface ModelProps {
+  url: string;
+  scale?: number;
+  keepOrigin?: boolean;
+  onHeight?: (h: number) => void;
+  live?: MachineLive;
+}
+
+function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
   const { scene } = useGLTF(url);
   const object = useMemo(() => {
     const clone = scene.clone(true);
@@ -17,17 +30,61 @@ function Model({ url, scale = 1, onHeight }: { url: string; scale?: number; onHe
         o.receiveShadow = true;
       }
     });
+    mergeStatic(clone);
+    const dropped: THREE.Object3D[] = [];
+    clone.traverse((o) => (o as THREE.Mesh).isMesh && !o.visible && dropped.push(o));
+    for (const o of dropped) o.removeFromParent();
     clone.scale.setScalar(scale);
     const box = new THREE.Box3().setFromObject(clone);
     const center = box.getCenter(new THREE.Vector3());
-    clone.position.set(-center.x, -box.min.y, -center.z);
-    return { clone, height: box.max.y - box.min.y };
-  }, [scene, scale]);
+    if (!keepOrigin) clone.position.set(-center.x, -box.min.y, -center.z);
+
+    const rack = clone.getObjectByName('anim_rack');
+    const glow = clone.getObjectByName('anim_glow') as THREE.Mesh | undefined;
+    if (glow && (glow as THREE.Mesh).material) {
+      (glow as THREE.Mesh).material = ((glow as THREE.Mesh).material as THREE.Material).clone();
+    }
+    const bowl = clone.getObjectByName('anim_bowl');
+    const hook = clone.getObjectByName('anim_hook');
+
+    return { clone, height: box.max.y - box.min.y, rack, glow, bowl, hook };
+  }, [scene, scale, keepOrigin]);
+
   useLayoutEffect(() => onHeight?.(object.height), [object.height, onHeight]);
+
+  useFrame((_, dt) => {
+    if (!live) return;
+    const isRunning = live.status === 'running' || live.status === 'alarm';
+    const speed = isRunning ? 2 + live.load * 8 : 0;
+
+    // Вращение ротационной тележки с багетами в печи
+    if (object.rack && isRunning) {
+      object.rack.rotation.y += dt * 0.75 * Math.max(0.4, live.load);
+    }
+
+    // Тепловое свечение ТЭНов и камеры выпечки
+    if (object.glow && (object.glow.material as THREE.MeshStandardMaterial)) {
+      const mat = object.glow.material as THREE.MeshStandardMaterial;
+      const targetGlow = isRunning ? 0.6 + live.load * 1.8 : 0.05;
+      mat.emissiveIntensity = THREE.MathUtils.damp(mat.emissiveIntensity, targetGlow, 2.5, dt);
+    }
+
+    // Вращение дежи тестомеса
+    if (object.bowl && isRunning) {
+      object.bowl.rotation.y -= dt * speed * 0.15;
+    }
+
+    // Вращение спирального месильного органа
+    if (object.hook && isRunning) {
+      object.hook.rotation.y += dt * speed;
+    }
+  });
+
   return <primitive object={object.clone} />;
 }
 
-class Fallback extends Component<{ fallback: ReactNode; url: string; children: ReactNode }, { failed: boolean }> {
+/** Если модель не загрузилась — показать fallback (или ничего) вместо падения всей сцены. */
+export class Fallback extends Component<{ fallback: ReactNode; url: string; children: ReactNode }, { failed: boolean }> {
   state = { failed: false };
   static getDerivedStateFromError() {
     return { failed: true };
@@ -40,11 +97,13 @@ class Fallback extends Component<{ fallback: ReactNode; url: string; children: R
   }
 }
 
-export function GltfModel(props: { url: string; scale?: number; onHeight?: (h: number) => void; fallback: ReactNode }) {
+/** children — дополнения к модели (наклейки и т. п.): показываются только вместе с загруженной моделью. */
+export function GltfModel({ fallback, children, ...props }: ModelProps & { fallback: ReactNode; children?: ReactNode }) {
   return (
-    <Fallback fallback={props.fallback} url={props.url}>
-      <Suspense fallback={props.fallback}>
-        <Model url={props.url} scale={props.scale} onHeight={props.onHeight} />
+    <Fallback fallback={fallback} url={props.url}>
+      <Suspense fallback={fallback}>
+        <Model {...props} />
+        {children}
       </Suspense>
     </Fallback>
   );

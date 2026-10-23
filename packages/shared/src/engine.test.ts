@@ -17,9 +17,18 @@ const config: SiteConfig = {
     imbalanceMinLoadPct: 30,
     ai: { windowMin: 15, minBaselineSamples: 10, deviationWarnPct: 15, anomalyPct: 40, historyDays: 7 },
   },
-  stages: [{ id: 'baking', order: 1, label: '01', name: 'Выпечка', xFrom: 0, xTo: 1 }],
+  stages: [{ id: 'baking', order: 1, label: '01', name: 'Выпечка', zone: { x0: -5, z0: -5, x1: 5, z1: 5 } }],
   equipment: [
-    { id: 'oven-1', name: 'Печь 1', kind: 'oven', stage: 'baking', nominalKw: 36, phases: 3, position: { x: 0, y: 0, z: 0 } },
+    {
+      id: 'oven-1',
+      name: 'Печь 1',
+      kind: 'oven',
+      stage: 'baking',
+      nominalKw: 36,
+      phases: 3,
+      position: { x: 0, y: 0, z: 0 },
+      climate: { mode: 'oven', targetTempC: 230, minTempC: 190, maxTempC: 260 },
+    },
     { id: 'ice-1', name: 'Лёд', kind: 'icemaker', stage: 'baking', nominalKw: 1, phases: 1, position: { x: 0, y: 0, z: 0 } },
   ],
 };
@@ -142,5 +151,20 @@ describe('TwinEngine', () => {
     off();
     e.ingest(r(T0 + 5000, 1, [4.9], 'ice-1'), T0 + 5000);
     expect(got).toEqual(['ice-1:running']);
+  });
+
+  it('отслеживает технологический климат (температуру)', () => {
+    const e = new TwinEngine(config);
+    // Нормальная температура выпечки в печи
+    e.ingest({ ...r(T0, 30, [45, 45, 45], 'oven-1'), temperatureC: 228.5, targetTempC: 230 }, T0);
+    const s1 = e.getState('oven-1')!;
+    expect(s1.climate?.status).toBe('ok');
+    expect(s1.climate?.temperatureC).toBe(228.5);
+
+    // Перегрев печи (выше 270 °C)
+    e.ingest({ ...r(T0 + 5000, 30, [45, 45, 45], 'oven-1'), temperatureC: 275 }, T0 + 5000);
+    const s2 = e.getState('oven-1')!;
+    expect(s2.climate?.status).toBe('critical');
+    expect(s2.climate?.alert).toContain('Перегрев');
   });
 });

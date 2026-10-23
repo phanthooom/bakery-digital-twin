@@ -101,4 +101,48 @@ describe('MockDataSource (то, что видит фронт)', () => {
     // снимок воспроизводим
     expect(ds.getSupply!(NOW)!.inventory.stock('flour')).toBe(inv.stock('flour'));
   });
+
+  it('газ: днём печи горят — расход есть, тревог нет; демо «утечка в цехе» — сигнализатор поднимает аварию за пару минут', () => {
+    const ds = createSource();
+    ds.start();
+    const g = ds.getGas!()!;
+    expect(g.level).toBe('ok');
+    expect(g.lastReading!.flowM3h).toBeGreaterThan(0);
+    expect(ds.getGasHistory!(6, 3 * 60_000).length).toBeGreaterThanOrEqual(118);
+
+    ds.simulateGas!('leak_inside');
+    vi.advanceTimersByTime(3 * 60_000);
+    const leak = ds.getGas()!;
+    expect(leak.level).toBe('critical');
+    expect(leak.alerts.map((a) => a.kind)).toContain('detector');
+    expect(leak.lastReading!.ch4Lel!).toBeGreaterThanOrEqual(20);
+    ds.stop();
+  });
+
+  it('заказ из Telegram: станки (печь/тестомес) получают номер заказа, фургон встает на погрузку', () => {
+    const ds = createSource();
+    ds.start();
+    const received: unknown[] = [];
+    ds.onTelegramOrder!((order) => received.push(order));
+
+    ds.dispatchTelegramOrder!({
+      orderId: 'TG-777',
+      clientName: 'Кафе Чинор',
+      total: 90000,
+      items: [{ name: 'Круассан классический', quantity: 5, price: 15000 }],
+      createdAt: NOW,
+    });
+
+    expect(received).toHaveLength(1);
+    const oven = ds.getStates().get('oven-1')!;
+    expect(oven.lastReading?.order).toContain('TG-777');
+    expect(oven.lastReading?.order).toContain('Круассан классический');
+
+    const snap = ds.getSupply!(NOW)!;
+    const vanTrip = snap.trips.find((t) => t.id === 'Р-TG-777');
+    expect(vanTrip).toBeDefined();
+    expect(vanTrip?.vehicleId).toBe('van-1');
+
+    ds.stop();
+  });
 });

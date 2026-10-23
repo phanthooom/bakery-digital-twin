@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { Suspense, useEffect, useRef, useState } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Bloom, EffectComposer, Outline, Selection } from '@react-three/postprocessing';
 import type { SiteConfig } from '@bakery/shared';
@@ -8,6 +8,12 @@ import { BrandSign } from './BrandSign';
 import { Hall } from './Hall';
 import { Machine } from './Machine';
 import { SupplyScene } from './SupplyScene';
+import { Fallback } from './GltfModel';
+import { Workers } from './Workers';
+import { Staff } from './Staff';
+import { Areas } from './Areas';
+import { GasMeter } from './GasMeter';
+import { Mezzanine } from './Mezzanine';
 import type { SupplyTab } from '../ui/supplyView';
 
 export interface SceneProps {
@@ -25,10 +31,18 @@ export interface SceneProps {
   cardOffset: [number, number];
   onSelect: (id: string) => void;
   onDeselect: () => void;
-  /** Клик по складу, рампе или машине — открыть панель цепочки на нужной вкладке. */
+  /** Клик по складу или рампе — открыть панель цепочки на нужной вкладке. */
   onOpenSupply?: (tab: SupplyTab) => void;
+  /** Выбран ввод газа (счётчик и сигнализатор). */
+  gasSelected: boolean;
+  onSelectGas: () => void;
+  /** Выбранная машина у рампы (фургон или машина поставщика). */
+  selectedVehicle: string | null;
+  onSelectVehicle: (id: string) => void;
   /** Первый кадр сцены отрисован. */
   onReady?: () => void;
+  /** Текущий выбранный этаж */
+  floorFilter?: 'all' | 1 | 2;
 }
 
 function Lights() {
@@ -55,7 +69,7 @@ function Lights() {
   );
 }
 
-export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply }: SceneProps) {
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all' }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
@@ -97,7 +111,20 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           </EffectComposer>
           <Hall config={config} />
           <BrandSign config={config} />
-          {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} />}
+          {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} />}
+          {config.areas && <Areas config={config} />}
+          <Mezzanine config={config} floorFilter={floorFilter} />
+          <GasMeter config={config} selected={gasSelected} onSelect={onSelectGas} showLabel={showLabels} />
+          <Fallback fallback={null} url="/models/worker.glb">
+            <Suspense fallback={null}>
+              <Workers config={config} />
+            </Suspense>
+          </Fallback>
+          <Fallback fallback={null} url="/models/baker.glb">
+            <Suspense fallback={null}>
+              <Staff config={config} />
+            </Suspense>
+          </Fallback>
           {showLines && (
             <PowerLines
               config={config}
@@ -109,17 +136,21 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
               onSelectPanel={onSelectPanel}
             />
           )}
-          {config.equipment.map((eq) => (
-            <Machine
-              key={eq.id}
-              eq={eq}
-              selected={selectedId === eq.id}
-              hovered={hoveredId === eq.id}
-              showLabel={showLabels}
-              onHover={setHoveredId}
-              onSelect={onSelect}
-            />
-          ))}
+          {config.equipment.map((eq) => {
+            const isVisible = floorFilter === 'all' || (floorFilter === 2 ? eq.floor === 2 : eq.floor !== 2);
+            if (!isVisible) return null;
+            return (
+              <Machine
+                key={eq.id}
+                eq={eq}
+                selected={selectedId === eq.id}
+                hovered={hoveredId === eq.id}
+                showLabel={showLabels}
+                onHover={setHoveredId}
+                onSelect={onSelect}
+              />
+            );
+          })}
         </Selection>
       </Canvas>
     </div>

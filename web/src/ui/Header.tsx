@@ -1,9 +1,9 @@
 import type { MachineStatus } from '@bakery/shared';
-import { useDataSource, useStates } from '../data/store';
-import { fmtAgo, fmtKw } from './format';
+import { useDataSource, useGas, useStates } from '../data/store';
+import { fmtAgo, fmtKw, fmtNum } from './format';
 import { STATUS_LABEL, STATUS_ORDER } from './statusMeta';
 import { BrandMark } from './BrandMark';
-import { StatusIcon } from './StatusIcon';
+import { StatusIcon, WarnIcon } from './StatusIcon';
 import { useNow } from './useNow';
 
 export interface HeaderProps {
@@ -18,9 +18,16 @@ export interface HeaderProps {
   onOpenEnergy: () => void;
   linesVisible: boolean;
   onToggleLines: () => void;
+  /** Газ: расход на вводе в сводке; клик — карточка газа. */
+  gasOpen?: boolean;
+  onOpenGas?: () => void;
+  /** Текущий этаж */
+  floorFilter?: 'all' | 1 | 2;
+  onFloorChange?: (floor: 'all' | 1 | 2) => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange }: HeaderProps) {
+  const gas = useGas();
   const ds = useDataSource();
   const states = useStates();
   const now = useNow(1000);
@@ -49,6 +56,20 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
           <span className="value">{fmtKw(total)}</span>
           <span className="unit">кВт</span>
         </div>
+        {gas && onOpenGas && (
+          <button
+            type="button"
+            className={`stat-gas${gas.level === 'warning' || gas.level === 'critical' ? ` is-${gas.level}` : ''}`}
+            aria-pressed={gasOpen}
+            onClick={onOpenGas}
+            title="Расход газа на вводе; утечки — по сигнализатору и по расходу"
+          >
+            {(gas.level === 'warning' || gas.level === 'critical') && <WarnIcon level={gas.level} />}
+            {gas.level === 'critical' ? 'Утечка газа' : 'Газ'}
+            <strong>{gas.lastReading && gas.level !== 'offline' ? fmtNum(gas.lastReading.flowM3h, 1) : '—'}</strong>
+            м³/ч
+          </button>
+        )}
         {STATUS_ORDER.map((st) => (
           <span key={st} className={`chip${st === 'alarm' && counts.alarm > 0 ? ' is-alert' : ''}`}>
             <StatusIcon status={st} size={12} />
@@ -89,6 +110,34 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
         <button className="btn" aria-pressed={showLabels} onClick={onToggleLabels}>
           Подписи
         </button>
+        {onFloorChange && (
+          <div className="floor-switch" role="group" aria-label="Выбор этажа">
+            <button
+              type="button"
+              className={`btn-floor${floorFilter === 'all' ? ' is-active' : ''}`}
+              onClick={() => onFloorChange('all')}
+              title="Показать все этажи"
+            >
+              Все
+            </button>
+            <button
+              type="button"
+              className={`btn-floor${floorFilter === 1 ? ' is-active' : ''}`}
+              onClick={() => onFloorChange(1)}
+              title="1-й этаж: цех"
+            >
+              1 эт.
+            </button>
+            <button
+              type="button"
+              className={`btn-floor${floorFilter === 2 ? ' is-active' : ''}`}
+              onClick={() => onFloorChange(2)}
+              title="2-й этаж: антресоль, силосы, SCADA"
+            >
+              2 эт.
+            </button>
+          </div>
+        )}
         <button className="btn" onClick={onResetView}>
           Весь цех
         </button>

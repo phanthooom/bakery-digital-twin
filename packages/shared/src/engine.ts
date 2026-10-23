@@ -2,7 +2,7 @@ import { aiCheck } from './aiCheck';
 import { HourlyBaseline, meanSince } from './baseline';
 import { imbalancePct, pctOfNominal, ratedCurrentA } from './electrical';
 import { computeStatus } from './status';
-import type { AiCheck, EquipmentConfig, EquipmentState, PowerPoint, Reading, SiteConfig } from './types';
+import type { AiCheck, ClimateState, ClimateStatus, EquipmentConfig, EquipmentState, MachineStatus, PowerPoint, Reading, SiteConfig } from './types';
 
 export interface EngineOptions {
   /** Сколько часов сырых точек держать в памяти (для графика 6 ч). */
@@ -161,11 +161,73 @@ export class TwinEngine {
     });
   }
 
+  private assessClimate(eq: EquipmentConfig, last: Reading | null, status: MachineStatus): ClimateState | undefined {
+    if (!last || (last.temperatureC === undefined && last.humidityPct === undefined && !eq.climate)) {
+      return undefined;
+    }
+    const temp = last.temperatureC ?? null;
+    const targetTemp = last.targetTempC ?? eq.climate?.targetTempC ?? null;
+    const hum = last.humidityPct ?? null;
+    const targetHum = last.targetHumidityPct ?? eq.climate?.targetHumidityPct ?? null;
+    const core = last.coreTempC ?? null;
+
+    if (status === 'offline') {
+      return {
+        temperatureC: temp,
+        targetTempC: targetTemp,
+        humidityPct: hum,
+        targetHumidityPct: targetHum,
+        coreTempC: core,
+        status: 'off',
+        alert: null,
+      };
+    }
+
+    let alert: string | null = null;
+    let climateStatus: ClimateStatus = 'ok';
+
+    const spec = eq.climate;
+    if (spec) {
+      if (temp !== null) {
+        if (temp > spec.maxTempC + 10) {
+          climateStatus = 'critical';
+          alert = `Перегрев: ${temp} °C (макс. ${spec.maxTempC} °C)`;
+        } else if (temp < spec.minTempC && status === 'running') {
+          climateStatus = 'warning';
+          alert = `Недогрев: ${temp} °C (мин. ${spec.minTempC} °C)`;
+        } else if (temp > spec.maxTempC) {
+          climateStatus = 'warning';
+          alert = `Выше нормы: ${temp} °C (макс. ${spec.maxTempC} °C)`;
+        }
+      }
+      if (hum !== null && spec.minHumidityPct !== undefined && spec.maxHumidityPct !== undefined) {
+        if (hum < spec.minHumidityPct) {
+          climateStatus = climateStatus === 'critical' ? 'critical' : 'warning';
+          alert = alert ? `${alert}; Сухой воздух ${hum} %` : `Влажность ${hum} % ниже нормы (${spec.minHumidityPct} %)`;
+        } else if (hum > spec.maxHumidityPct) {
+          climateStatus = climateStatus === 'critical' ? 'critical' : 'warning';
+          alert = alert ? `${alert}; Переувлажнение ${hum} %` : `Влажность ${hum} % выше нормы (${spec.maxHumidityPct} %)`;
+        }
+      }
+    }
+
+    return {
+      temperatureC: temp,
+      targetTempC: targetTemp,
+      humidityPct: hum,
+      targetHumidityPct: targetHum,
+      coreTempC: core,
+      status: climateStatus,
+      alert,
+    };
+  }
+
   private buildState(slot: Slot, last: Reading, ai: AiCheck, nowMs: number): EquipmentState {
     const { eq } = slot;
     const prev = slot.state;
     const st = computeStatus({ reading: last, nowMs, nominalKw: eq.nominalKw, phases: eq.phases, thresholds: this.config.thresholds, aiState: ai.state });
     const statusChanged = st.status !== prev.status;
+    const climate = this.assessClimate(eq, last, st.status);
     return {
       ...prev,
       status: st.status,
@@ -175,6 +237,7 @@ export class TwinEngine {
       pctOfNominal: pctOfNominal(last.powerKw, eq.nominalKw),
       imbalancePct: eq.phases === 3 ? imbalancePct(last.currentsA) : null,
       ai_check: ai,
+      climate,
       updatedAt: Math.max(prev.updatedAt, last.ts),
     };
   }

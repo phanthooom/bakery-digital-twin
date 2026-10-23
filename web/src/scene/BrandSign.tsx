@@ -1,5 +1,5 @@
-import { Component, Suspense, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { useLoader } from '@react-three/fiber';
+import { Component, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useFrame, useLoader } from '@react-three/fiber';
 import { Center, RoundedBox, Text3D } from '@react-three/drei';
 import * as THREE from 'three';
 import { SVGLoader } from 'three/examples/jsm/loaders/SVGLoader.js';
@@ -8,6 +8,7 @@ import font from 'three/examples/fonts/gentilis_bold.typeface.json';
 import { drawEmblem } from '../ui/brandEmblem';
 import { M } from './materials';
 import { makeLabelTexture } from './textures';
+import { backWallCut } from './Walls';
 
 const CREAM = '#fff3df';
 const BOARD_H = 1.5;
@@ -97,6 +98,11 @@ export function BrandSign({ config }: { config: SiteConfig }) {
   const name = brand?.name ?? '';
   const [logoW, setLogoW] = useState<number | null>(null);
   const [textBlockW, setTextBlockW] = useState<number | null>(null);
+  // вывеска на кромке задней стены — прячется вместе со стеной, когда камера за ней
+  const signRef = useRef<THREE.Group>(null);
+  useFrame(({ camera }) => {
+    if (signRef.current) signRef.current.visible = !backWallCut(camera, D);
+  });
   // пока шрифт не измерен — оценка: ~0,36 м на символ при высоте букв 0,62 м
   const textW = Math.max(3, name.length * 0.36);
   const contentW = brand?.logo ? (logoW ?? textW) : (textBlockW ?? textW + 1.2);
@@ -122,7 +128,7 @@ export function BrandSign({ config }: { config: SiteConfig }) {
   const y = H + BOARD_H / 2 + 0.12;
   const z = -D / 2 + 0.02;
   return (
-    <group position={[0, y, z]}>
+    <group ref={signRef} position={[0, y, z]}>
       <mesh position={[0, 0, -0.09]} scale={[boardW * 1.45, BOARD_H * 2.6, 1]}>
         <planeGeometry />
         <meshBasicMaterial map={halo} transparent depthWrite={false} blending={THREE.AdditiveBlending} opacity={0.5} toneMapped={false} />
