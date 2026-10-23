@@ -67,35 +67,86 @@ export function App() {
   useEffect(() => {
     applyStatusCssVars();
 
-    // Интеграция с Telegram Mini App SDK (полноэкранный режим, запрет закрытия свайпом при вращении 3D)
+    // Интеграция с Telegram Mini App SDK:
+    // 1. Полноэкранный режим (requestFullscreen + expand)
+    // 2. Запрет случайного смахивания/выхода (disableVerticalSwipes + enableClosingConfirmation)
+    // 3. Безопасные отступы сверху и снизу под системные капсулы Telegram
     const wa = (window as unknown as { Telegram?: { WebApp?: Record<string, any> } })?.Telegram?.WebApp;
     if (!wa) return;
+    const isInsideTg = Boolean(wa.initData || (wa.platform && wa.platform !== 'unknown'));
+    if (!isInsideTg) return;
+
     try { wa.ready?.(); } catch {}
     try { wa.expand?.(); } catch {}
     try { wa.disableVerticalSwipes?.(); } catch {}
+    try { wa.enableClosingConfirmation?.(); } catch {}
     try { wa.setHeaderColor?.('#fcfcfb'); } catch {}
     try { wa.setBackgroundColor?.('#ecebe7'); } catch {}
 
+    const tryEnterFullscreen = () => {
+      try {
+        wa.expand?.();
+        wa.disableVerticalSwipes?.();
+        if (typeof wa.requestFullscreen === 'function' && !wa.isFullscreen) {
+          wa.requestFullscreen();
+        }
+      } catch {}
+    };
+
     const syncInsets = () => {
-      const isInsideTg = Boolean(wa.initData || wa.platform && wa.platform !== 'unknown');
-      if (!isInsideTg) return;
       const cTop = Number(wa.contentSafeAreaInset?.top) || 0;
       const sTop = Number(wa.safeAreaInset?.top) || 0;
       const cBot = Number(wa.contentSafeAreaInset?.bottom) || 0;
       const sBot = Number(wa.safeAreaInset?.bottom) || 0;
-      const isFs = Boolean(wa.isFullscreen);
-      const top = isFs ? Math.max(cTop, sTop + 26, 76) : Math.max(cTop, sTop, 0);
+      const isIOS = wa.platform === 'ios' || /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+      let top = 0;
+      if (cTop > 0) {
+        top = Math.max(cTop + 6, 86);
+      } else if (sTop > 0) {
+        top = Math.max(sTop + 30, 86);
+      } else {
+        top = isIOS ? 86 : 56;
+      }
+
       const bot = Math.max(cBot, sBot, 0);
       document.documentElement.style.setProperty('--twa-safe-top', `${top}px`);
       document.documentElement.style.setProperty('--twa-safe-bottom', `${bot}px`);
+
+      const bar = document.querySelector<HTMLElement>('.topbar');
+      if (bar) {
+        document.documentElement.style.setProperty('--topbar-h', `${Math.ceil(bar.getBoundingClientRect().height)}px`);
+      }
     };
 
+    tryEnterFullscreen();
     syncInsets();
+
+    const t1 = setTimeout(() => { tryEnterFullscreen(); syncInsets(); }, 150);
+    const t2 = setTimeout(() => { tryEnterFullscreen(); syncInsets(); }, 500);
+    const t3 = setTimeout(() => { tryEnterFullscreen(); syncInsets(); }, 1000);
+
+    let hasRequestedOnTap = false;
+    const onFirstGesture = () => {
+      if (!hasRequestedOnTap) {
+        hasRequestedOnTap = true;
+        tryEnterFullscreen();
+        syncInsets();
+      }
+    };
+    window.addEventListener('pointerdown', onFirstGesture, { passive: true });
+    window.addEventListener('touchstart', onFirstGesture, { passive: true });
+
     wa.onEvent?.('safeAreaChanged', syncInsets);
     wa.onEvent?.('contentSafeAreaChanged', syncInsets);
     wa.onEvent?.('fullscreenChanged', syncInsets);
     wa.onEvent?.('viewportChanged', syncInsets);
     return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      window.removeEventListener('pointerdown', onFirstGesture);
+      window.removeEventListener('touchstart', onFirstGesture);
       try {
         wa.offEvent?.('safeAreaChanged', syncInsets);
         wa.offEvent?.('contentSafeAreaChanged', syncInsets);
