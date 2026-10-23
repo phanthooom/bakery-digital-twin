@@ -61,6 +61,8 @@ export default defineConfig({
   plugins: [react(), orderWebhookPlugin()],
   server: {
     port: 5173,
+    host: true,
+    allowedHosts: true,
     // README обещает именно :5173 — если порт занят, лучше явная ошибка, чем тихий переезд
     strictPort: true,
     open: false,
