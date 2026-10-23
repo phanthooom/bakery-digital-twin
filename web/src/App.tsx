@@ -66,6 +66,43 @@ export function App() {
 
   useEffect(() => {
     applyStatusCssVars();
+
+    // Интеграция с Telegram Mini App SDK (полноэкранный режим, запрет закрытия свайпом при вращении 3D)
+    const wa = (window as unknown as { Telegram?: { WebApp?: Record<string, any> } })?.Telegram?.WebApp;
+    if (!wa) return;
+    try { wa.ready?.(); } catch {}
+    try { wa.expand?.(); } catch {}
+    try { wa.disableVerticalSwipes?.(); } catch {}
+    try { wa.setHeaderColor?.('#fcfcfb'); } catch {}
+    try { wa.setBackgroundColor?.('#ecebe7'); } catch {}
+
+    const syncInsets = () => {
+      const isInsideTg = Boolean(wa.initData || wa.platform && wa.platform !== 'unknown');
+      if (!isInsideTg) return;
+      const cTop = Number(wa.contentSafeAreaInset?.top) || 0;
+      const sTop = Number(wa.safeAreaInset?.top) || 0;
+      const cBot = Number(wa.contentSafeAreaInset?.bottom) || 0;
+      const sBot = Number(wa.safeAreaInset?.bottom) || 0;
+      const isFs = Boolean(wa.isFullscreen);
+      const top = isFs ? Math.max(cTop, sTop + 26, 76) : Math.max(cTop, sTop, 0);
+      const bot = Math.max(cBot, sBot, 0);
+      document.documentElement.style.setProperty('--twa-safe-top', `${top}px`);
+      document.documentElement.style.setProperty('--twa-safe-bottom', `${bot}px`);
+    };
+
+    syncInsets();
+    wa.onEvent?.('safeAreaChanged', syncInsets);
+    wa.onEvent?.('contentSafeAreaChanged', syncInsets);
+    wa.onEvent?.('fullscreenChanged', syncInsets);
+    wa.onEvent?.('viewportChanged', syncInsets);
+    return () => {
+      try {
+        wa.offEvent?.('safeAreaChanged', syncInsets);
+        wa.offEvent?.('contentSafeAreaChanged', syncInsets);
+        wa.offEvent?.('fullscreenChanged', syncInsets);
+        wa.offEvent?.('viewportChanged', syncInsets);
+      } catch {}
+    };
   }, []);
 
   // высота шапки меняется при переносе строк — карточки и списки отступают от неё
@@ -225,6 +262,7 @@ export function App() {
           gasSelected={selection?.kind === 'gas'}
           onSelectGas={selectGas}
           floorFilter={floorFilter}
+          isMobile={!wide}
         />
         {energyOpen && <EnergyPanel onClose={() => setEnergyOpen(false)} />}
         {supplyTab && <SupplyPanel initialTab={supplyTab} onClose={() => setSupplyTab(null)} />}
@@ -234,7 +272,16 @@ export function App() {
         {selection?.kind === 'panel' && <PanelCard onClose={deselect} onOpenLine={selectLine} />}
         {selection?.kind === 'gas' && <GasCard onClose={deselect} />}
         {selection?.kind === 'vehicle' && <VehicleCard key={selection.id} id={selection.id} onClose={deselect} onOpenSupply={setSupplyTab} />}
-        {listOpen && <EquipmentList config={ds.config} selectedId={selectedId} onSelect={select} />}
+        {listOpen && (
+          <EquipmentList
+            config={ds.config}
+            selectedId={selectedId}
+            onSelect={(id) => {
+              select(id);
+              if (!wide) setListOpen(false);
+            }}
+          />
+        )}
         {!listOpen && <GestureHint />}
         <div className="legend" aria-label="Обозначения сигнальных колонн">
           {STATUS_ORDER.map((s) => (

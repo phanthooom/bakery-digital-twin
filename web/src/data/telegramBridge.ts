@@ -26,21 +26,28 @@ export function setupTelegramBridge(
     });
   }
 
-  // 2. Fetch recent orders and polling fallback
+  // 2. Fetch recent orders and polling fallback (local dev & cloud production)
   let active = true;
+  const endpoints = [
+    '/api/orders',
+    'https://trend-bakery-bot.vercel.app/api/order',
+  ];
+
   const poll = async () => {
-    try {
-      const res = await fetch('/api/orders');
-      if (res.ok) {
-        const list = (await res.json()) as TelegramOrder[];
-        if (Array.isArray(list)) {
-          for (const ord of list) {
-            handleOrder(ord);
+    for (const url of endpoints) {
+      try {
+        const res = await fetch(url);
+        if (res.ok) {
+          const list = (await res.json()) as TelegramOrder[];
+          if (Array.isArray(list)) {
+            for (const ord of list) {
+              handleOrder(ord);
+            }
           }
         }
+      } catch {
+        // оффлайн или без эндпоинта
       }
-    } catch {
-      // оффлайн или без эндпоинта
     }
   };
 

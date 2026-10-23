@@ -43,9 +43,12 @@ export interface SceneProps {
   onReady?: () => void;
   /** Текущий выбранный этаж */
   floorFilter?: 'all' | 1 | 2;
+  /** Мобильный/компактный экран — облегчённый рендер для 60 FPS без перегрева */
+  isMobile?: boolean;
 }
 
-function Lights() {
+function Lights({ isMobile }: { isMobile?: boolean }) {
+  const mapSize: [number, number] = isMobile ? [1024, 1024] : [2048, 2048];
   return (
     <>
       <hemisphereLight args={['#ffffff', '#b9b4a8', 1.15]} />
@@ -54,7 +57,7 @@ function Lights() {
         position={[9, 18, 12]}
         intensity={1.9}
         castShadow
-        shadow-mapSize={[2048, 2048]}
+        shadow-mapSize={mapSize}
         shadow-bias={-0.0008}
         shadow-normalBias={0.04}
         shadow-camera-left={-40}
@@ -69,17 +72,20 @@ function Lights() {
   );
 }
 
-export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all' }: SceneProps) {
+const NOOP = () => {};
+
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
+    if (isMobile) return;
     document.body.style.cursor = hoveredId || hoveredLineId ? 'pointer' : '';
     return () => {
       document.body.style.cursor = '';
     };
-  }, [hoveredId, hoveredLineId]);
+  }, [hoveredId, hoveredLineId, isMobile]);
 
   return (
     <div
@@ -90,9 +96,9 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
     >
       <Canvas
         shadows
-        dpr={[1, 2]}
-        camera={{ fov: 32, near: 0.1, far: 300, position: [-5, 20, 25] }}
-        gl={{ antialias: false, powerPreference: 'high-performance', preserveDrawingBuffer: true }}
+        dpr={isMobile ? [1, 1.25] : [1, 2]}
+        camera={{ fov: isMobile ? 36 : 32, near: 0.1, far: 300, position: [-5, 20, 25] }}
+        gl={{ antialias: isMobile, powerPreference: 'high-performance', preserveDrawingBuffer: false }}
         onPointerMissed={(e) => {
           // клик по пустому месту (не перетаскивание камеры) — закрыть карточку
           const d = down.current;
@@ -102,13 +108,15 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
         onCreated={() => requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()))}
       >
         <color attach="background" args={['#ecebe7']} />
-        <Lights />
+        <Lights isMobile={isMobile} />
         <CameraRig config={config} focus={focus} viewToken={viewToken} cardOffset={cardOffset} />
         <Selection>
-          <EffectComposer multisampling={2} autoClear={false}>
-            <Outline blur visibleEdgeColor={0x2f7bff} hiddenEdgeColor={0x2f7bff} edgeStrength={10} xRay={false} />
-            <Bloom luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />
-          </EffectComposer>
+          {!isMobile && (
+            <EffectComposer multisampling={2} autoClear={false}>
+              <Outline blur visibleEdgeColor={0x2f7bff} hiddenEdgeColor={0x2f7bff} edgeStrength={10} xRay={false} />
+              <Bloom luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />
+            </EffectComposer>
+          )}
           <Hall config={config} />
           <BrandSign config={config} />
           {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} />}
@@ -131,7 +139,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
               selectedLineId={selectedLineId}
               panelSelected={panelSelected}
               hoveredLineId={hoveredLineId}
-              onHoverLine={setHoveredLineId}
+              onHoverLine={isMobile ? NOOP : setHoveredLineId}
               onSelectLine={onSelectLine}
               onSelectPanel={onSelectPanel}
             />
@@ -146,7 +154,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
                 selected={selectedId === eq.id}
                 hovered={hoveredId === eq.id}
                 showLabel={showLabels}
-                onHover={setHoveredId}
+                onHover={isMobile ? NOOP : setHoveredId}
                 onSelect={onSelect}
               />
             );
