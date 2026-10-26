@@ -58,13 +58,25 @@ export function CameraRig({ config, focus, viewToken, cardOffset }: { config: Si
       else lo = mid;
     }
     const pos = OVERVIEW_DIR.clone().multiplyScalar(hi).add(OVERVIEW_TARGET);
-    void c.setLookAt(pos.x, pos.y, pos.z, OVERVIEW_TARGET.x, OVERVIEW_TARGET.y, OVERVIEW_TARGET.z, smooth);
+
+    if (firstRun.current) {
+      // При самом первом входе: сначала ставим камеру на дальнюю панораму (зум аут),
+      // а затем плавно наезжаем (зум ин) к целевой точке обзора завода и останавливаемся!
+      firstRun.current = false;
+      const initialDistance = hi * 2.1;
+      const startPos = OVERVIEW_DIR.clone().multiplyScalar(initialDistance).add(OVERVIEW_TARGET);
+      c.setLookAt(startPos.x, startPos.y, startPos.z, OVERVIEW_TARGET.x, OVERVIEW_TARGET.y, OVERVIEW_TARGET.z, false);
+      requestAnimationFrame(() => {
+        void c.setLookAt(pos.x, pos.y, pos.z, OVERVIEW_TARGET.x, OVERVIEW_TARGET.y, OVERVIEW_TARGET.z, true);
+      });
+    } else {
+      void c.setLookAt(pos.x, pos.y, pos.z, OVERVIEW_TARGET.x, OVERVIEW_TARGET.y, OVERVIEW_TARGET.z, smooth);
+    }
   };
 
   useEffect(() => {
     savedPose.current = null; // «Весь цех» важнее возврата к прошлому виду
-    overview(!firstRun.current);
-    firstRun.current = false;
+    overview(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewToken]);
 
