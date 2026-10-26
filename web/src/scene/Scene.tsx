@@ -45,6 +45,10 @@ export interface SceneProps {
   floorFilter?: 'all' | 1 | 2;
   /** Мобильный/компактный экран — облегчённый рендер для 60 FPS без перегрева */
   isMobile?: boolean;
+  /** Активна ли перекачка муки в производственном цикле */
+  activeFlourTransfer?: boolean;
+  /** Вмешательство пользователя в камеру */
+  onUserInteract?: () => void;
 }
 
 function Lights({ isMobile }: { isMobile?: boolean }) {
@@ -74,7 +78,7 @@ function Lights({ isMobile }: { isMobile?: boolean }) {
 
 const NOOP = () => {};
 
-export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false }: SceneProps) {
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false, activeFlourTransfer = false, onUserInteract }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
@@ -92,6 +96,10 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
       className="scene"
       onPointerDown={(e) => {
         down.current = { x: e.clientX, y: e.clientY };
+        onUserInteract?.();
+      }}
+      onWheel={() => {
+        onUserInteract?.();
       }}
     >
       <Canvas
@@ -121,7 +129,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           <BrandSign config={config} />
           {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} />}
           {config.areas && <Areas config={config} />}
-          <Mezzanine config={config} floorFilter={floorFilter} />
+          <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} />
           <GasMeter config={config} selected={gasSelected} onSelect={onSelectGas} showLabel={showLabels} />
           <Fallback fallback={null} url="/models/worker.glb">
             <Suspense fallback={null}>

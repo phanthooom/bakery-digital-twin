@@ -1103,3 +1103,232 @@ details.table-view th { color: var(--text-muted); font-weight: 500; }
   50% { transform: scale(1.05); box-shadow: 0 6px 20px rgba(183, 31, 62, 0.45); }
 }
 
+/* ── Сквозной производственный цикл «от А до Я» ─────────── */
+.btn-production {
+  background: #fdf3e7;
+  color: #ad5700;
+  border-color: #f3c99a;
+  font-weight: 600;
+}
+.btn-production:hover {
+  background: #fae4cb;
+}
+.btn-production.is-active {
+  background: #ad5700;
+  color: #ffffff;
+  border-color: #ad5700;
+}
+
+.pulse-prod {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #e67e22;
+  display: inline-block;
+  animation: prod-blink 1.5s infinite ease-in-out;
+}
+.btn-production.is-active .pulse-prod {
+  background: #ffffff;
+}
+
+@keyframes prod-blink {
+  0%, 100% { opacity: 0.4; transform: scale(0.9); }
+  50% { opacity: 1; transform: scale(1.3); }
+}
+
+.production-control {
+  position: absolute;
+  left: 50%;
+  bottom: calc(var(--twa-safe-bottom, 0px) + 20px);
+  transform: translateX(-50%);
+  width: min(540px, calc(100vw - 32px));
+  background: rgba(252, 252, 251, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 14px 18px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: prod-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes prod-slide-up {
+  from { opacity: 0; transform: translate(-50%, 20px); }
+  to { opacity: 1; transform: translate(-50%, 0); }
+}
+
+.prod-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.prod-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.prod-badge-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e67e22;
+  box-shadow: 0 0 0 3px rgba(230, 126, 34, 0.25);
+}
+
+.prod-title {
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.prod-batch {
+  font-size: 11px;
+  padding: 2px 6px;
+  background: var(--surface-2);
+  border-radius: 6px;
+  color: var(--text-secondary);
+  font-family: monospace;
+}
+
+.prod-actions-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.btn-cam {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn-cam.is-active {
+  background: #2f7bff;
+  color: #fff;
+  border-color: #2f7bff;
+}
+
+.btn-prod-close {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-muted);
+}
+.btn-prod-close:hover {
+  background: var(--surface-2);
+  color: var(--text-primary);
+}
+
+.prod-description {
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-secondary);
+}
+
+.prod-progress-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.prod-progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.prod-progress-bar {
+  height: 5px;
+  background: var(--grid);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.prod-progress-fill {
+  height: 100%;
+  background: #e67e22;
+  border-radius: 999px;
+  transition: width 0.2s ease-out;
+}
+
+.prod-controls-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 4px;
+}
+
+.btn-prod-primary {
+  background: #e67e22;
+  color: #ffffff;
+  border: 1px solid #d35400;
+  font-weight: 600;
+  padding: 6px 14px;
+}
+.btn-prod-primary:hover {
+  background: #d35400;
+}
+
+.btn-prod-sec {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 6px 12px;
+  font-size: 13px;
+}
+.btn-prod-sec:hover {
+  background: var(--surface-1);
+}
+
+.prod-speed-group {
+  display: inline-flex;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  padding: 2px;
+  gap: 2px;
+}
+
+.btn-spd {
+  border: none;
+  background: transparent;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.btn-spd.is-active {
+  background: var(--surface-1);
+  color: var(--text-primary);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+

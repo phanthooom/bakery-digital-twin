@@ -26,9 +26,11 @@ export interface HeaderProps {
   onFloorChange?: (floor: 'all' | 1 | 2) => void;
   latestOrder?: TelegramOrder | null;
   onOpenOrder?: () => void;
+  productionActive?: boolean;
+  onToggleProduction?: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder, productionActive = false, onToggleProduction }: HeaderProps) {
   const gas = useGas();
   const ds = useDataSource();
   const states = useStates();
@@ -129,6 +131,17 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
                 <path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" />
               </svg>
               <span>Энергия, сум</span>
+            </button>
+          )}
+          {onToggleProduction && (
+            <button
+              type="button"
+              className={`btn btn-production${productionActive ? ' is-active' : ''}`}
+              onClick={onToggleProduction}
+              title={productionActive ? 'Производственный цикл активен (клик — открыть управление/пауза)' : 'Запустить сквозной цикл производства от муки до выезда фургона'}
+            >
+              <span className="pulse-prod" aria-hidden />
+              <span>{productionActive ? 'Цикл активен' : '▶ Производство'}</span>
             </button>
           )}
         </div>

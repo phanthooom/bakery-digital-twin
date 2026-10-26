@@ -308,4 +308,37 @@ export class MockDataSource implements DataSource {
     sim.forceFault(type, now, FAULTS[type].demoDurationMs);
     this.step();
   }
+
+  syncProductionStep(stepId: string): void {
+    const now = Date.now();
+    if (stepId === 'mixing') {
+      const mixer = this.sims.find((s) => s.eq.id === 'mixer-1');
+      if (mixer) mixer.forceMode('work', now, 45_000);
+    } else if (stepId === 'baking') {
+      const oven = this.sims.find((s) => s.eq.id === 'oven-1');
+      if (oven) oven.forceMode('work', now, 45_000);
+    } else if (stepId === 'dispatch') {
+      const tripId = `Р-ЦИКЛ-${now.toString().slice(-4)}`;
+      if (!this.liveTrips.some((t) => t.id === tripId)) {
+        this.liveTrips.unshift({
+          id: tripId,
+          vehicleId: 'van-1',
+          departAt: now + 5000,
+          returnAt: now + 5 * MIN,
+          loadMinutes: 1,
+          orders: [
+            {
+              orderId: 'ПАРТИЯ-01',
+              client: 'Кафе и пекарни города',
+              kg: 180,
+              lat: 41.3111,
+              lon: 69.2797,
+            },
+          ],
+        });
+        if (this.liveTrips.length > 5) this.liveTrips.pop();
+      }
+    }
+    this.notify();
+  }
 }

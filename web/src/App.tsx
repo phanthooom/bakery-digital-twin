@@ -21,7 +21,9 @@ import { GestureHint } from './ui/GestureHint';
 import { LoadingScreen } from './ui/LoadingScreen';
 import { setupTelegramBridge } from './data/telegramBridge';
 import { TelegramOrderToast } from './ui/TelegramOrderToast';
-import type { TelegramOrder } from '@bakery/shared';
+import { ProductionControl } from './ui/ProductionControl';
+import { ProductionCycleManager, type ProductionCycleState, type TelegramOrder } from '@bakery/shared';
+import type { MockDataSource } from './data/MockDataSource';
 
 const NO_OFFSET: [number, number] = [0, 0];
 const SIDE_CARD_OFFSET: [number, number] = [1.1, 0];
@@ -51,6 +53,50 @@ export function App() {
   const [customFocus, setCustomFocus] = useState<CameraFocus | null>(null);
   const [latestOrder, setLatestOrder] = useState<TelegramOrder | null>(null);
   const [showOrderToast, setShowOrderToast] = useState(false);
+
+  // Сквозной непрерывный цикл производства «от А до Я»
+  const prodManager = useMemo(() => new ProductionCycleManager(), []);
+  const [prodState, setProdState] = useState<ProductionCycleState>(() => prodManager.getState());
+  const [cameraFollowProd, setCameraFollowProd] = useState(true);
+
+  useEffect(() => {
+    return prodManager.subscribe((st) => {
+      setProdState(st);
+      if (ds.kind === 'mock') {
+        (ds as unknown as MockDataSource).syncProductionStep?.(st.currentStepId);
+      }
+    });
+  }, [prodManager, ds]);
+
+  // Анимационный таймер для стейт-машины производства
+  useEffect(() => {
+    let lastTime = performance.now();
+    let rafId: number;
+    const loop = (now: number) => {
+      const dt = Math.min(0.2, (now - lastTime) / 1000);
+      lastTime = now;
+      if (prodState.status === 'running') {
+        prodManager.tick(dt);
+      }
+      rafId = requestAnimationFrame(loop);
+    };
+    rafId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(rafId);
+  }, [prodManager, prodState.status]);
+
+  // Плавное следование камеры за активным этапом
+  useEffect(() => {
+    if (!cameraFollowProd || prodState.status !== 'running' || !prodState.activeStep) return;
+    const f = prodState.activeStep.cameraFocus;
+    setCustomFocus({
+      key: `prod-${prodState.activeStep.id}`,
+      x: f.x,
+      z: f.z,
+      lookY: f.lookY,
+      dist: f.dist,
+      dir: f.dir,
+    });
+  }, [cameraFollowProd, prodState.currentStepId, prodState.status, prodState.activeStep]);
 
   useEffect(() => {
     return setupTelegramBridge(ds, (ord) => {
@@ -286,6 +332,17 @@ export function App() {
           onFloorChange={handleFloorChange}
           latestOrder={latestOrder}
           onOpenOrder={() => setShowOrderToast(true)}
+          productionActive={prodState.status === 'running' || prodState.status === 'paused'}
+          onToggleProduction={() => {
+            if (prodState.status === 'idle' || prodState.status === 'completed') {
+              prodManager.start();
+              setCameraFollowProd(true);
+            } else if (prodState.status === 'running') {
+              prodManager.pause();
+            } else {
+              prodManager.resume();
+            }
+          }}
           onResetView={() => {
             setSelection(null);
             setCustomFocus(null);
@@ -314,6 +371,22 @@ export function App() {
           onSelectGas={selectGas}
           floorFilter={floorFilter}
           isMobile={!wide}
+          activeFlourTransfer={prodState.status === 'running' && prodState.currentStepId === 'flour_transfer'}
+          onUserInteract={() => setCameraFollowProd(false)}
+        />
+        <ProductionControl
+          state={prodState}
+          onPause={() => prodManager.pause()}
+          onResume={() => prodManager.resume()}
+          onSkip={() => prodManager.skip()}
+          onStop={() => {
+            prodManager.stop();
+            setCustomFocus(null);
+            setViewToken((v) => v + 1);
+          }}
+          cameraFollow={cameraFollowProd}
+          onToggleCameraFollow={() => setCameraFollowProd((v) => !v)}
+          onSetSpeed={(spd) => prodManager.setSpeed(spd)}
         />
         {energyOpen && <EnergyPanel onClose={() => setEnergyOpen(false)} />}
         {supplyTab && <SupplyPanel initialTab={supplyTab} onClose={() => setSupplyTab(null)} />}
