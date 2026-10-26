@@ -88,8 +88,10 @@ export function App() {
   useEffect(() => {
     if (!cameraFollowProd || prodState.status !== 'running' || !prodState.activeStep) return;
     const f = prodState.activeStep.cameraFocus;
+    // Сбрасываем ручной выбор станка, чтобы карточка станка не блокировала фокус сквозного цикла
+    setSelection(null);
     setCustomFocus({
-      key: `prod-${prodState.activeStep.id}`,
+      key: `prod-${prodState.activeStep.id}-${Date.now()}`,
       x: f.x,
       z: f.z,
       lookY: f.lookY,
@@ -346,8 +348,9 @@ export function App() {
           productionActive={prodState.status === 'running' || prodState.status === 'paused'}
           onToggleProduction={() => {
             if (prodState.status === 'idle' || prodState.status === 'completed') {
-              prodManager.start();
+              setSelection(null);
               setCameraFollowProd(true);
+              prodManager.start();
             } else if (prodState.status === 'running') {
               prodManager.pause();
             } else {
