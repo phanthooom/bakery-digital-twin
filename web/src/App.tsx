@@ -309,6 +309,17 @@ export function App() {
         dir: [0.06, 0.22, 0.97],
       };
     }
+    if (eq.id === 'mixer-1' || eq.id === 'mixer-2') {
+      // Тестомесы стоят под антресолью 2-го этажа — смотрим с более пологого угла снизу, чтобы пол антресоли не закрывал обзор
+      return {
+        key: `machine:${eq.id}`,
+        x: eq.position.x,
+        z: eq.position.z,
+        lookY: baseY + h * 0.45,
+        dist: 4.8,
+        dir: [0.35, 0.18, 0.92],
+      };
+    }
     return { key: `machine:${eq.id}`, x: eq.position.x, z: eq.position.z, lookY: baseY + h * 0.45, dist: 4.6 + h * 1.6 };
   }, [ds, selection, customFocus]);
 

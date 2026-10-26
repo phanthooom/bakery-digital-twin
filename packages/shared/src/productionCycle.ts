@@ -70,9 +70,10 @@ export const PRODUCTION_STEPS: readonly ProductionStepMeta[] = [
     cameraFocus: {
       x: -23.0,
       z: -15.4,
-      lookY: 1.2,
-      dist: 5.5,
-      dir: [0.35, 0.5, 0.85],
+      lookY: 1.1,
+      dist: 4.8,
+      // Ракурс из-под антресоли: смотрим снизу/спереди, чтобы перекрытие 2-го этажа не закрывало тестомес
+      dir: [0.35, 0.18, 0.92],
     },
   },
   {
