@@ -52,6 +52,7 @@ const M = {
   estopYellow: new THREE.MeshStandardMaterial({ color: 0xeab308, metalness: 0.2, roughness: 0.3 }),
   copper: new THREE.MeshStandardMaterial({ color: 0xc87d4b, metalness: 0.88, roughness: 0.25 }),
   safetyYellow: new THREE.MeshStandardMaterial({ color: 0xf2c200, metalness: 0.35, roughness: 0.4 }),
+  orange: new THREE.MeshStandardMaterial({ color: 0xe66817, metalness: 0.3, roughness: 0.4 }),
   siloBlue: new THREE.MeshStandardMaterial({ color: 0x3f88c5, emissive: 0x3f88c5, emissiveIntensity: 0.4, roughness: 0.25 }),
   siloAmber: new THREE.MeshStandardMaterial({ color: 0xd99c2b, emissive: 0xd99c2b, emissiveIntensity: 0.4, roughness: 0.25 }),
 };
@@ -646,18 +647,62 @@ function buildSilo(isSmall = false) {
     root.add(band);
   }
 
+  // Декоративный брендовый пояс с цветом сорта муки
+  const gradeBand = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.015, R + 0.015, 0.06, 48), isSmall ? M.siloAmber : M.siloBlue);
+  gradeBand.position.set(0, cylCenterY + CYL_H * 0.42, 0);
+  root.add(gradeBand);
+
   // Конический купол крыши и рукавный фильтр аспирации на вершине
   const roof = new THREE.Mesh(new THREE.ConeGeometry(R + 0.03, ROOF_H, 40), M.stainless);
   roof.position.set(0, LEG_H + CONE_H + CYL_H + ROOF_H / 2, 0);
   root.add(roof);
 
-  const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.55, 24), M.stainlessLight);
-  filter.position.set(0, roofApexY + 0.22, 0);
+  const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.55, 24), M.stainlessDark);
+  filter.position.set(0, roofApexY + 0.25, 0);
   root.add(filter);
 
-  const filterCap = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 0.06, 24), M.stainlessDark);
-  filterCap.position.set(0, roofApexY + 0.52, 0);
+  const filterCap = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.16, 24), M.orange);
+  filterCap.position.set(0, roofApexY + 0.60, 0);
   root.add(filterCap);
+
+  // Труба пневмозагрузки муки от муковоза (сзади-сбоку наверх купола)
+  const fillPipeX = -R - 0.04;
+  const fillPipeZ = -R * 0.3;
+  const fillPipeH = totalLegH + CYL_H + 0.2;
+  const standpipe = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, fillPipeH, 16), M.chrome);
+  standpipe.position.set(fillPipeX, fillPipeH / 2, fillPipeZ);
+  root.add(standpipe);
+
+  const camlock = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.2, 16), M.orange);
+  camlock.position.set(fillPipeX, 0.5, fillPipeZ);
+  root.add(camlock);
+
+  const topElbow = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.36, 16), M.chrome);
+  topElbow.rotation.z = -Math.PI / 4;
+  topElbow.position.set(fillPipeX + 0.18, totalLegH + CYL_H + 0.18, fillPipeZ);
+  root.add(topElbow);
+
+  // Инспекционная лестница с защитной корзиной (на боковой стороне)
+  const ladderH = totalLegH + CYL_H;
+  const ladderX = R + 0.09;
+  const ladderCenterY = ladderH / 2;
+  for (const dz of [-0.18, 0.18]) {
+    const rail = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, ladderH, 8), M.stainlessDark);
+    rail.position.set(ladderX, ladderCenterY, dz);
+    root.add(rail);
+  }
+  for (let i = 0; i < 12; i++) {
+    const rung = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.36, 8), M.stainlessDark);
+    rung.rotation.x = Math.PI / 2;
+    rung.position.set(ladderX, 0.3 + i * 0.36, 0);
+    root.add(rung);
+  }
+  for (let i = 0; i < 5; i++) {
+    const hoop = new THREE.Mesh(new THREE.TorusGeometry(0.22, 0.012, 6, 16, Math.PI), M.stainlessDark);
+    hoop.rotation.z = Math.PI / 2;
+    hoop.position.set(ladderX + 0.14, ladderCenterY + ladderH * 0.1 + (i - 2) * 0.65, 0);
+    root.add(hoop);
+  }
 
   // Вертикальная светодиодная шкала уровня муки спереди (anim_pulse)
   const barTrack = new THREE.Mesh(new THREE.BoxGeometry(0.09, CYL_H * 0.78, 0.03), M.base);

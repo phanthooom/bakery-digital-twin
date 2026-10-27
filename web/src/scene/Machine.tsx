@@ -37,7 +37,11 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
   const [glbHeight, setGlbHeight] = useState<number | null>(null);
   const Body = BODIES[eq.kind] ?? BODIES.generic;
   const body = <Body live={live} eq={eq} />;
-  const towerPos: [number, number, number] = eq.model && glbHeight ? [0, glbHeight, 0] : spec.tower;
+  const towerPos: [number, number, number] = [
+    spec.tower[0],
+    eq.kind === 'silo' && glbHeight ? glbHeight : spec.tower[1],
+    spec.tower[2],
+  ];
   const top = Math.max(spec.height, towerPos[1] + 0.45, eq.kind === 'oven' ? 3.1 : 0);
 
   const over = (e: ThreeEvent<PointerEvent>) => {

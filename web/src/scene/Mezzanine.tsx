@@ -158,38 +158,6 @@ function Deck({ zone, hasPerimeterRails = true, id }: { zone: FloorRect; hasPeri
   );
 }
 
-/** Фигурка дежурного оператора-технолога за пультом SCADA. */
-function TechnologistOperator({ position }: { position: [number, number, number] }) {
-  return (
-    <group position={position}>
-      {/* тело в белом рабочем халате */}
-      <mesh position={[0, 0.95, 0]} material={M.wallPanel} castShadow>
-        <cylinderGeometry args={[0.18, 0.16, 0.65, 12]} />
-      </mesh>
-      {/* голова и защитная шапочка/каска */}
-      <mesh position={[0, 1.4, 0]} material={M.steelLight}>
-        <sphereGeometry args={[0.11, 16, 12]} />
-      </mesh>
-      <mesh position={[0, 1.46, 0]} material={M.window}>
-        <sphereGeometry args={[0.115, 16, 8, 0, Math.PI * 2, 0, Math.PI * 0.5]} />
-      </mesh>
-      {/* руки на пульте управления */}
-      <mesh position={[-0.22, 0.92, -0.15]} rotation={[0.6, 0, 0]} material={M.wallPanel}>
-        <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
-      </mesh>
-      <mesh position={[0.22, 0.92, -0.15]} rotation={[0.6, 0, 0]} material={M.wallPanel}>
-        <cylinderGeometry args={[0.04, 0.04, 0.4, 8]} />
-      </mesh>
-      {/* брюки/обувь */}
-      {[-0.08, 0.08].map((dx) => (
-        <mesh key={dx} position={[dx, 0.35, 0]} material={M.steelDark}>
-          <cylinderGeometry args={[0.06, 0.055, 0.7, 8]} />
-        </mesh>
-      ))}
-    </group>
-  );
-}
-
 /** Диспетчерская SCADA / операторская над бытовыми помещениями. */
 function ControlRoom({ zone }: { zone: FloorRect }) {
   const w = zone.x1 - zone.x0;
@@ -230,17 +198,14 @@ function ControlRoom({ zone }: { zone: FloorRect }) {
         ))}
       </MergeStatic>
 
-      {/* Рабочая станция SCADA (NVIDIA SimReady table_packing_heavyduty + 3x computer_monitor_office + 2x chair_office) */}
+      {/* Рабочая станция SCADA (NVIDIA SimReady мониторы и кресла операторов) */}
       <group position={[cx, Y_ELEV, zone.z0 + 2.2]}>
-        <GltfModel url="/models/scada-desk.glb" fallback={null} />
+        <GltfModel url="/models/scada-desk.glb" keepOrigin fallback={null} />
       </group>
       {/* Пожарный щит безопасности на мезонине */}
       <group position={[zone.x0 + 0.65, Y_ELEV, zone.z1 - 0.55]}>
         <GltfModel url="/models/fire-stand.glb" fallback={null} />
       </group>
-
-      {/* фигурка дежурного оператора за пультом */}
-      <TechnologistOperator position={[cx, Y_ELEV, zone.z0 + 2.75]} />
 
       {/* панорамный стеклянный витраж с видом вниз на цех */}
       <group position={[cx, Y_ELEV + roomH / 2, zone.z0 + 0.05]}>

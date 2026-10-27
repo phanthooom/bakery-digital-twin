@@ -37,7 +37,11 @@ function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
     clone.scale.setScalar(scale);
     const box = new THREE.Box3().setFromObject(clone);
     const center = box.getCenter(new THREE.Vector3());
-    if (!keepOrigin) clone.position.set(-center.x, -box.min.y, -center.z);
+    if (!keepOrigin) {
+      const ox = Math.abs(center.x) > 0.45 ? -center.x : 0;
+      const oz = Math.abs(center.z) > 0.45 ? -center.z : 0;
+      clone.position.set(ox, -box.min.y, oz);
+    }
 
     const rack = clone.getObjectByName('anim_rack');
     const glow = clone.getObjectByName('anim_glow') as THREE.Mesh | undefined;
@@ -88,12 +92,12 @@ function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
 
     // Вращение крыльчатки вентилятора (HVAC / льдогенератор / моноблок холода)
     if (object.fan && isRunning) {
-      object.fan.rotation.z += dt * (5 + live.load * 9);
+      object.fan.rotateZ(dt * (5 + live.load * 9));
     }
 
-    // Вращение рулона упаковочной плёнки (Flow-Pack)
+    // Вращение рулона упаковочной плёнки (Flow-Pack) вокруг оси шпинделя Z
     if (object.roll && isRunning) {
-      object.roll.rotation.x += dt * 2.4 * Math.max(0.4, live.load);
+      object.roll.rotateZ(-dt * 2.4 * Math.max(0.4, live.load));
     }
 
     // Движение продукции по ленте конвейера и упаковщика
