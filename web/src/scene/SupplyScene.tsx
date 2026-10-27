@@ -1,10 +1,11 @@
-import { memo, useEffect, useMemo, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { Html } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
 import * as THREE from 'three';
 import { localParts, type DockPhase, type MaterialConfig, type SiteConfig } from '@bakery/shared';
 import { useSupply } from '../data/store';
 import { useDockPlan, type DockPlan } from '../data/useDockPlan';
+import { startYardDemo } from '../data/yardDemo';
 import { SupplySim } from '../data/mockSupply';
 import { fmtMass, fmtTime } from '../ui/format';
 import { WarnIcon } from '../ui/StatusIcon';
@@ -14,7 +15,6 @@ import { M } from './materials';
 import { MergeStatic } from './MergeStatic';
 import { makeStripeTexture } from './textures';
 import type { CameraFocus } from './CameraRig';
-import { TRUCK_LENGTH } from './Truck';
 import { ForkliftUnloader, MovingSupplier, MovingVan, SEMI_HEIGHT, SEMI_LENGTH, TrolleyLoader, forkliftPath, loaderPath, supplierLane, vanLane, type VehicleSelect } from './DockTraffic';
 
 /** Склады, упаковка, рампы и машины: приход сырья → склад сырья … склад готовой продукции → отгрузка. */
@@ -252,7 +252,8 @@ export function vehicleFocus(config: SiteConfig, id: string): CameraFocus | null
   }
   const i = supply.vehicles.findIndex((v) => v.id === id);
   if (i < 0) return null;
-  return { key: `vehicle:${id}`, x: dockX(supply.layout.shippingDocks, i), z: z0 + TRUCK_LENGTH.semi / 2, lookY: 1.6, dist: 14 };
+  // фургон — изнутри цеха через ворота рампы: видно открытые двери, лотки в кузове и рохлю у рампы
+  return { key: `vehicle:${id}`, x: dockX(supply.layout.shippingDocks, i), z: z0 + 2, lookY: 1.5, dist: 12, dir: [-0.12, 0.38, -0.92] };
 }
 
 /** Подпись фургона по фазе визита к рампе. */
@@ -275,6 +276,11 @@ function ShippingDocks({ config, view, plan, onOpen, showLabels, sel, isNight }:
   const tz = config.site.timezone;
   const mine = (id: string | null) => id !== null && view.vehicles.some((v) => v.vehicle.id === id);
   const lanes = useMemo(() => docks.map((_, i) => vanLane(config, dockX(docks, i))), [config, docks]);
+  const demoRef = useRef(() => {});
+  demoRef.current = () => {
+    startYardDemo(view.vehicles.map((v) => v.vehicle.id));
+    sel.onSelect(view.vehicles[0]!.vehicle.id);
+  };
   const paths = useMemo(() => docks.map((_, i) => loaderPath(config, dockX(docks, i))), [config, docks]);
   return (
     <group>
@@ -312,6 +318,34 @@ function ShippingDocks({ config, view, plan, onOpen, showLabels, sel, isNight }:
           </group>
         );
       })}
+      {/* демо: все фазы двора за ~6 минут, не дожидаясь расписания; при выбранной машине кнопка не заслоняет её */}
+      {!mine(sel.selected) && (
+      <Html position={[(xs[0]! + xs[xs.length - 1]!) / 2, 0.3, FRONT_Z + 11]} center zIndexRange={[19, 0]} style={{ pointerEvents: 'auto' }}>
+        <button
+          type="button"
+          className="scene-tag supply-tag"
+          style={{ background: config.site.brand?.color ?? '#B71F3E', borderColor: 'transparent', cursor: 'pointer' }}
+          // обработчики — нативные: кнопка лежит поверх холста, и щелчок не должен дойти до сцены
+          // (иначе «щелчок мимо станков» сразу снимает выбор фургона)
+          ref={(el) => {
+            if (!el || el.dataset.bound) return;
+            el.dataset.bound = '1';
+            const stop = (e: Event) => e.stopPropagation();
+            el.addEventListener('pointerdown', stop);
+            el.addEventListener('pointerup', stop);
+            el.addEventListener('click', (e) => {
+              e.stopPropagation();
+              demoRef.current();
+            });
+          }}
+          title="Фургоны въезжают, грузятся и уезжают, поставщик разгружается — сейчас, а не по расписанию (на склад не влияет)"
+        >
+          <span className="scene-tag-name" style={{ color: '#fff' }}>
+            ▶ Показать двор
+          </span>
+        </button>
+      </Html>
+      )}
       {!showLabels && !mine(sel.hovered) && !mine(sel.selected) && (
         <Tag
           position={[(xs[0]! + xs[xs.length - 1]!) / 2, 3.9, FRONT_Z + 2.2]}
@@ -382,6 +416,10 @@ export const SupplyScene = memo(function SupplyScene({ config, onOpen, showLabel
   const plan = useDockPlan();
   const view = useMemo(() => (snap ? supplyView(snap, config, SupplySim.localMidnight(snap.now, config.site.timezone)) : null), [snap, config]);
   const [hovered, setHovered] = useState<string | null>(null);
+  // ?yard=demo — сразу показать двор (для презентаций)
+  useEffect(() => {
+    if (config.supply && new URLSearchParams(window.location.search).get('yard') === 'demo') startYardDemo(config.supply.vehicles.map((v) => v.id));
+  }, [config]);
   useEffect(() => {
     if (!hovered) return;
     document.body.style.cursor = 'pointer';

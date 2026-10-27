@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { cargoPlan, countDone, localParts, tripStatus, VAN_TIMING, SEMI_TIMING, type Trip } from '@bakery/shared';
+import { cargoPlan, countDone, dockState, localParts, tripStatus, VAN_TIMING, SEMI_TIMING, type DockPhase, type Trip } from '@bakery/shared';
+import { vanLane } from '../scene/DockTraffic';
 import { useDataSource, useSupply } from '../data/store';
 import { useDockPlan } from '../data/useDockPlan';
 import { useNow } from './useNow';
@@ -8,6 +9,17 @@ import { fmtMass, fmtTime } from './format';
 import { SUPPLIER_PLATE, SUPPLIER_VEHICLE, supplyView, type SupplyTab, type VehicleRow } from './supplyView';
 
 const VEHICLE_STATUS: Record<VehicleRow['status'], string> = { at_dock: 'У рампы', loading: 'Погрузка', en_route: 'В рейсе' };
+/** Что фургон делает у рампы прямо сейчас — по тому же расписанию, что видит сцена (с демо и срочными рейсами). */
+const DOCK_STATUS: Record<DockPhase, string> = {
+  away: 'В рейсе',
+  arriving: 'Возвращается',
+  reversing: 'Встаёт к рампе',
+  parked: 'У рампы',
+  doorsOpening: 'Погрузка',
+  working: 'Погрузка',
+  doorsClosing: 'Погрузка',
+  departing: 'Выезжает',
+};
 
 /** Ход погрузки фургона или разгрузки поставщика прямо сейчас — по тому же расписанию, что видит сцена и склад. */
 function DockProgress({ id }: { id: string }) {
@@ -47,6 +59,8 @@ function DockProgress({ id }: { id: string }) {
 export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose: () => void; onOpenSupply: (tab: SupplyTab) => void }) {
   const { config } = useDataSource();
   const snap = useSupply();
+  const plan = useDockPlan();
+  const now = useNow(1000);
   const tz = config.site.timezone;
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => closeRef.current?.focus({ preventScroll: true }), []);
@@ -111,6 +125,10 @@ export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose
   }
 
   const v = row!;
+  const vi = config.supply?.vehicles.findIndex((x) => x.id === id) ?? -1;
+  const dock = vi >= 0 ? config.supply!.layout.shippingDocks[vi] : undefined;
+  const visits = plan?.vans.get(id)?.visits;
+  const phase = dock && visits ? dockState(visits, vanLane(config, dock.x), now, VAN_TIMING).phase : null;
   const tripBlock = (title: string, t: Trip) => {
     const load = t.orders.reduce((a, o) => a + o.kg, 0);
     const cargo = cargoPlan(t.orders, v.vehicle.capacityKg);
@@ -151,7 +169,7 @@ export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose
     <aside className="card" aria-label={v.vehicle.name} onKeyDown={(e) => e.key === 'Escape' && onClose()}>
       {head(v.vehicle.name, `${v.vehicle.plate} · до ${fmtMass(v.vehicle.capacityKg)}${v.vehicle.refrigerated ? ' · рефрижератор' : ''}`)}
       <div className="status-line">
-        {VEHICLE_STATUS[v.status]}
+        {phase ? DOCK_STATUS[phase] : VEHICLE_STATUS[v.status]}
         <span className="since">
           · {v.status === 'en_route' ? `вернётся ${fmtTime(v.trip!.returnAt, tz)}` : v.status === 'loading' ? `выезд ${fmtTime(v.trip!.departAt, tz)}` : v.next ? `следующий рейс ${at(v.next.departAt)}` : 'рейсов нет'}
         </span>

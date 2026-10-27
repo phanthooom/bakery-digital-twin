@@ -1,6 +1,7 @@
 import { useMemo, useSyncExternalStore } from 'react';
 import { palletsFor, supplierUnloadings, tripLoadings, vanVisits, type DockVisit, type SupplierUnloading, type Trip, type TripLoading } from '@bakery/shared';
 import { useDataSource, useSupply } from './store';
+import { useYardDemo } from './yardDemo';
 
 export interface DockPlan {
   /** По фургонам: визиты к рампе и погрузки рейсов. */
@@ -19,6 +20,7 @@ const tripsKey = (trips: Trip[]) => `${trips.length}:${trips.slice(0, 6).map((t)
 export function useDockPlan(): DockPlan | null {
   const ds = useDataSource();
   const snap = useSupply();
+  const demo = useYardDemo();
   // момент снимка, а не Date.now(): снимок цепочки берётся из кэша источника, свежими приходят только срочные рейсы
   const at = snap?.now ?? 0;
   const key = useSyncExternalStore(
@@ -32,10 +34,12 @@ export function useDockPlan(): DockPlan | null {
     const supply = ds.config.supply;
     if (!snap || !supply) return null;
     const live = ds.getSupply?.(snap.now);
-    const trips = live && tripsKey(live.trips) === key ? live.trips : snap.trips;
+    const base = live && tripsKey(live.trips) === key ? live.trips : snap.trips;
+    const trips = demo ? [...base, ...demo.trips] : base;
     const vans = new Map(supply.vehicles.map((v) => [v.id, { visits: vanVisits(trips, v.id), loadings: tripLoadings(trips, v.id, v.capacityKg) }]));
     const packKg = new Map(supply.materials.map((m) => [m.id, m.packSize ?? 25]));
-    const supplier = supplierUnloadings(snap.deliveries.map((d) => ({ id: `${d.materialId}@${d.at}`, at: d.at, pallets: palletsFor(d.qty, packKg.get(d.materialId)) })));
+    const deliveries = snap.deliveries.map((d) => ({ id: `${d.materialId}@${d.at}`, at: d.at, pallets: palletsFor(d.qty, packKg.get(d.materialId)) }));
+    const supplier = supplierUnloadings(demo ? [...deliveries, ...demo.deliveries] : deliveries);
     return { vans, supplier };
-  }, [ds, snap, key]);
+  }, [ds, snap, key, demo]);
 }

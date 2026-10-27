@@ -21,6 +21,7 @@ import {
   countDone,
   tripLoadings,
   workWindow,
+  yardDemo,
   type YardLane,
   type DockState,
 } from './dock';
@@ -317,5 +318,37 @@ describe('погрузка рейса — один источник правды
       if (i) expect(l1!.orderLoadedAt[i]!).toBeGreaterThanOrEqual(l1!.orderLoadedAt[i - 1]!);
     }
     expect(countDone(l1!.haul.doneAt, w.to)).toBe(l1!.cargo.crates);
+  });
+});
+
+describe('демо двора', () => {
+  it('за несколько минут видно всё: въезд, задний ход, погрузку, выезд, возврат и разгрузку поставщика — без скачков', () => {
+    // фургон 1 в рейсе до T + 3 ч, фургон 2 у рампы — демо начинается сейчас
+    const real = [trip('r1', T - 60 * M, T + 3 * 60 * M), { ...trip('r2', T - 5 * 60 * M, T - 2 * 60 * M), vehicleId: 'van-2' }];
+    const demo = yardDemo(T, ['van-1', 'van-2']);
+    const trips = [...real, ...demo.trips];
+    const seen = (id: string) => {
+      const visits = vanVisits(trips, id);
+      const phases = new Set<string>();
+      for (let t = T; t < T + 8 * M; t += 500) phases.add(dockState(visits, VAN_LANE, t, VAN_TIMING).phase);
+      expectSmooth((t) => dockState(visits, VAN_LANE, t, VAN_TIMING), T, T + 8 * M, 200);
+      return phases;
+    };
+    const van1 = seen('van-1');
+    for (const p of ['away', 'arriving', 'reversing', 'doorsOpening', 'working', 'doorsClosing', 'departing']) expect(van1.has(p), `фургон 1: ${p}`).toBe(true);
+    const van2 = seen('van-2');
+    for (const p of ['parked', 'working', 'departing', 'reversing']) expect(van2.has(p), `фургон 2: ${p}`).toBe(true);
+    // лотки грузятся: к закрытию дверей все в кузове
+    const l = tripLoadings(trips, 'van-1', 800).find((x) => x.visit.ref?.startsWith('ДЕМО'))!;
+    expect(l.cargo.crates).toBe(10);
+    expect(countDone(l.haul.doneAt, workWindow(l.visit, VAN_TIMING).to)).toBe(10);
+    // поставщик приезжает, разгружает 3 поддона и уезжает в пределах 10 минут
+    const u = supplierUnloadings(demo.deliveries);
+    const visits = u.map((x) => x.visit);
+    const sp = new Set<string>();
+    for (let t = T; t < T + 10 * M; t += 500) sp.add(dockState(visits, SEMI_LANE, t, SEMI_TIMING).phase);
+    for (const p of ['away', 'arriving', 'reversing', 'working', 'departing']) expect(sp.has(p), `поставщик: ${p}`).toBe(true);
+    expect(countDone(u[0]!.haul.doneAt, u[0]!.visit.workTo)).toBe(3);
+    expect(u[0]!.visit.leaveAt! - T).toBeLessThan(10 * M);
   });
 });

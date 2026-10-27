@@ -217,30 +217,41 @@ export const RECEIVING_LEAD_MIN = 15;
  * Визиты поставщика: к часу поставки машина уже у рампы, разгрузка — по числу поддонов,
  * выезд через 5 мин после закрытия дверей. Поставки, которые накладываются по времени, — один визит.
  */
-export function supplierVisits(
-  deliveries: { at: number; id: string; pallets: number }[],
-  haul: HaulTiming = FORKLIFT_TIMING,
-  timing: MoveTiming = SEMI_TIMING,
-): DockVisit[] {
+/** Поставка у рампы приёмки. leadMin / holdMin / leaveAfterMin — для демо и особых поставок (по умолчанию 15 / 15 / 5 мин). */
+export interface DockDelivery {
+  at: number;
+  id: string;
+  pallets: number;
+  /** За сколько минут до часа поставки машина у рампы. */
+  leadMin?: number;
+  /** Сколько минут после часа поставки двери остаются открытыми (приёмка, документы), не меньше самой разгрузки. */
+  holdMin?: number;
+  /** Через сколько минут после закрытия дверей машина уезжает. */
+  leaveAfterMin?: number;
+}
+
+export function supplierVisits(deliveries: DockDelivery[], haul: HaulTiming = FORKLIFT_TIMING, timing: MoveTiming = SEMI_TIMING): DockVisit[] {
   const sorted = [...deliveries].sort((a, b) => a.at - b.at || a.id.localeCompare(b.id));
-  const visits: (DockVisit & { pallets: number; ids: string[]; lastAt: number })[] = [];
-  // разгрузка длится не меньше чем до четверти часа после часа поставки (приёмка, документы)
-  const workTo = (from: number, pallets: number, lastAt: number) => Math.max(from + workMs(pallets, haul, timing), lastAt + RECEIVING_LEAD_MIN * MIN);
+  const visits: (DockVisit & { pallets: number; ids: string[] })[] = [];
+  const lead = (d: DockDelivery) => (d.leadMin ?? RECEIVING_LEAD_MIN) * MIN;
+  const hold = (d: DockDelivery) => (d.holdMin ?? RECEIVING_LEAD_MIN) * MIN;
+  const after = (d: DockDelivery) => (d.leaveAfterMin ?? 5) * MIN;
+  // разгрузка длится не меньше чем holdMin после часа поставки (приёмка, документы)
+  const workTo = (from: number, pallets: number, d: DockDelivery) => Math.max(from + workMs(pallets, haul, timing), d.at + hold(d));
   for (const d of sorted) {
-    const from = d.at - RECEIVING_LEAD_MIN * MIN;
+    const from = d.at - lead(d);
     const last = visits.at(-1);
     if (last && from < (last.leaveAt ?? Infinity) + timing.departMs + AWAY_GAP_MS + arrivalMs(timing)) {
       last.pallets += d.pallets;
       last.ids.push(d.id);
-      last.lastAt = d.at;
-      last.workTo = workTo(last.workFrom, last.pallets, d.at);
-      last.leaveAt = last.workTo + 5 * MIN;
+      last.workTo = Math.max(last.workTo, workTo(last.workFrom, last.pallets, d));
+      last.leaveAt = last.workTo + after(d);
       continue;
     }
-    const to = workTo(from, d.pallets, d.at);
-    visits.push({ id: `supplier:${d.id}`, ref: d.id, arriveAt: from, workFrom: from, workTo: to, leaveAt: to + 5 * MIN, pallets: d.pallets, ids: [d.id], lastAt: d.at });
+    const to = workTo(from, d.pallets, d);
+    visits.push({ id: `supplier:${d.id}`, ref: d.id, arriveAt: from, workFrom: from, workTo: to, leaveAt: to + after(d), pallets: d.pallets, ids: [d.id] });
   }
-  return visits.map(({ pallets: _p, ids, lastAt: _l, ...v }) => ({ ...v, ref: ids.join(',') }));
+  return visits.map(({ pallets: _p, ids, ...v }) => ({ ...v, ref: ids.join(',') }));
 }
 
 function workMs(items: number, haul: HaulTiming, timing: MoveTiming): number {
@@ -510,7 +521,7 @@ export interface SupplierUnloading {
 
 /** Разгрузка поставщика: визиты, поддоны по поставкам и ходки погрузчика (один источник правды для сцены и склада). */
 export function supplierUnloadings(
-  deliveries: { at: number; id: string; pallets: number }[],
+  deliveries: DockDelivery[],
   haul: HaulTiming = FORKLIFT_TIMING,
   timing: MoveTiming = SEMI_TIMING,
 ): SupplierUnloading[] {
@@ -529,4 +540,29 @@ export function supplierUnloadings(
     const receivedAt = new Map(list.map((d) => [d.id, plan.doneAt[d.first + d.pallets - 1] ?? w.from]));
     return { visit, deliveries: list, pallets: next, haul: plan, receivedAt };
   });
+}
+
+// ───────────────────────────── демо двора ─────────────────────────────
+
+/**
+ * «Показать двор сейчас»: короткие рейсы всех фургонов и поставка с разгрузкой, начиная через ~40 с.
+ * Фургон, который сейчас в рейсе, возвращается раньше (vanVisits не даёт визитам наложиться), стоящий у рампы — сразу
+ * грузится. Только для показа: на склад и реальное расписание не влияет.
+ */
+export function yardDemo(now: number, vehicleIds: string[]): { trips: Trip[]; deliveries: DockDelivery[] } {
+  const S = 1000;
+  const trips: Trip[] = vehicleIds.map((vehicleId, i) => {
+    const workFrom = now + 40 * S + i * 35 * S;
+    const departAt = workFrom + 2 * MIN;
+    return {
+      id: `ДЕМО-${vehicleId}-${now}`,
+      vehicleId,
+      departAt,
+      returnAt: departAt + 90 * S,
+      loadMinutes: 2,
+      orders: [30, 45, 25].map((kg, k) => ({ orderId: `ДЕМО-${i + 1}${k + 1}`, client: 'Демо-клиент', kg })),
+    };
+  });
+  const deliveries: DockDelivery[] = [{ id: `ДЕМО-поставка-${now}`, at: now + 45 * S, pallets: 3, leadMin: 0, holdMin: 0, leaveAfterMin: 0.3 }];
+  return { trips, deliveries };
 }
