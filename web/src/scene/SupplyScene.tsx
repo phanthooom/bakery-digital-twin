@@ -1,10 +1,10 @@
-import { memo, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Html, RoundedBox, useGLTF } from '@react-three/drei';
+import { memo, useEffect, useMemo, useState } from 'react';
+import { Html } from '@react-three/drei';
 import type { ThreeEvent } from '@react-three/fiber';
-import { Select } from '@react-three/postprocessing';
 import * as THREE from 'three';
-import { localParts, type MaterialConfig, type SiteConfig } from '@bakery/shared';
+import { localParts, type DockPhase, type MaterialConfig, type SiteConfig } from '@bakery/shared';
 import { useSupply } from '../data/store';
+import { useDockPlan, type DockPlan } from '../data/useDockPlan';
 import { SupplySim } from '../data/mockSupply';
 import { fmtMass, fmtTime } from '../ui/format';
 import { WarnIcon } from '../ui/StatusIcon';
@@ -14,8 +14,8 @@ import { M } from './materials';
 import { MergeStatic } from './MergeStatic';
 import { makeStripeTexture } from './textures';
 import type { CameraFocus } from './CameraRig';
-import { BrandLivery, TRUCK_LENGTH, Truck } from './Truck';
-import { VehicleNightLights } from './NightLighting';
+import { TRUCK_LENGTH } from './Truck';
+import { ForkliftUnloader, MovingSupplier, MovingVan, SEMI_HEIGHT, SEMI_LENGTH, TrolleyLoader, forkliftPath, loaderPath, supplierLane, vanLane, type VehicleSelect } from './DockTraffic';
 
 /** Склады, упаковка, рампы и машины: приход сырья → склад сырья … склад готовой продукции → отгрузка. */
 
@@ -239,18 +239,6 @@ function DockPlate({ x, front }: { x: number; front: number }) {
   );
 }
 
-/**
- * Тягач с полуприцепом поставщика — Tesla Semi (GLB, «Tesla semi truck» by iZnoGouD, CC BY 4.0).
- * В файле: метры, зад прицепа в z = 0 по центру, кабина к +z, один меш с цветами вершин.
- * Пока грузится или если не загрузился — процедурная машина поставщика.
- */
-const SEMI_URL = '/models/tesla-semi.glb';
-const SEMI_HEIGHT = 4.06;
-const SEMI_LENGTH = 15.3;
-/** Борта прицепа в tesla-semi.glb: плоскости x = +1,278 и −1,272, y 1,30…3,97, z 0,17…11,26. */
-const TRAILER = { right: 1.278 + 0.006, left: 1.272 + 0.006, y: 2.635, z: 5.715, length: 11.0, height: 2.6 };
-useGLTF.preload(SEMI_URL);
-
 const dockX = (docks: { x: number }[], i: number) => docks[i]?.x ?? docks[docks.length - 1]!.x + i * 2.8;
 
 /** Куда подлететь камере к машине: фургон — спереди сбоку, длинный тягач с прицепом — сбоку со стороны цеха. */
@@ -267,69 +255,59 @@ export function vehicleFocus(config: SiteConfig, id: string): CameraFocus | null
   return { key: `vehicle:${id}`, x: dockX(supply.layout.shippingDocks, i), z: z0 + TRUCK_LENGTH.semi / 2, lookY: 1.6, dist: 14 };
 }
 
-interface VehicleSelect {
-  selected: string | null;
-  hovered: string | null;
-  onHover: (id: string | null) => void;
-  onSelect: (id: string) => void;
-}
+/** Подпись фургона по фазе визита к рампе. */
+const VAN_PHASE_LABEL: Record<DockPhase, string> = {
+  away: 'в рейсе',
+  arriving: 'въезжает',
+  reversing: 'задний ход к рампе',
+  parked: 'у рампы',
+  doorsOpening: 'погрузка',
+  working: 'погрузка',
+  doorsClosing: 'погрузка',
+  departing: 'выезжает',
+};
 
-/** Машина задом к рампе (зад у переднего края цеха, кабина — от цеха); наведение и выбор — контуром, как у станков. */
-function DockedVehicle({ id, x, front, sel, children }: { id: string; x: number; front: number; sel: VehicleSelect; children: ReactNode }) {
-  return (
-    <Select enabled={sel.selected === id || sel.hovered === id}>
-      <group
-        position={[x, 0, front + 0.5]}
-        onPointerOver={(e) => (e.stopPropagation(), sel.onHover(id))}
-        onPointerOut={() => sel.onHover(null)}
-        onClick={(e) => (e.stopPropagation(), sel.onSelect(id))}
-      >
-        {children}
-      </group>
-    </Select>
-  );
-}
-
-const VEHICLE_LABEL: Record<VehicleRow['status'], string> = { at_dock: 'у рампы', loading: 'погрузка', en_route: 'в рейсе' };
-
-function ShippingDocks({ config, view, onOpen, showLabels, sel, isNight }: { config: SiteConfig; view: SupplyView; onOpen: Open; showLabels: boolean; sel: VehicleSelect; isNight?: boolean }) {
+function ShippingDocks({ config, view, plan, onOpen, showLabels, sel, isNight }: { config: SiteConfig; view: SupplyView; plan: DockPlan; onOpen: Open; showLabels: boolean; sel: VehicleSelect; isNight?: boolean }) {
   const docks = config.supply!.layout.shippingDocks;
   const xs = docks.map((d) => d.x);
   const FRONT_Z = frontOf(config);
   const color = config.site.brand?.color ?? '#B71F3E';
   const tz = config.site.timezone;
   const mine = (id: string | null) => id !== null && view.vehicles.some((v) => v.vehicle.id === id);
+  const lanes = useMemo(() => docks.map((_, i) => vanLane(config, dockX(docks, i))), [config, docks]);
+  const paths = useMemo(() => docks.map((_, i) => loaderPath(config, dockX(docks, i))), [config, docks]);
   return (
     <group>
       {view.vehicles.map((v, i) => {
         const id = v.vehicle.id;
         const x = dockX(docks, i);
-        const present = v.status !== 'en_route';
         const active = sel.hovered === id || sel.selected === id;
         const when = v.status === 'en_route' ? `вернётся ${fmtTime(v.trip!.returnAt, tz)}` : v.status === 'loading' ? `выезд ${fmtTime(v.trip!.departAt, tz)}` : v.next ? `следующий рейс ${fmtTime(v.next.departAt, tz)}` : 'рейсов нет';
+        const p = plan.vans.get(id);
         return (
           <group key={id}>
             <DockPlate x={x} front={FRONT_Z} />
-            {present ? (
-              <DockedVehicle id={id} x={x} front={FRONT_Z} sel={sel}>
-                <Truck cab="semi" brand={config.site.brand?.name ?? 'Bakery'} tagline={config.site.brand?.tagline} color={color} plate={v.vehicle.plate} loading={v.status === 'loading'} />
-                {isNight && <VehicleNightLights frontZ={TRUCK_LENGTH.semi} width={2.1} headlightY={0.95} roofY={3.08} />}
-              </DockedVehicle>
-            ) : (
-              // машина в рейсе — пустое место у рампы, по нему тоже можно выбрать машину
-              <mesh
-                position={[x, 0.02, FRONT_Z + 3]}
-                rotation={[-Math.PI / 2, 0, 0]}
-                onPointerOver={(e) => (e.stopPropagation(), sel.onHover(id))}
-                onPointerOut={() => sel.onHover(null)}
-                onClick={(e) => (e.stopPropagation(), sel.onSelect(id))}
-              >
-                <planeGeometry args={[2.3, 5]} />
-                <meshBasicMaterial color="#2f7bff" transparent opacity={active ? 0.14 : 0.04} depthWrite={false} />
-              </mesh>
-            )}
-            {(showLabels || active) && (
-              <Tag position={[x, present ? 3.7 : 0.8, FRONT_Z + (present ? 2.2 : 3)]} title={`${v.vehicle.name} · ${VEHICLE_LABEL[v.status]}`} value={when} onClick={() => sel.onSelect(id)} />
+            {p && (
+              <>
+                <MovingVan
+                  id={id}
+                  plate={v.vehicle.plate}
+                  lane={lanes[i]!}
+                  visits={p.visits}
+                  loadings={p.loadings}
+                  brand={config.site.brand?.name ?? 'Bakery'}
+                  tagline={config.site.brand?.tagline}
+                  color={color}
+                  sel={sel}
+                  isNight={!!isNight}
+                  label={(phase) =>
+                    (showLabels || active) && (
+                      <Tag position={[x, phase === 'away' ? 0.8 : 3.7, FRONT_Z + (phase === 'away' ? 3 : 2.2)]} title={`${v.vehicle.name} · ${VAN_PHASE_LABEL[phase]}`} value={when} onClick={() => sel.onSelect(id)} />
+                    )
+                  }
+                />
+                <TrolleyLoader loadings={p.loadings} path={paths[i]!} />
+              </>
             )}
           </group>
         );
@@ -346,13 +324,18 @@ function ShippingDocks({ config, view, onOpen, showLabels, sel, isNight }: { con
   );
 }
 
-function ReceivingDock({ config, view, now, sel, isNight }: { config: SiteConfig; view: SupplyView; now: number; sel: VehicleSelect; isNight?: boolean }) {
+const SUPPLIER_PHASE_LABEL: Partial<Record<DockPhase, string>> = { arriving: 'въезжает', reversing: 'задний ход к рампе', parked: 'у рампы', doorsOpening: 'открывает двери', doorsClosing: 'закрывает двери', departing: 'уезжает' };
+
+function ReceivingDock({ config, view, plan, now, sel, isNight }: { config: SiteConfig; view: SupplyView; plan: DockPlan; now: number; sel: VehicleSelect; isNight?: boolean }) {
   const x = config.supply!.layout.receivingDock.x;
   const FRONT_Z = frontOf(config);
   const tz = config.site.timezone;
   const { atDock, upcoming } = view.receiving;
   const next = upcoming[0];
   const today = localParts(now, tz).date;
+  const lane = useMemo(() => supplierLane(config, x), [config, x]);
+  const path = useMemo(() => forkliftPath(config, x), [config, x]);
+  const nextText = next ? `${next.material.name.split(' ')[0]} · ${localParts(next.at, tz).date === today ? '' : 'завтра '}${fmtTime(next.at, tz)}` : 'поставок нет';
   return (
     <group>
       <DockPlate x={x} front={FRONT_Z} />
@@ -360,19 +343,25 @@ function ReceivingDock({ config, view, now, sel, isNight }: { config: SiteConfig
       <mesh position={[x, 0.03, FRONT_Z - 1.4]} material={M.steelDark} receiveShadow>
         <boxGeometry args={[1.4, 0.05, 1.4]} />
       </mesh>
-      {/* пока что тягач стоит у рампы всегда; разгрузка — по окну поставки (atDock) */}
-      <DockedVehicle id={SUPPLIER_VEHICLE} x={x} front={FRONT_Z} sel={sel}>
-        <GltfModel url={SEMI_URL} keepOrigin fallback={<Truck color="#7c8a7b" plate={SUPPLIER_PLATE} />}>
-          <BrandLivery brand={config.site.brand?.name ?? 'Bakery'} tagline={config.site.brand?.tagline ?? ''} color={config.site.brand?.color ?? '#B71F3E'} {...TRAILER} px={480} center />
-        </GltfModel>
-        {isNight && <VehicleNightLights frontZ={SEMI_LENGTH} width={2.45} headlightY={1.08} roofY={3.96} isSemiTrailer />}
-      </DockedVehicle>
-      <Tag
-        position={[x, SEMI_HEIGHT + 0.6, FRONT_Z + 2.2]}
-        title={atDock ? `Приёмка: ${atDock.material.name.split(' ')[0]}` : 'Приёмка сырья'}
-        value={atDock ? 'разгрузка' : next ? `${next.material.name.split(' ')[0]} · ${localParts(next.at, tz).date === today ? '' : 'завтра '}${fmtTime(next.at, tz)}` : 'поставок нет'}
-        onClick={() => sel.onSelect(SUPPLIER_VEHICLE)}
+      <MovingSupplier
+        id={SUPPLIER_VEHICLE}
+        lane={lane}
+        unloadings={plan.supplier}
+        brand={config.site.brand?.name ?? 'Bakery'}
+        tagline={config.site.brand?.tagline ?? ''}
+        color={config.site.brand?.color ?? '#B71F3E'}
+        sel={sel}
+        isNight={!!isNight}
+        label={(phase) => (
+          <Tag
+            position={[x, phase === 'away' ? 1.2 : SEMI_HEIGHT + 0.6, FRONT_Z + 2.2]}
+            title={phase === 'away' ? 'Приёмка сырья' : phase === 'working' && atDock ? `Приёмка: ${atDock.material.name.split(' ')[0]}` : `Поставщик${SUPPLIER_PHASE_LABEL[phase] ? ` · ${SUPPLIER_PHASE_LABEL[phase]}` : ''}`}
+            value={phase === 'working' ? 'разгрузка' : phase === 'away' ? nextText : atDock ? atDock.material.name.split(' ')[0] : nextText}
+            onClick={() => sel.onSelect(SUPPLIER_VEHICLE)}
+          />
+        )}
       />
+      <ForkliftUnloader unloadings={plan.supplier} path={path} />
     </group>
   );
 }
@@ -390,6 +379,7 @@ export interface SupplySceneProps {
 
 export const SupplyScene = memo(function SupplyScene({ config, onOpen, showLabels, selectedVehicle, onSelectVehicle, isNight = false }: SupplySceneProps) {
   const snap = useSupply();
+  const plan = useDockPlan();
   const view = useMemo(() => (snap ? supplyView(snap, config, SupplySim.localMidnight(snap.now, config.site.timezone)) : null), [snap, config]);
   const [hovered, setHovered] = useState<string | null>(null);
   useEffect(() => {
@@ -399,20 +389,18 @@ export const SupplyScene = memo(function SupplyScene({ config, onOpen, showLabel
       document.body.style.cursor = '';
     };
   }, [hovered]);
-  if (!config.supply || !view || !snap) return null;
+  if (!config.supply || !view || !snap || !plan) return null;
   const sel: VehicleSelect = { selected: selectedVehicle, hovered, onHover: setHovered, onSelect: onSelectVehicle };
   return (
     <group>
       <DryRacks config={config} view={view} onOpen={onOpen} showLabels={showLabels} />
       <GoodsRacks config={config} view={view} onOpen={onOpen} />
       <PackingQueue config={config} view={view} onOpen={onOpen} />
-      <ReceivingDock config={config} view={view} now={snap.now} sel={sel} isNight={isNight} />
-      <ShippingDocks config={config} view={view} onOpen={onOpen} showLabels={showLabels} sel={sel} isNight={isNight} />
-      {/* Вилочные погрузчики (NVIDIA SimReady vehicle_forklift_orange_a01), паллета приёмки и пожарные посты */}
-      <group position={[-23.2, 0, 13.5]} rotation={[0, 0.35, 0]}>
-        <GltfModel url="/models/forklift.glb" fallback={null} />
-      </group>
-      <group position={[23.2, 0, 13.5]} rotation={[0, -0.35, 0]}>
+      <ReceivingDock config={config} view={view} plan={plan} now={snap.now} sel={sel} isNight={isNight} />
+      <ShippingDocks config={config} view={view} plan={plan} onOpen={onOpen} showLabels={showLabels} sel={sel} isNight={isNight} />
+      {/* Вилочные погрузчики (NVIDIA SimReady vehicle_forklift_orange_a01): у приёмки — ForkliftUnloader (возит поддоны
+          по расписанию разгрузки); у отгрузки — стоит в углу, чтобы не мешать рохле. Паллета приёмки и пожарные посты. */}
+      <group position={[25.6, 0, 16.6]} rotation={[0, -Math.PI / 2, 0]}>
         <GltfModel url="/models/forklift.glb" fallback={null} />
       </group>
       <group position={[-17.2, 0, 15.6]}>

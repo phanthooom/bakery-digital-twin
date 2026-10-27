@@ -1,11 +1,44 @@
 import { useEffect, useMemo, useRef } from 'react';
-import { localParts, tripStatus, type Trip } from '@bakery/shared';
+import { cargoPlan, countDone, localParts, tripStatus, VAN_TIMING, SEMI_TIMING, type Trip } from '@bakery/shared';
 import { useDataSource, useSupply } from '../data/store';
+import { useDockPlan } from '../data/useDockPlan';
+import { useNow } from './useNow';
 import { SupplySim } from '../data/mockSupply';
 import { fmtMass, fmtTime } from './format';
 import { SUPPLIER_PLATE, SUPPLIER_VEHICLE, supplyView, type SupplyTab, type VehicleRow } from './supplyView';
 
 const VEHICLE_STATUS: Record<VehicleRow['status'], string> = { at_dock: 'У рампы', loading: 'Погрузка', en_route: 'В рейсе' };
+
+/** Ход погрузки фургона или разгрузки поставщика прямо сейчас — по тому же расписанию, что видит сцена и склад. */
+function DockProgress({ id }: { id: string }) {
+  const plan = useDockPlan();
+  const now = useNow(1000);
+  if (!plan) return null;
+  let done = 0;
+  let total = 0;
+  let label = '';
+  if (id === SUPPLIER_VEHICLE) {
+    const u = plan.supplier.find((x) => x.visit.arriveAt !== null && now >= x.visit.arriveAt - SEMI_TIMING.forwardMs - SEMI_TIMING.reverseMs && now < (x.visit.leaveAt ?? Infinity));
+    if (!u) return null;
+    done = countDone(u.haul.doneAt, now);
+    total = u.pallets;
+    label = `На складе ${done} из ${total} ${total === 1 ? 'поддона' : 'поддонов'}`;
+  } else {
+    const l = plan.vans.get(id)?.loadings.find((x) => now >= x.visit.workFrom && now < (x.visit.leaveAt ?? Infinity) + VAN_TIMING.departMs);
+    if (!l || !l.cargo.crates) return null;
+    done = countDone(l.haul.doneAt, now);
+    total = l.cargo.crates;
+    label = `В кузове ${done} из ${total} лотков`;
+  }
+  return (
+    <div className="section">
+      <div className="meta-row">{label}</div>
+      <div className="meter" role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} aria-label={label}>
+        <span style={{ width: `${total ? (done / total) * 100 : 0}%` }} />
+      </div>
+    </div>
+  );
+}
 
 /**
  * Карточка машины у рампы: фургон — текущий и следующий рейс, загрузка, заказы;
@@ -46,6 +79,7 @@ export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose
       <aside className="card" aria-label="Машина поставщика" onKeyDown={(e) => e.key === 'Escape' && onClose()}>
         {head('Машина поставщика', `Tesla Semi · ${SUPPLIER_PLATE}`)}
         <div className="status-line">{atDock ? `Разгрузка: ${atDock.material.name}` : 'У рампы приёмки'}</div>
+        <DockProgress id={id} />
         {atDock && (
           <div className="meta-row">
             {fmtMass(atDock.qty)} · {atDock.supplier} · поставка {at(atDock.at)}
@@ -79,6 +113,7 @@ export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose
   const v = row!;
   const tripBlock = (title: string, t: Trip) => {
     const load = t.orders.reduce((a, o) => a + o.kg, 0);
+    const cargo = cargoPlan(t.orders, v.vehicle.capacityKg);
     const st = tripStatus(t, snap.now);
     return (
       <div className="section">
@@ -97,10 +132,16 @@ export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose
           <li>
             <span className="vehicle-list-time">{t.orders.length} зак.</span>
             <span>
-              груз {fmtMass(load)} · {Math.round((load / v.vehicle.capacityKg) * 100)} %
+              груз {fmtMass(load)} · {Math.round((load / v.vehicle.capacityKg) * 100)} % · {cargo.crates} лотк.
             </span>
           </li>
         </ul>
+        {cargo.overloadKg > 0 && (
+          <div className="gas-alert is-warning" role="alert">
+            <strong>Перегруз {fmtMass(cargo.overloadKg)}</strong>
+            <span>Груз больше грузоподъёмности {fmtMass(v.vehicle.capacityKg)} — часть заказов перенести в другой рейс.</span>
+          </div>
+        )}
         <div className="vehicle-clients">{t.orders.map((o) => o.client).join(', ')}</div>
       </div>
     );
@@ -115,6 +156,7 @@ export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose
           · {v.status === 'en_route' ? `вернётся ${fmtTime(v.trip!.returnAt, tz)}` : v.status === 'loading' ? `выезд ${fmtTime(v.trip!.departAt, tz)}` : v.next ? `следующий рейс ${at(v.next.departAt)}` : 'рейсов нет'}
         </span>
       </div>
+      <DockProgress id={id} />
       {v.trip && tripBlock('Рейс', v.trip)}
       {v.next && tripBlock('Следующий рейс', v.next)}
       <div className="section line-actions">

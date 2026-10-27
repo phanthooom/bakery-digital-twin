@@ -1,4 +1,4 @@
-import { Inventory, localParts, mulberry32, shiftAt, type SiteConfig, type Trip, type TripOrder } from '@bakery/shared';
+import { Inventory, localParts, mulberry32, palletsFor, shiftAt, supplierUnloadings, tripLoadings, type SiteConfig, type Trip, type TripOrder } from '@bakery/shared';
 
 const MIN = 60_000;
 const HOUR = 60 * MIN;
@@ -47,13 +47,15 @@ const TRIPS: [string, number, number][] = [
 const ORDER_MIX: [string, number][] = [['baguette', 3], ['burger-bun', 3], ['ciabatta', 1.5], ['toast', 1.5], ['croissant', 2]];
 
 type Ev =
-  | { at: number; type: 'receive'; materialId: string; qty: number; supplier: string }
+  /** at — когда снят последний поддон (приход на склад), scheduledAt — час поставки по графику. */
+  | { at: number; scheduledAt: number; type: 'receive'; materialId: string; qty: number; supplier: string }
   | { at: number; type: 'produce'; productId: string; kg: number; key: number }
   | { at: number; type: 'pack'; ref: number }
   | { at: number; type: 'writeoff' }
   | { at: number; type: 'ship'; trip: Trip; order: TripOrder; lines: { productId: string; kg: number }[] };
 
 export interface DeliveryRecord {
+  /** Час поставки по графику (машина у рампы с RECEIVING_LEAD_MIN до него). */
   at: number;
   materialId: string;
   qty: number;
@@ -102,7 +104,9 @@ export class SupplySim {
     const tz = config.site.timezone;
     const dayStart = (i: number) => origin + i * DAY;
     // начальные остатки: по 3 «минимума» каждого сырья
-    for (const m of supply.materials) this.events.push({ at: origin, type: 'receive', materialId: m.id, qty: m.minStock * 2, supplier: supply.suppliers[m.id] ?? 'Поставщик' });
+    for (const m of supply.materials) this.events.push({ at: origin, scheduledAt: origin, type: 'receive', materialId: m.id, qty: m.minStock * 2, supplier: supply.suppliers[m.id] ?? 'Поставщик' });
+    const planned: { at: number; materialId: string; qty: number }[] = [];
+    const orderLines = new Map<string, { trip: Trip; order: TripOrder; lines: { productId: string; kg: number }[] }>();
     for (let i = 0; i < days + 2; i++) {
       const rnd = mulberry32(seed * 1000 + i);
       const between = ([a, b]: [number, number]) => Math.round(a + (b - a) * rnd());
@@ -110,7 +114,7 @@ export class SupplySim {
       for (const [materialId, d] of Object.entries(DELIVERIES)) {
         // для демо: последняя поставка дрожжей сорвалась — видно предупреждение «заканчивается»
         if (materialId === 'yeast' && i >= days - 2) continue;
-        if (i > 0 && i % d.everyDays === 0) this.events.push({ at: at(d.hour), type: 'receive', materialId, qty: between(d.qty), supplier: supply.suppliers[materialId] ?? 'Поставщик' });
+        if (i > 0 && i % d.everyDays === 0) planned.push({ at: at(d.hour), materialId, qty: between(d.qty) });
       }
       // каждое утро в 05:00 списываем то, у чего вышел срок годности
       if (i > 0) this.events.push({ at: at(5), type: 'writeoff' });
@@ -139,8 +143,24 @@ export class SupplySim {
         }
         const trip: Trip = { id: `Р-${localParts(at(dep), tz).date.slice(5).replace('-', '')}-${k + 1}`, vehicleId, departAt: at(dep), returnAt: at(ret), loadMinutes: 40, orders };
         this.trips.push(trip);
-        orders.forEach((order, o) => this.events.push({ at: trip.departAt - 15 * MIN, type: 'ship', trip, order, lines: lineSets[o]! }));
+        orders.forEach((order, o) => orderLines.set(order.orderId, { trip, order, lines: lineSets[o]! }));
       });
+    }
+    // Склад меняется, когда груз реально переехал — по тем же моментам, что видит 3D-сцена (packages/shared/src/dock.ts):
+    // приход — когда погрузчик поставил на склад последний поддон поставки,
+    const packKg = new Map(supply.materials.map((m) => [m.id, m.packSize ?? 25]));
+    const key = (d: { materialId: string; at: number }) => `${d.materialId}@${d.at}`;
+    const unloadings = supplierUnloadings(planned.map((d) => ({ id: key(d), at: d.at, pallets: palletsFor(d.qty, packKg.get(d.materialId)) })));
+    const receivedAt = new Map(unloadings.flatMap((u) => [...u.receivedAt]));
+    for (const d of planned) this.events.push({ at: receivedAt.get(key(d)) ?? d.at, scheduledAt: d.at, type: 'receive', materialId: d.materialId, qty: d.qty, supplier: supply.suppliers[d.materialId] ?? 'Поставщик' });
+    // отгрузка заказа — когда в фургон погружен его последний лоток.
+    for (const v of supply.vehicles) {
+      for (const l of tripLoadings(this.trips, v.id, v.capacityKg)) {
+        l.cargo.orders.forEach((o, k) => {
+          const x = orderLines.get(o.orderId);
+          if (x) this.events.push({ at: l.orderLoadedAt[k]!, type: 'ship', trip: x.trip, order: x.order, lines: x.lines });
+        });
+      }
     }
     this.events.sort((a, b) => a.at - b.at);
   }
@@ -159,12 +179,12 @@ export class SupplySim {
     this.events.forEach((e) => {
       if (e.at > now) {
         if (e.type === 'produce' && e.at < now + 3 * HOUR) planned.push({ at: e.at, productId: e.productId, kg: e.kg });
-        if (e.type === 'receive' && e.at < now + 7 * DAY && e.at > this.origin) deliveries.push({ at: e.at, materialId: e.materialId, qty: e.qty, supplier: e.supplier, lotId: null });
+        if (e.type === 'receive' && e.scheduledAt < now + 7 * DAY && e.scheduledAt > this.origin) deliveries.push({ at: e.scheduledAt, materialId: e.materialId, qty: e.qty, supplier: e.supplier, lotId: null });
         return;
       }
       if (e.type === 'receive') {
         const lot = inv.receive({ materialId: e.materialId, qty: e.qty, supplier: e.supplier, at: e.at });
-        if (e.at > this.origin) deliveries.push({ at: e.at, materialId: e.materialId, qty: e.qty, supplier: e.supplier, lotId: lot.id });
+        if (e.scheduledAt > this.origin) deliveries.push({ at: e.scheduledAt, materialId: e.materialId, qty: e.qty, supplier: e.supplier, lotId: lot.id });
       } else if (e.type === 'produce') {
         const s = shifts ? shiftAt(e.at, shifts, this.config.site.timezone) : null;
         const shiftKey = s ? `${s.date}#${s.shiftId}` : '';

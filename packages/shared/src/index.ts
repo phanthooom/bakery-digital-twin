@@ -14,6 +14,7 @@ export * from './lineHealth';
 export * from './energy';
 export * from './inventory';
 export * from './logistics';
+export * from './dock';
 export * from './gas';
 export * from './alarm';
 export * from './telegramOrder';

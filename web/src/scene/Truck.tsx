@@ -1,4 +1,5 @@
-import { memo, useMemo } from 'react';
+import { memo, useMemo, useRef, type MutableRefObject } from 'react';
+import { useFrame } from '@react-three/fiber';
 import { RoundedBox, useGLTF } from '@react-three/drei';
 import * as THREE from 'three';
 import { drawEmblem } from '../ui/brandEmblem';
@@ -34,6 +35,9 @@ const SEMI_REAR_AXLE_Z = 1.1;
 const SEMI_CAB_L = 3.05;
 useGLTF.preload(SEMI_VAN_URL);
 
+/** Будка фургона: ширина, пол (y), высота, длина; зад — в z = 0. Внутренний объём — для раскладки лотков. */
+export const VAN_BODY = { width: W, floorY: BODY_Y0, height: BODY_H, length: BODY_L, wall: 0.05 } as const;
+
 /** Длина машины от заднего торца будки до переда кабины, м. */
 export const TRUCK_LENGTH = { classic: CAB_Z0 + 1.68, semi: CAB_Z0 + SEMI_CAB_L } as const;
 
@@ -52,6 +56,10 @@ const headMat = new THREE.MeshStandardMaterial({ color: '#fffdf2', emissive: '#f
 const amberMat = new THREE.MeshStandardMaterial({ color: '#f2a03d', emissive: '#f2a03d', emissiveIntensity: 0.35, roughness: 0.3 });
 const tailMat = new THREE.MeshStandardMaterial({ color: '#c8242b', emissive: '#a5141b', emissiveIntensity: 0.45, roughness: 0.3 });
 const seamMat = new THREE.MeshStandardMaterial({ color: '#c4c6c6', roughness: 0.6 });
+/** Пол будки — рифлёный алюминий. */
+const floorMat = new THREE.MeshStandardMaterial({ color: '#9aa0a4', roughness: 0.55, metalness: 0.4 });
+/** Толщина стенок будки. */
+const WALL = 0.05;
 
 /** Боковой профиль кабины (z вперёд, y вверх): крыша, наклонное лобовое, короткий капот. */
 const CAB_PROFILE: [number, number][] = (() => {
@@ -283,9 +291,56 @@ export interface TruckProps {
   cab?: 'classic' | 'semi';
   /** Идёт ли погрузка заказа (мигает маячок) */
   loading?: boolean;
+  /** Двери будки: 0 — закрыты, 1 — распахнуты к бортам. Ref читается в каждом кадре, без перерисовки React. */
+  doorRef?: MutableRefObject<number>;
 }
 
-export const Truck = memo(function Truck({ brand, tagline = '', color, plate, cab: cabKind = 'classic', loading }: TruckProps) {
+/**
+ * Задние распашные двери на петлях: створки поворачиваются наружу и складываются к бортам (на 270°).
+ * Петли — по краям проёма (x = ±hingeX), зад кузова — z = 0. Створки поворачиваются сами (useFrame), поэтому
+ * они вне MergeStatic кузова; детали каждой створки склеены внутри неё самой.
+ */
+export function RearDoors({ doorRef, hingeX, y0, height, material }: { doorRef?: MutableRefObject<number>; hingeX: number; y0: number; height: number; material: THREE.Material }) {
+  const right = useRef<THREE.Group>(null);
+  const left = useRef<THREE.Group>(null);
+  useFrame(() => {
+    const d = doorRef?.current ?? 0;
+    if (right.current) right.current.rotation.y = -d * 1.5 * Math.PI;
+    if (left.current) left.current.rotation.y = d * 1.5 * Math.PI;
+  });
+  const leafW = hingeX - 0.01;
+  return (
+    <>
+      {([1, -1] as const).map((s) => (
+        <group key={s} ref={s > 0 ? right : left} position={[s * hingeX, y0 + height / 2, -0.03]}>
+          {/* створка поворачивается целиком, её детали склеены в 3 меша по материалу */}
+          <MergeStatic>
+            <mesh position={[-s * (leafW / 2), 0, 0]} material={material} castShadow>
+              <boxGeometry args={[leafW, height - 0.04, 0.04]} />
+            </mesh>
+            {/* запорные штанги и ручки — снаружи (−z у закрытой створки) */}
+            {[0.28, 0.72].map((k) => (
+              <mesh key={k} position={[-s * leafW * k, 0, -0.035]} material={M.chrome}>
+                <cylinderGeometry args={[0.018, 0.018, height - 0.25, 8]} />
+              </mesh>
+            ))}
+            <mesh position={[-s * leafW * 0.5, -0.1, -0.04]} material={trimMat}>
+              <boxGeometry args={[0.18, 0.05, 0.04]} />
+            </mesh>
+            {/* петли */}
+            {[-0.36, 0, 0.36].map((k) => (
+              <mesh key={k} position={[0, k * height, -0.02]} material={trimMat}>
+                <boxGeometry args={[0.06, 0.12, 0.06]} />
+              </mesh>
+            ))}
+          </MergeStatic>
+        </group>
+      ))}
+    </>
+  );
+}
+
+export const Truck = memo(function Truck({ brand, tagline = '', color, plate, cab: cabKind = 'classic', loading, doorRef }: TruckProps) {
   const semi = cabKind === 'semi';
   const cab = useCabGeometry();
   const windshield = useMemo(() => windshieldGeometry(), []);
@@ -403,8 +458,33 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, ca
           )),
         )}
 
-        {/* кузов */}
-        <RoundedBox args={[W, BODY_H, BODY_L]} radius={0.05} smoothness={3} position={[0, BODY_Y0 + BODY_H / 2, BODY_L / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow />
+        {/* кузов — полый, открыт сзади: борта, крыша, пол и передняя стенка; внутри видно груз */}
+        {[-1, 1].map((sx) => (
+          <mesh key={`wall${sx}`} position={[sx * (W / 2 - WALL / 2), BODY_Y0 + BODY_H / 2, BODY_L / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow>
+            <boxGeometry args={[WALL, BODY_H, BODY_L]} />
+          </mesh>
+        ))}
+        <mesh position={[0, BODY_Y0 + BODY_H - WALL / 2, BODY_L / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow>
+          <boxGeometry args={[W, WALL, BODY_L]} />
+        </mesh>
+        <mesh position={[0, BODY_Y0 + WALL / 2, BODY_L / 2]} material={floorMat} receiveShadow>
+          <boxGeometry args={[W, WALL, BODY_L]} />
+        </mesh>
+        <mesh position={[0, BODY_Y0 + BODY_H / 2, BODY_L - WALL / 2]} material={brand ? paint : tarpMat} castShadow receiveShadow>
+          <boxGeometry args={[W, BODY_H, WALL]} />
+        </mesh>
+        {/* рамка проёма */}
+        {[-1, 1].map((sx) => (
+          <mesh key={`jamb${sx}`} position={[sx * (W / 2 - 0.03), BODY_Y0 + BODY_H / 2, 0.02]} material={seamMat}>
+            <boxGeometry args={[0.07, BODY_H, 0.05]} />
+          </mesh>
+        ))}
+        <mesh position={[0, BODY_Y0 + BODY_H - 0.035, 0.02]} material={seamMat}>
+          <boxGeometry args={[W, 0.07, 0.05]} />
+        </mesh>
+        <mesh position={[0, BODY_Y0 + 0.03, 0.02]} material={trimMat}>
+          <boxGeometry args={[W, 0.08, 0.06]} />
+        </mesh>
         {brand ? (
           <>
             <BrandLivery brand={brand} tagline={tagline} color={color} right={W / 2 + 0.004} left={W / 2 + 0.004} y={BODY_Y0 + BODY_H / 2} z={BODY_L / 2} length={BODY_L - 0.1} height={BODY_H - 0.1} />
@@ -442,27 +522,6 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, ca
           ))
         )}
 
-        {/* задние двери: шов, запоры, петли, фонари */}
-        <group position={[0, BODY_Y0 + BODY_H / 2, -0.004]}>
-          <mesh rotation={[0, Math.PI, 0]} material={seamMat}>
-            <planeGeometry args={[W - 0.1, BODY_H - 0.1]} />
-          </mesh>
-          <mesh position={[0, 0, -0.006]} material={trimMat}>
-            <boxGeometry args={[0.025, BODY_H - 0.12, 0.01]} />
-          </mesh>
-          {[-0.62, -0.22, 0.22, 0.62].map((x) => (
-            <mesh key={x} position={[x, 0, -0.03]} material={M.chrome}>
-              <cylinderGeometry args={[0.018, 0.018, BODY_H - 0.25, 8]} />
-            </mesh>
-          ))}
-          {[-1, 1].map((s) =>
-            [-0.7, 0.7].map((y) => (
-              <mesh key={`${s}${y}`} position={[s * (W / 2 - 0.08), y, -0.03]} material={trimMat}>
-                <boxGeometry args={[0.1, 0.16, 0.05]} />
-              </mesh>
-            )),
-          )}
-        </group>
         {[-1, 1].map((s) => (
           <mesh key={s} position={[s * (W / 2 - 0.22), 0.62, -0.02]} material={tailMat}>
             <boxGeometry args={[0.32, 0.14, 0.06]} />
@@ -471,14 +530,16 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, ca
         <mesh position={[0, 0.46, -0.05]} material={trimMat} castShadow>
           <boxGeometry args={[W - 0.2, 0.12, 0.1]} />
         </mesh>
-        <mesh position={[0, 0.66, -0.04]}>
+        {/* задний номер смотрит назад (−z), иначе читается зеркально */}
+        <mesh position={[0, 0.66, -0.04]} rotation={[0, Math.PI, 0]}>
           <planeGeometry args={[0.52, 0.11]} />
-          <meshBasicMaterial map={plateTex} side={THREE.DoubleSide} />
+          <meshBasicMaterial map={plateTex} />
         </mesh>
 
         {!semi && classicCab}
       </MergeStatic>
       {semi && <GltfModel url={SEMI_VAN_URL} keepOrigin fallback={classicCab} />}
+      <RearDoors doorRef={doorRef} hingeX={W / 2 + 0.03} y0={BODY_Y0} height={BODY_H} material={brand ? paint : tarpMat} />
 
       {loading && (
         <group position={[0, BODY_Y0 + BODY_H + 0.1, 1.8]}>
