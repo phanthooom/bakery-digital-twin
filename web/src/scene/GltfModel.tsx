@@ -46,13 +46,20 @@ function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
     }
     const bowl = clone.getObjectByName('anim_bowl');
     const hook = clone.getObjectByName('anim_hook');
+    const fan = clone.getObjectByName('anim_fan');
+    const roll = clone.getObjectByName('anim_roll');
+    const beltItems = clone.getObjectByName('anim_belt_items');
+    const pulse = clone.getObjectByName('anim_pulse') as THREE.Mesh | undefined;
+    if (pulse && (pulse as THREE.Mesh).material) {
+      (pulse as THREE.Mesh).material = ((pulse as THREE.Mesh).material as THREE.Material).clone();
+    }
 
-    return { clone, height: box.max.y - box.min.y, rack, glow, bowl, hook };
+    return { clone, height: box.max.y - box.min.y, rack, glow, bowl, hook, fan, roll, beltItems, pulse };
   }, [scene, scale, keepOrigin]);
 
   useLayoutEffect(() => onHeight?.(object.height), [object.height, onHeight]);
 
-  useFrame((_, dt) => {
+  useFrame((state, dt) => {
     if (!live) return;
     const isRunning = live.status === 'running' || live.status === 'alarm';
     const speed = isRunning ? 2 + live.load * 8 : 0;
@@ -77,6 +84,33 @@ function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
     // Вращение спирального месильного органа
     if (object.hook && isRunning) {
       object.hook.rotation.y += dt * speed;
+    }
+
+    // Вращение крыльчатки вентилятора (HVAC / льдогенератор / моноблок холода)
+    if (object.fan && isRunning) {
+      object.fan.rotation.z += dt * (5 + live.load * 9);
+    }
+
+    // Вращение рулона упаковочной плёнки (Flow-Pack)
+    if (object.roll && isRunning) {
+      object.roll.rotation.x += dt * 2.4 * Math.max(0.4, live.load);
+    }
+
+    // Движение продукции по ленте конвейера и упаковщика
+    if (object.beltItems && isRunning) {
+      const span = 2.5;
+      const count = object.beltItems.children.length || 1;
+      const t = (state.clock.elapsedTime * 0.35 * Math.max(0.4, live.load)) % (span / count);
+      object.beltItems.children.forEach((child, idx) => {
+        child.position.x = -span / 2 + (((idx * span) / count + t) % span);
+      });
+    }
+
+    // Пульсация индикатора уровня и пневморазгрузки силоса
+    if (object.pulse && (object.pulse.material as THREE.MeshStandardMaterial)) {
+      const mat = object.pulse.material as THREE.MeshStandardMaterial;
+      const target = isRunning ? 0.65 + Math.sin(state.clock.elapsedTime * 4.5) * 0.35 : 0.18;
+      mat.emissiveIntensity = THREE.MathUtils.damp(mat.emissiveIntensity, target, 3.5, dt);
     }
   });
 

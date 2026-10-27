@@ -23,4 +23,4 @@
 (22,7 МБ → 34 КБ). `baker.glb` — тот же человек без рохли и каски, жилет и рубашка перекрашены в белую куртку,
 джинсы — в тёмные брюки (1,7 тыс. треугольников, 22 КБ); колпак рисует сцена. Сборка обоих — `scripts/build-finley.mjs`.
 
-Остальные модели в этой папке сгенерированы скриптами `scripts/generate-*.js`.
+Остальные модели в этой папке (`mixer.glb`, `moulder.glb`, `proofer.glb`, `oven.glb`, `blastfreezer.glb`, `conveyor.glb`, `packer.glb`, `icemaker.glb`, `coldroom.glb`, `hvac.glb`, `silo-25t.glb`, `silo-15t.glb`) сгенерированы по стандарту промышленных PBR-материалов (SimReady-совместимая иерархия узлов со статическим слиянием геометрии `mergeStatic` и выделенными анимируемыми группами `anim_*`) скриптами `scripts/generate-all-machines.js` и `scripts/generate-simready-models.js`.

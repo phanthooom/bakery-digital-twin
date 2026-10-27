@@ -276,7 +276,7 @@
         "minTempC": 2,
         "maxTempC": 6
       },
-      "model": null
+      "model": "/models/coldroom.glb"
     },
     {
       "id": "mixer-1",
@@ -327,7 +327,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_ICE1",
-      "model": null
+      "model": "/models/icemaker.glb"
     },
     {
       "id": "moulder-1",
@@ -361,7 +361,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_CNV1",
-      "model": null
+      "model": "/models/conveyor.glb"
     },
     {
       "id": "proofer-1",
@@ -477,7 +477,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_PCK1",
-      "model": null
+      "model": "/models/packer.glb"
     },
     {
       "id": "coldroom-1",
@@ -500,7 +500,7 @@
         "minTempC": -22,
         "maxTempC": -15
       },
-      "model": null
+      "model": "/models/coldroom.glb"
     },
     {
       "id": "silo-1",
@@ -518,7 +518,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_SILO1",
-      "model": null
+      "model": "/models/silo-25t.glb"
     },
     {
       "id": "silo-2",
@@ -536,7 +536,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_SILO2",
-      "model": null
+      "model": "/models/silo-25t.glb"
     },
     {
       "id": "silo-3",
@@ -554,7 +554,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_SILO3",
-      "model": null
+      "model": "/models/silo-15t.glb"
     },
     {
       "id": "hvac-1",
@@ -572,7 +572,7 @@
       },
       "rotationY": 0,
       "meterId": "ESP32_SIM_HVAC1",
-      "model": null
+      "model": "/models/hvac.glb"
     }
   ],
   "supply": {
