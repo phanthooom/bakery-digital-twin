@@ -85,7 +85,8 @@ describe('Alarm Notifications (Уведомления об авариях)', () 
     expect(notification?.equipmentName).toBe('Печь ротационная 1');
     expect(notification?.reasons).toEqual(['перегрузка']);
     expect(notification?.rawReasons).toEqual(['overload']);
-    expect(notification?.url).toBe('?eq=oven-1');
+    // ссылка открывает цех в момент начала аварии («Машина времени»)
+    expect(notification?.url).toBe(`?eq=oven-1&t=${new Date(T0).toISOString().slice(0, 19)}Z`);
     expect(notification?.timestamp).toBe(T0);
     expect(notification?.message).toContain('Авария');
     expect(notification?.message).toContain('Печь ротационная 1');
@@ -225,17 +226,18 @@ describe('Alarm Notifications (Уведомления об авариях)', () 
   it('7. Кастомный baseUrl: поддержка внешнего URL вида https://twin.bakery.uz/?eq=oven-1', () => {
     const notifierWithBase = new AlarmNotifier(testConfig, { baseUrl: 'https://twin.bakery.uz' });
     const notif1 = notifierWithBase.notify(makeAlarmState('oven-1', ['overload'], T0), T0);
-    expect(notif1?.url).toBe('https://twin.bakery.uz/?eq=oven-1');
-    expect(notif1?.message).toContain('https://twin.bakery.uz/?eq=oven-1');
+    expect(notif1?.url).toBe(`https://twin.bakery.uz/?eq=oven-1&t=${new Date(T0).toISOString().slice(0, 19)}Z`);
+    expect(notif1?.message).toContain('https://twin.bakery.uz/?eq=oven-1&t=');
 
     // С завершающим слэшем
     const notifierWithSlash = new AlarmNotifier({ config: testConfig, baseUrl: 'https://twin.bakery.uz/' });
     const notif2 = notifierWithSlash.notify(makeAlarmState('mixer-1', ['imbalance'], T0), T0);
-    expect(notif2?.url).toBe('https://twin.bakery.uz/?eq=mixer-1');
+    expect(notif2?.url).toBe(`https://twin.bakery.uz/?eq=mixer-1&t=${new Date(T0).toISOString().slice(0, 19)}Z`);
 
     // Функция buildEquipmentUrl
     expect(buildEquipmentUrl('oven-1')).toBe('?eq=oven-1');
     expect(buildEquipmentUrl('oven-1', 'http://localhost:5173')).toBe('http://localhost:5173/?eq=oven-1');
+    expect(buildEquipmentUrl('oven-1', undefined, Date.UTC(2026, 9, 27, 22, 40, 5))).toBe('?eq=oven-1&t=2026-10-27T22:40:05Z');
   });
 
   it('8. Фоллбэк для неизвестного станка: если станка нет в конфиге, используется его ID в качестве имени', () => {
@@ -245,7 +247,7 @@ describe('Alarm Notifications (Уведомления об авариях)', () 
     const notif = notifier.notify(unknownState, T0);
     expect(notif?.equipmentId).toBe('unknown-machine-99');
     expect(notif?.equipmentName).toBe('unknown-machine-99');
-    expect(notif?.url).toBe('?eq=unknown-machine-99');
+    expect(notif?.url).toBe(`?eq=unknown-machine-99&t=${new Date(T0).toISOString().slice(0, 19)}Z`);
     expect(notif?.message).toContain('unknown-machine-99');
 
     // Нотификатор вообще без конфига

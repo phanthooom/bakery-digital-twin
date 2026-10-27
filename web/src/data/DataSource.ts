@@ -1,5 +1,5 @@
 import type { SupplySnapshot } from './mockSupply';
-import type { EnergyEntry, FaultType, EquipmentState, GasEvent, GasPoint, GasState, PowerPoint, SiteConfig, TelegramOrder } from '@bakery/shared';
+import type { EnergyEntry, FaultType, EquipmentState, GasEvent, GasPoint, GasState, PowerPoint, SiteConfig, StatusChange, TelegramOrder } from '@bakery/shared';
 
 export interface HistoryResult {
   points: PowerPoint[];
@@ -38,4 +38,13 @@ export interface DataSource {
   dispatchTelegramOrder?(order: TelegramOrder): void;
   /** Подписка на уведомления о заказах из Telegram */
   onTelegramOrder?(listener: (order: TelegramOrder) => void): () => void;
+  /**
+   * «Машина времени»: показывать цех в момент t (null — вживую). Пока курсор в прошлом, getStates и getHistory
+   * отдают прошлое — сцена, карточки и шапка перематываются без своих правок. Живой источник возьмёт это из InfluxDB.
+   */
+  setTimeCursor?(t: number | null): void;
+  /** Смены статуса станков в [fromMs, toMs] — риски аварий на шкале времени. */
+  getStatusChanges?(fromMs: number, toMs: number): StatusChange[];
+  /** За какой период есть подробная история (куда можно перемотать). */
+  getHistoryWindow?(): { fromMs: number; toMs: number };
 }

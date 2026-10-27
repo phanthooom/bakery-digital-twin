@@ -3,7 +3,7 @@ import { cargoPlan, countDone, dockState, localParts, tripStatus, VAN_TIMING, SE
 import { vanLane } from '../scene/DockTraffic';
 import { useDataSource, useSupply } from '../data/store';
 import { useDockPlan } from '../data/useDockPlan';
-import { useNow } from './useNow';
+import { useSceneTime } from '../data/timeCursor';
 import { SupplySim } from '../data/mockSupply';
 import { fmtMass, fmtTime } from './format';
 import { SUPPLIER_PLATE, SUPPLIER_VEHICLE, supplyView, type SupplyTab, type VehicleRow } from './supplyView';
@@ -24,7 +24,7 @@ const DOCK_STATUS: Record<DockPhase, string> = {
 /** Ход погрузки фургона или разгрузки поставщика прямо сейчас — по тому же расписанию, что видит сцена и склад. */
 function DockProgress({ id }: { id: string }) {
   const plan = useDockPlan();
-  const now = useNow(1000);
+  const now = useSceneTime(1000);
   if (!plan) return null;
   let done = 0;
   let total = 0;
@@ -60,7 +60,7 @@ export function VehicleCard({ id, onClose, onOpenSupply }: { id: string; onClose
   const { config } = useDataSource();
   const snap = useSupply();
   const plan = useDockPlan();
-  const now = useNow(1000);
+  const now = useSceneTime(1000);
   const tz = config.site.timezone;
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => closeRef.current?.focus({ preventScroll: true }), []);

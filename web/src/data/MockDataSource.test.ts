@@ -145,4 +145,31 @@ describe('MockDataSource (то, что видит фронт)', () => {
 
     ds.stop();
   });
+
+  it('«Машина времени»: с курсором в прошлом станки и график — на тот момент, сброс курсора — снова вживую', () => {
+    const ds = createSource();
+    ds.start();
+    const past = NOW - 2 * 3_600_000;
+    let notified = 0;
+    ds.subscribe(() => notified++);
+    ds.setTimeCursor(past);
+    expect(notified).toBe(1);
+    for (const eq of config.equipment) {
+      const s = ds.getStates().get(eq.id)!;
+      // показание — не позже момента курсора и не старше 15 с от него
+      expect(s.lastReading!.ts).toBeLessThanOrEqual(past);
+      expect(past - s.lastReading!.ts).toBeLessThanOrEqual(15_000 + 5000);
+      const h = ds.getHistory(eq.id, 1, 60_000);
+      expect(h.points.at(-1)!.t).toBeLessThanOrEqual(past);
+      expect(h.points.at(-1)!.t).toBeGreaterThan(past - 2 * 60_000);
+    }
+    // живые показания идут, но пока курсор в прошлом — не показываются
+    vi.advanceTimersByTime(10_000);
+    expect(ds.getStates().get('oven-1')!.lastReading!.ts).toBeLessThanOrEqual(past);
+    ds.setTimeCursor(null);
+    expect(NOW + 10_000 - ds.getStates().get('oven-1')!.lastReading!.ts).toBeLessThan(5000);
+    const w = ds.getHistoryWindow();
+    expect(w.toMs - w.fromMs).toBeGreaterThanOrEqual(5.9 * 3_600_000);
+    ds.stop();
+  });
 });

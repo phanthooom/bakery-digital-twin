@@ -13,6 +13,7 @@ import { Header } from './ui/Header';
 import { EnergyPanel } from './ui/EnergyPanel';
 import { SupplyPanel } from './ui/SupplyPanel';
 import { VehicleCard } from './ui/VehicleCard';
+import { TimeMachine } from './ui/TimeMachine';
 import { GasCard } from './ui/GasCard';
 import type { SupplyTab } from './ui/supplyView';
 import { STATUS_LABEL, STATUS_ORDER, applyStatusCssVars } from './ui/statusMeta';
@@ -422,6 +423,7 @@ export function App() {
           />
         )}
         {!listOpen && <GestureHint />}
+        <TimeMachine onSelectMachine={(id) => setSelection({ kind: 'machine', id })} />
         <div className="legend" aria-label="Обозначения сигнальных колонн">
           {STATUS_ORDER.map((s) => (
             <span key={s}>

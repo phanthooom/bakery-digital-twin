@@ -16,6 +16,7 @@ import {
   type GasPoint,
   type GasState,
   type SiteConfig,
+  type StatusChange,
   type TelegramOrder,
   type Trip,
 } from '@bakery/shared';
@@ -64,6 +65,9 @@ export class MockDataSource implements DataSource {
   private activeTelegramOrderUntil = 0;
   private readonly targetOrderMachineIds = new Set<string>();
   private readonly liveTrips: Trip[] = [];
+  /** «Машина времени»: момент, который показываем, и снимок станков на него (null — вживую). */
+  private cursor: number | null = null;
+  private pastStates: Map<string, EquipmentState> | null = null;
 
   constructor(readonly config: SiteConfig, private readonly opts: MockOptions = {}) {
     this.intervalMs = opts.intervalMs ?? 5000;
@@ -268,7 +272,30 @@ export class MockDataSource implements DataSource {
   }
 
   getStates(): ReadonlyMap<string, EquipmentState> {
-    return this.states;
+    return this.pastStates ?? this.states;
+  }
+
+  setTimeCursor(t: number | null): void {
+    if (t === null) {
+      if (this.cursor === null) return;
+      this.cursor = null;
+      this.pastStates = null;
+    } else {
+      this.warmup();
+      this.cursor = t;
+      this.pastStates = new Map(this.engine.statesAt(t).map((s) => [s.id, s]));
+    }
+    // живые показания продолжают приходить и копиться — просто не показываются, пока курсор в прошлом
+    for (const l of this.listeners) l();
+  }
+
+  getStatusChanges(fromMs: number, toMs: number): StatusChange[] {
+    return this.engine.statusChanges(fromMs, toMs);
+  }
+
+  getHistoryWindow(): { fromMs: number; toMs: number } {
+    const now = Date.now();
+    return { fromMs: now - (this.opts.historyHours ?? 6) * HOUR, toMs: now };
   }
 
   subscribe(listener: () => void): () => void {
@@ -277,8 +304,8 @@ export class MockDataSource implements DataSource {
   }
 
   getHistory(id: string, hours: number, bucketMs = MIN): HistoryResult {
-    const now = Date.now();
-    return this.engine.history(id, now - hours * HOUR, bucketMs, now);
+    const end = this.cursor ?? Date.now();
+    return this.engine.history(id, end - hours * HOUR, bucketMs, end);
   }
 
   getGas(): GasState | null {

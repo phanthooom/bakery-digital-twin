@@ -20,6 +20,7 @@ import {
   type TripLoading,
   type YardLane,
 } from '@bakery/shared';
+import { sceneNow } from '../data/timeCursor';
 import { M } from './materials';
 import { BrandLivery, RearDoors, TRUCK_LENGTH, Truck, VAN_BODY } from './Truck';
 import { VehicleNightLights } from './NightLighting';
@@ -29,8 +30,9 @@ import { VehicleNightLights } from './NightLighting';
  * к рампе, открывают двери, грузятся или разгружаются и уезжают. Рохля возит лотки со склада готовой продукции
  * в фургон, погрузчик — поддоны из прицепа на склад сырья.
  *
- * Положение всего движущегося считается в каждом кадре из (расписание, Date.now()) — ничего не накапливается:
- * после перезагрузки или переключения вкладки картинка та же. React перерисовывается только при смене фазы.
+ * Положение всего движущегося считается в каждом кадре из (расписание, время сцены) — ничего не накапливается:
+ * после перезагрузки или переключения вкладки картинка та же, а «Машина времени» перематывает двор вместе с цехом
+ * (время сцены — sceneNow(): «сейчас» или выбранный момент в прошлом). React перерисовывается только при смене фазы.
  */
 
 const LOADING_PHASES: ReadonlySet<DockPhase> = new Set(['doorsOpening', 'working', 'doorsClosing', 'departing']);
@@ -195,7 +197,7 @@ export const MovingVan = memo(function MovingVan({ id, plate, lane, visits, load
   const group = useRef<THREE.Group>(null);
   const door = useRef(0);
   const reverse = useRef<THREE.Group>(null);
-  const [phase, setPhase] = usePhase(dockState(visits, lane, Date.now(), VAN_TIMING).phase);
+  const [phase, setPhase] = usePhase(dockState(visits, lane, sceneNow(), VAN_TIMING).phase);
   const slots = useMemo(() => cargoSlots(VAN_INNER, CRATE), []);
   const crates = useInstances(slots, CRATE_PARTS);
   const byVisit = useMemo(() => new Map(loadings.map((l) => [l.visit.id, l])), [loadings]);
@@ -203,7 +205,7 @@ export const MovingVan = memo(function MovingVan({ id, plate, lane, visits, load
   useFrame(() => {
     const g = group.current;
     if (!g) return;
-    const now = Date.now();
+    const now = sceneNow();
     const st = dockState(visits, lane, now, VAN_TIMING);
     g.visible = st.phase !== 'away';
     g.position.set(st.x, 0, st.z);
@@ -302,7 +304,7 @@ export const MovingSupplier = memo(function MovingSupplier({ id, lane, unloading
   const reverse = useRef<THREE.Group>(null);
   const visits = useMemo(() => unloadings.map((u) => u.visit), [unloadings]);
   const byVisit = useMemo(() => new Map(unloadings.map((u) => [u.visit.id, u])), [unloadings]);
-  const initial = dockState(visits, lane, Date.now(), SEMI_TIMING);
+  const initial = dockState(visits, lane, sceneNow(), SEMI_TIMING);
   const [phase, setPhase] = usePhase(initial.phase);
   const [visitId, setVisitId] = useState<string | null>(initial.visit?.id ?? null);
   const semi = useOpenSemi();
@@ -316,7 +318,7 @@ export const MovingSupplier = memo(function MovingSupplier({ id, lane, unloading
   useFrame(() => {
     const g = group.current;
     if (!g) return;
-    const now = Date.now();
+    const now = sceneNow();
     const st = dockState(visits, lane, now, SEMI_TIMING);
     g.visible = st.phase !== 'away';
     g.position.set(st.x, 0, st.z);
@@ -396,7 +398,7 @@ function useCarrier(plans: () => HaulPlan[], path: CarrierPath, apply: (state: {
   const pl = useMemo(() => polyline(path.points), [path]);
   const heading = useRef(NaN);
   useFrame((_, delta) => {
-    const now = Date.now();
+    const now = sceneNow();
     const plan = plans().find((p) => p.runs.length && now >= p.runs[0]!.departAt - 60_000 && now < p.runs.at(-1)!.end + 30_000);
     if (!plan) return apply({ x: 0, z: 0, heading: 0, visible: false, carrying: 0, moving: false, dist: 0 });
     const c = carrierState(plan, now);

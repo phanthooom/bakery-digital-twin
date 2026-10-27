@@ -168,3 +168,95 @@ describe('TwinEngine', () => {
     expect(s2.climate?.alert).toContain('Перегрев');
   });
 });
+
+describe('TwinEngine — машина времени', () => {
+  /** Прожить сценарий, запоминая, что движок показывал вживую после каждого шага. */
+  const scenario = () => {
+    const e = new TwinEngine(config);
+    const live: { t: number; status: string; reasons: string; kw: number | null; readingTs: number | null; since: number }[] = [];
+    const remember = (t: number) => {
+      const s = e.getState('oven-1')!;
+      live.push({ t, status: s.status, reasons: s.reasons.join(','), kw: s.lastReading?.powerKw ?? null, readingTs: s.lastReading?.ts ?? null, since: s.statusSince });
+    };
+    let t = T0;
+    // 10 мин работы, 1 мин перегрузки, 5 мин простоя, обрыв фазы, потом пропала связь;
+    // переходы — не на 15-секундной сетке журнала, чтобы смена статуса обязана была писаться сразу
+    const B1 = T0 + 10 * MIN + 5000;
+    const B2 = T0 + 11 * MIN + 10_000;
+    const B3 = T0 + 16 * MIN + 5000;
+    const B4 = T0 + 17 * MIN + 10_000;
+    for (; t < B1; t += 5000) (e.ingest(r(t, 30 + ((t / 5000) % 3)), t), remember(t));
+    for (; t < B2; t += 5000) (e.ingest(r(t, 44), t), remember(t));
+    for (; t < B3; t += 5000) (e.ingest(r(t, 0.5, [0.8, 0.8, 0.8]), t), remember(t));
+    for (; t < B4; t += 5000) (e.ingest(r(t, 24, [55, 0, 54]), t), remember(t));
+    for (let k = 1; k <= 60; k++) (e.tick(t + k * 1000), remember(t + k * 1000));
+    return { e, live, end: t + 60_000 };
+  };
+
+  it('statesAt(t) — цех ровно таким, каким он был вживую: статус, причины, начало статуса — без запаздывания', () => {
+    const { e, live } = scenario();
+    for (const l of live) {
+      const s = e.statesAt(l.t).find((x) => x.id === 'oven-1')!;
+      expect(s.status, `в ${(l.t - T0) / 1000} с`).toBe(l.status);
+      expect(s.reasons.join(','), `в ${(l.t - T0) / 1000} с`).toBe(l.reasons);
+      expect(s.statusSince, `в ${(l.t - T0) / 1000} с`).toBe(l.since);
+    }
+  });
+
+  it('мощность в прошлом — показание не старше 15 с от того, что движок видел вживую', () => {
+    const { e, live } = scenario();
+    for (const l of live) {
+      if (l.readingTs === null) continue;
+      const s = e.statesAt(l.t).find((x) => x.id === 'oven-1')!;
+      expect(l.readingTs - s.lastReading!.ts).toBeGreaterThanOrEqual(0);
+      expect(l.readingTs - s.lastReading!.ts).toBeLessThanOrEqual(15_000);
+    }
+  });
+
+  it('до начала журнала станок «нет связи», в момент между показаниями — последнее известное состояние', () => {
+    const { e } = scenario();
+    expect(e.statesAt(T0 - MIN).find((x) => x.id === 'oven-1')!.status).toBe('offline');
+    expect(e.statesAt(T0 + 10 * MIN + 7500).find((x) => x.id === 'oven-1')!.status).toBe('alarm');
+    // ice-1 данных не присылал вовсе
+    expect(e.statesAt(T0 + 5 * MIN).find((x) => x.id === 'ice-1')!.status).toBe('offline');
+  });
+
+  it('statusChanges(from, to) — смены статуса для рисок на шкале: аварии с причинами, по времени', () => {
+    const { e, end } = scenario();
+    const ch = e.statusChanges(T0, end).filter((c) => c.id === 'oven-1');
+    expect(ch.map((c) => c.status)).toEqual(['running', 'alarm', 'idle', 'alarm', 'offline']);
+    expect(ch[1]).toMatchObject({ t: T0 + 10 * MIN + 5000, reasons: ['overload'] });
+    expect(ch[3]!.reasons).toContain('phase_loss');
+    for (let i = 1; i < ch.length; i++) expect(ch[i]!.t).toBeGreaterThan(ch[i - 1]!.t);
+  });
+
+  it('смена причины аварии без смены статуса (перегрузка → обрыв фазы) — тоже риска на шкале', () => {
+    const e = new TwinEngine(config);
+    let t = T0;
+    for (; t < T0 + MIN; t += 5000) e.ingest(r(t, 44), t);
+    for (; t < T0 + 2 * MIN; t += 5000) e.ingest(r(t, 24, [55, 0, 54]), t);
+    const ch = e.statusChanges(T0, t).filter((c) => c.id === 'oven-1');
+    expect(ch.map((c) => c.status)).toEqual(['alarm', 'alarm']);
+    expect(ch[0]!.reasons).toEqual(['overload']);
+    expect(ch[1]!.reasons).toContain('phase_loss');
+  });
+
+  it('запоздалое показание с прошлым временем не переписывает журнал', () => {
+    const { e, end } = scenario();
+    const before = e.statesAt(T0 + 5 * MIN).find((x) => x.id === 'oven-1')!;
+    e.ingest(r(T0 + 5 * MIN, 44), T0 + 5 * MIN); // дозагрузка старых данных с прошлым «сейчас»
+    expect(e.statesAt(T0 + 5 * MIN).find((x) => x.id === 'oven-1')!).toBe(before);
+    expect(e.statusChanges(T0, end).filter((c) => c.id === 'oven-1')).toHaveLength(5);
+  });
+
+  it('журнал не растёт бесконечно: старше окна истории — отрезается, но состояние на границе окна остаётся', () => {
+    const e = new TwinEngine(config, { historyHours: 1 });
+    for (let t = T0; t < T0 + 3 * HOUR; t += 5000) e.ingest(r(t, 30), t);
+    const end = T0 + 3 * HOUR;
+    // чуть раньше начала окна: состояние описывает последняя запись до границы
+    expect(e.statesAt(end - HOUR - 10_000).find((x) => x.id === 'oven-1')!.status).toBe('running');
+    expect(e.statesAt(end - HOUR).find((x) => x.id === 'oven-1')!.status).toBe('running');
+    expect(e.statusChanges(T0, end).length).toBeLessThanOrEqual(1);
+    expect(e.journalSize()).toBeLessThan(400);
+  });
+});

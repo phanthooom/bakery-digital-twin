@@ -26,9 +26,11 @@ export function formatAlarmReasons(reasons: (StatusReason | string)[]): string {
 
 /**
  * Формирует ссылку на карточку станка в интерфейсе цифрового двойника.
+ * atMs — момент, в котором открыть цех («Машина времени»): &t=2026-10-27T22:40:05Z (UTC).
  */
-export function buildEquipmentUrl(equipmentId: string, baseUrl?: string): string {
-  const query = `?eq=${encodeURIComponent(equipmentId)}`;
+export function buildEquipmentUrl(equipmentId: string, baseUrl?: string, atMs?: number): string {
+  const at = atMs !== undefined && Number.isFinite(atMs) && atMs > 0 ? `&t=${new Date(atMs).toISOString().slice(0, 19)}Z` : '';
+  const query = `?eq=${encodeURIComponent(equipmentId)}${at}`;
   if (!baseUrl || !baseUrl.trim()) {
     return query;
   }
@@ -210,8 +212,9 @@ export class AlarmNotifier {
     const equipmentName = eq?.name ?? state.id;
     const rawReasons = [...state.reasons];
     const translatedReasons = rawReasons.map((r) => ALARM_REASON_LABELS[r] ?? r);
-    const url = buildEquipmentUrl(state.id, this.baseUrl);
     const timestamp = nowMs ?? (state.updatedAt > 0 ? state.updatedAt : Date.now());
+    // ссылка открывает цех в момент начала аварии
+    const url = buildEquipmentUrl(state.id, this.baseUrl, state.statusSince > 0 ? state.statusSince : timestamp);
     const reasonsFormatted = formatAlarmReasons(rawReasons);
     const message = `Авария станка: ${equipmentName}. Причина: ${reasonsFormatted}. Ссылка: ${url}`;
 

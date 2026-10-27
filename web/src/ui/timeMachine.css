@@ -1,0 +1,79 @@
+/* «Машина времени»: кнопка «История» и шкала внизу экрана. Цвет статуса (--status-critical) — только у рисок аварий,
+   они всегда с подписью (title/aria-label) и треугольником, как значок аварии. Акцент прошлого — --focus. */
+
+.tm-pill {
+  position: absolute; z-index: 21; left: 16px;
+  bottom: calc(16px + var(--twa-safe-bottom, env(safe-area-inset-bottom, 0px)) + var(--tm-lift, 0px));
+  display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px;
+  border: 1px solid var(--border); border-radius: 999px; background: rgba(252, 252, 251, 0.94);
+  backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: var(--shadow);
+  font: inherit; font-size: 13px; font-weight: 600; color: var(--text-primary); cursor: pointer;
+  font-variant-numeric: tabular-nums; transition: transform 0.15s ease;
+}
+.tm-pill:hover { transform: translateY(-1px); }
+.tm-pill.is-past { border-color: var(--focus); color: var(--focus); }
+
+.tm-bar {
+  position: absolute; z-index: 24; left: 16px; right: 16px;
+  bottom: calc(14px + var(--twa-safe-bottom, env(safe-area-inset-bottom, 0px)));
+  max-width: 980px; margin: 0 auto; padding: 10px 14px 12px;
+  background: rgba(252, 252, 251, 0.96); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow);
+  animation: tm-in 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.tm-bar.is-past { border-color: rgba(47, 123, 255, 0.55); box-shadow: 0 0 0 3px rgba(47, 123, 255, 0.12), var(--shadow); }
+@keyframes tm-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .tm-bar { animation: none; } .tm-pill { transition: none; } }
+
+.tm-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.tm-when { display: flex; align-items: baseline; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.tm-badge { align-self: center; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); color: var(--text-secondary); font-size: 11.5px; font-weight: 650; }
+.tm-badge.is-past { background: var(--focus); color: #fff; }
+.tm-time { font-size: 20px; font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.tm-day, .tm-ago { font-size: 12.5px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+.tm-actions { display: flex; align-items: center; gap: 6px; flex: none; }
+.tm-live { border-color: var(--focus); color: var(--focus); font-weight: 650; }
+
+/* дорожка: рельс, заливка до курсора, часы, риски аварий; ползунок — нативный range поверх (касания, клавиатура) */
+.tm-track { position: relative; height: 40px; margin: 6px 4px 0; }
+.tm-rail { position: absolute; left: 0; right: 0; top: 13px; height: 6px; border-radius: 3px; background: var(--grid); }
+.tm-fill { position: absolute; left: 0; top: 13px; height: 6px; border-radius: 3px; background: var(--series-1); pointer-events: none; }
+.tm-bar:not(.is-past) .tm-fill { background: var(--axis); }
+.tm-hour { position: absolute; top: 26px; transform: translateX(-50%); font-size: 10.5px; color: var(--text-muted); font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; }
+.tm-alarm {
+  position: absolute; top: 0; z-index: 2; width: 12px; height: 11px; margin-left: -6px; padding: 0; border: 0; cursor: pointer;
+  background: var(--status-critical, #d03b3b); clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+.tm-alarm:hover, .tm-alarm:focus-visible { transform: scale(1.35); outline: none; }
+.tm-range {
+  position: absolute; left: 0; right: 0; top: 4px; width: 100%; height: 24px; margin: 0; z-index: 1;
+  appearance: none; -webkit-appearance: none; background: transparent; cursor: pointer; touch-action: none;
+}
+.tm-range::-webkit-slider-runnable-track { height: 24px; background: transparent; }
+.tm-range::-moz-range-track { height: 24px; background: transparent; }
+.tm-range::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%;
+  background: #fff; border: 2px solid var(--focus); box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
+.tm-range::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: #fff; border: 2px solid var(--focus); }
+.tm-range:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 4px rgba(47, 123, 255, 0.3); }
+
+.tm-controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.tm-controls .btn { height: 30px; padding: 0 10px; font-size: 12.5px; }
+.tm-play { min-width: 112px; font-weight: 650; }
+.tm-speeds { display: inline-flex; gap: 2px; padding: 2px; border-radius: 9px; background: var(--surface-2); }
+.tm-speeds .btn { height: 26px; border-color: transparent; background: transparent; font-variant-numeric: tabular-nums; }
+.tm-speeds .btn.is-active { background: var(--surface-1); border-color: var(--border); color: var(--text-primary); font-weight: 650; }
+.tm-legend { margin-left: auto; font-size: 12px; color: var(--text-secondary); }
+.tm-legend::first-letter { color: var(--status-critical, #d03b3b); }
+
+/* телефон и Telegram Mini App: на всю ширину, крупнее зона касания, часы реже */
+@media (max-width: 760px) {
+  .tm-pill { left: 10px; height: 36px; }
+  .tm-bar { left: 8px; right: 8px; padding: 8px 10px 10px; bottom: calc(8px + var(--twa-safe-bottom, env(safe-area-inset-bottom, 0px))); }
+  .tm-time { font-size: 18px; }
+  .tm-hour:nth-of-type(even) { display: none; }
+  .tm-controls .btn { height: 34px; }
+  .tm-speeds .btn { height: 30px; padding: 0 8px; }
+  .tm-legend { width: 100%; margin-left: 0; }
+}

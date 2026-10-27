@@ -20,12 +20,31 @@ interface Slot {
 
 export type StateListener = (state: EquipmentState) => void;
 
+/** Запись журнала состояний: каким станок был с момента t. */
+interface JournalEntry {
+  t: number;
+  state: EquipmentState;
+}
+
+/** Смена статуса станка (или причины аварии) — для рисок на шкале «Машины времени». */
+export interface StatusChange {
+  id: string;
+  t: number;
+  status: MachineStatus;
+  reasons: EquipmentState['reasons'];
+}
+
+/** Без смены статуса состояние пишется в журнал не чаще, чем раз в столько мс (мощность в прошлом — не старше). */
+const JOURNAL_STEP_MS = 15_000;
+
 /**
  * Ядро цифрового двойника: принимает показания счётчиков и поддерживает состояние станков.
  * Одинаково работает в браузере (мок-источник) и в API (реальные данные из MQTT).
  */
 export class TwinEngine {
   private readonly slots = new Map<string, Slot>();
+  /** Журнал состояний для «Машины времени»: смены статуса — сразу, остальное — раз в JOURNAL_STEP_MS. */
+  private readonly journal = new Map<string, { entries: JournalEntry[]; initial: EquipmentState; pruned: boolean }>();
   private readonly listeners = new Set<StateListener>();
   private readonly historyMs: number;
   private readonly aiEveryMs: number;
@@ -53,6 +72,7 @@ export class TwinEngine {
           updatedAt: 0,
         },
       });
+      this.journal.set(eq.id, { entries: [], initial: this.slots.get(eq.id)!.state, pruned: false });
     }
   }
 
@@ -100,6 +120,7 @@ export class TwinEngine {
 
     const next = this.buildState(slot, last, ai, nowMs);
     slot.state = next;
+    this.record(next, nowMs);
     this.emit(next);
     return next;
   }
@@ -114,11 +135,63 @@ export class TwinEngine {
       if (next.status !== prev.status) {
         if (next.status === 'offline') next.statusSince = prev.lastReading.ts + this.config.thresholds.offlineAfterSec * 1000;
         slot.state = next;
+        this.record(next, nowMs);
         changed.push(next);
         this.emit(next);
       }
     }
     return changed;
+  }
+
+  /**
+   * Цех в момент t («Машина времени»): состояние каждого станка таким, каким его показывал движок вживую.
+   * Статус, причины и начало статуса — точно; мощность и токи — не старше JOURNAL_STEP_MS.
+   * До начала журнала (или раньше окна истории) — исходное «нет связи».
+   */
+  statesAt(t: number): EquipmentState[] {
+    return [...this.journal.entries()].map(([, j]) => {
+      const i = upperBound(j.entries, t) - 1;
+      return i >= 0 ? j.entries[i]!.state : j.initial;
+    });
+  }
+
+  /** Смены статуса (и смены причин аварии) в [fromMs, toMs] по всем станкам, по времени. */
+  statusChanges(fromMs: number, toMs: number): StatusChange[] {
+    const out: StatusChange[] = [];
+    for (const [id, j] of this.journal) {
+      let prev: EquipmentState | null = j.pruned ? null : j.initial;
+      for (const e of j.entries) {
+        const s = e.state;
+        const changed = prev !== null && (s.status !== prev.status || (s.status === 'alarm' && s.reasons.join() !== prev.reasons.join()));
+        if (changed && e.t >= fromMs && e.t <= toMs) out.push({ id, t: e.t, status: s.status, reasons: s.reasons });
+        prev = s;
+      }
+    }
+    return out.sort((a, b) => a.t - b.t || a.id.localeCompare(b.id));
+  }
+
+  /** Записей в журнале (для контроля памяти). */
+  journalSize(): number {
+    let n = 0;
+    for (const j of this.journal.values()) n += j.entries.length;
+    return n;
+  }
+
+  private record(state: EquipmentState, t: number): void {
+    const j = this.journal.get(state.id);
+    if (!j) return;
+    const last = j.entries.at(-1);
+    const changed = !last || last.state.status !== state.status || last.state.reasons.join() !== state.reasons.join();
+    if (last && t < last.t) return; // запоздалое показание из прошлого не переписывает журнал
+    if (!changed && t - last!.t < JOURNAL_STEP_MS) return;
+    j.entries.push({ t, state });
+    // старше окна истории — отрезаем, но последнюю запись до границы оставляем: она описывает состояние на границе
+    const cutoff = t - this.historyMs;
+    const k = upperBound(j.entries, cutoff) - 1;
+    if (k > 0) {
+      j.entries.splice(0, k);
+      j.pruned = true;
+    }
   }
 
   /** История мощности: средние по корзинам bucketMs и пик по сырым точкам. */
@@ -245,6 +318,18 @@ export class TwinEngine {
   private emit(state: EquipmentState): void {
     for (const fn of this.listeners) fn(state);
   }
+}
+
+/** Индекс первой записи с t > ts. */
+function upperBound(items: { t: number }[], ts: number): number {
+  let lo = 0;
+  let hi = items.length;
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (items[mid]!.t <= ts) lo = mid + 1;
+    else hi = mid;
+  }
+  return lo;
 }
 
 /** Индекс первой точки с t >= ts. */

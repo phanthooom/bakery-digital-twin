@@ -257,8 +257,8 @@ export function vehicleFocus(config: SiteConfig, id: string): CameraFocus | null
 }
 
 /**
- * Нижний край экрана по центру, над безопасной зоной (полоска «домой» в iPhone, панели Telegram Mini App)
- * и над панелью сквозного цикла «Производство», если она открыта. Раскладку читаем не чаще раза в 0,5 с.
+ * Нижний край экрана по центру, над безопасной зоной (полоска «домой» в iPhone, панели Telegram Mini App),
+ * над панелью «Производство» и шкалой «Машины времени», если они открыты. Раскладку читаем не чаще раза в 0,5 с.
  */
 const pinCache = { at: 0, bottom: 0 };
 function pinBottom(_el: THREE.Object3D, _camera: THREE.Camera, size: { width: number; height: number }): [number, number] {
@@ -266,10 +266,13 @@ function pinBottom(_el: THREE.Object3D, _camera: THREE.Camera, size: { width: nu
   if (now - pinCache.at > 500) {
     pinCache.at = now;
     const safe = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--twa-safe-bottom')) || 0;
-    const panel = document.querySelector<HTMLElement>('.production-control');
     const canvas = document.querySelector<HTMLElement>('.scene canvas');
-    const panelGap = panel && canvas ? canvas.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 8 : 0;
-    pinCache.bottom = Math.max(safe, panelGap);
+    // что лежит внизу экрана поверх сцены: панель «Производство», шкала «Машины времени», на узком экране — её кнопка
+    const narrow = (canvas?.clientWidth ?? 1000) < 560;
+    const over = ['.production-control', '.tm-bar', ...(narrow ? ['.tm-pill'] : [])].map((s) => document.querySelector<HTMLElement>(s));
+    const bottom = canvas?.getBoundingClientRect().bottom ?? 0;
+    const lift = Math.max(0, ...over.map((el) => (el ? bottom - el.getBoundingClientRect().top + 8 : 0)));
+    pinCache.bottom = Math.max(safe, lift);
   }
   return [size.width / 2, size.height - pinCache.bottom - 34];
 }
