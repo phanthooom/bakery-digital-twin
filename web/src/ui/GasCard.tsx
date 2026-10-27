@@ -2,9 +2,10 @@ import { useEffect, useMemo, useRef } from 'react';
 import { GAS_EVENTS, type GasAlert, type GasEvent, type GasPoint, type GasState } from '@bakery/shared';
 import { useDataSource, useGas } from '../data/store';
 import { monotonePath, niceTicks, timeTicks, tzOffsetMs } from './chartMath';
+import { AnimatedNumber } from './AnimatedNumber';
 import { fmtAxis, fmtDuration, fmtNum, fmtTime } from './format';
 import { StatusIcon, WarnIcon } from './StatusIcon';
-import { useNow } from './useNow';
+import { useSceneTime } from '../data/timeCursor';
 
 const HOUR = 3_600_000;
 const HOURS = 6;
@@ -69,7 +70,7 @@ function GasChart({ points, fromMs, toMs, timezone, maxM3h }: { points: GasPoint
 export function GasCard({ onClose }: { onClose: () => void }) {
   const ds = useDataSource();
   const g = useGas();
-  const now = useNow(5000);
+  const now = useSceneTime(5000);
   const closeRef = useRef<HTMLButtonElement>(null);
   useEffect(() => closeRef.current?.focus({ preventScroll: true }), []);
   const gas = ds.config.gas!;
@@ -117,7 +118,7 @@ export function GasCard({ onClose }: { onClose: () => void }) {
       })}
 
       <div className="hero">
-        <span className="hero-value">{r ? fmtM3h(r.flowM3h) : '—'}</span>
+        <span className="hero-value">{r ? <AnimatedNumber value={r.flowM3h} format={fmtM3h} /> : '—'}</span>
         <span className="hero-unit">м³/ч</span>
       </div>
       <div className="hero-sub">

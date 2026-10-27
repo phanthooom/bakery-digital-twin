@@ -313,7 +313,7 @@ export class MockDataSource implements DataSource {
   }
 
   getGasHistory(hours: number, bucketMs = MIN): GasPoint[] {
-    const now = Date.now();
+    const now = this.cursor ?? Date.now();
     return this.gas?.monitor.history(now - hours * HOUR, bucketMs, now) ?? [];
   }
 

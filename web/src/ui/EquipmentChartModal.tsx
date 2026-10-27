@@ -6,7 +6,7 @@ import { PhaseMeters } from './PhaseMeters';
 import { PowerChart } from './PowerChart';
 import { STATUS_LABEL } from './statusMeta';
 import { StatusIcon, WarnIcon } from './StatusIcon';
-import { useNow } from './useNow';
+import { useSceneTime } from '../data/timeCursor';
 
 interface EquipmentChartModalProps {
   eq: EquipmentConfig;
@@ -26,17 +26,18 @@ export function EquipmentChartModal({ eq, isOpen, onClose }: EquipmentChartModal
   const [hours, setHours] = useState(6);
   const ds = useDataSource();
   const state = useEquipmentState(eq.id);
-  const now = useNow(1000);
+  const now = useSceneTime(1000);
   const modalRef = useRef<HTMLDivElement>(null);
   const closeBtnRef = useRef<HTMLButtonElement>(null);
 
   const bucketMs = getBucketMs(hours);
+  const historyTick = Math.floor(now / 15_000);
   const history = useMemo(
     () => ds.getHistory(eq.id, hours, bucketMs),
-    [ds, eq.id, hours, bucketMs, state?.updatedAt, state?.status]
+    [ds, eq.id, hours, bucketMs, state?.updatedAt, state?.status, historyTick]
   );
-  // период «последние N часов до сейчас» сдвигается с каждым показанием; окно графика следует за ним
-  const range = useMemo(() => ({ to: Date.now(), from: Date.now() - hours * 3_600_000 }), [history, hours]);
+  // период «последние N часов до выбранного момента» следует за курсором времени сцены
+  const range = useMemo(() => ({ to: now, from: now - hours * 3_600_000 }), [history, hours, now]);
 
   useEffect(() => {
     if (isOpen) {

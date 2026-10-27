@@ -2,13 +2,14 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { FAULTS, faultsFor, type EquipmentConfig, type SiloConfig } from '@bakery/shared';
 import { useDataSource, useEquipmentState } from '../data/store';
 import { EquipmentChartModal } from './EquipmentChartModal';
+import { AnimatedNumber } from './AnimatedNumber';
 import { fmtAgo, fmtAiHeadline, fmtAiLearning, fmtDuration, fmtKw, fmtPct } from './format';
 import { OfflineNotice } from './OfflineNotice';
 import { PhaseMeters } from './PhaseMeters';
 import { PowerChart } from './PowerChart';
 import { REASON_LABEL, STATUS_LABEL } from './statusMeta';
 import { StatusIcon, WarnIcon } from './StatusIcon';
-import { useNow } from './useNow';
+import { useSceneTime } from '../data/timeCursor';
 
 const getBucketMs = (hours: number) => {
   if (hours <= 1) return 60_000;
@@ -24,7 +25,7 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
   const [isStretched, setIsStretched] = useState(false);
   const ds = useDataSource();
   const state = useEquipmentState(eq.id);
-  const now = useNow(1000);
+  const now = useSceneTime(1000);
   const closeRef = useRef<HTMLButtonElement>(null);
   const { thresholds, site } = ds.config;
 
@@ -33,13 +34,14 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
   }, [eq.id]);
 
   const bucketMs = getBucketMs(hours);
-  // история пересчитывается при каждом новом показании или смене периода
+  const historyTick = Math.floor(now / 15_000);
+  // история пересчитывается при каждом новом показании, перемотке «Машины времени» или смене периода
   const history = useMemo(
     () => ds.getHistory(eq.id, hours, bucketMs),
-    [ds, eq.id, hours, bucketMs, state?.updatedAt, state?.status]
+    [ds, eq.id, hours, bucketMs, state?.updatedAt, state?.status, historyTick]
   );
-  // период «последние N часов до сейчас» сдвигается с каждым показанием; окно графика следует за ним
-  const range = useMemo(() => ({ to: Date.now(), from: Date.now() - hours * 3_600_000 }), [history, hours]);
+  // период «последние N часов до выбранного момента» следует за курсором времени сцены
+  const range = useMemo(() => ({ to: now, from: now - hours * 3_600_000 }), [history, hours, now]);
 
   if (!state) return null;
   const r = state.lastReading;
@@ -107,7 +109,9 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
         {offline && <OfflineNotice meterId={r?.meterId ?? eq.meterId} silentForMs={r ? now - r.ts : null} />}
 
         <div className="hero">
-          <span className={`hero-value${offline || !r ? ' is-empty' : ''}`}>{offline || !r ? '—' : fmtKw(r.powerKw)}</span>
+          <span className={`hero-value${offline || !r ? ' is-empty' : ''}`}>
+            {offline || !r ? '—' : <AnimatedNumber value={r.powerKw} format={fmtKw} />}
+          </span>
           <span className="hero-unit">кВт</span>
         </div>
         <div className="hero-sub">
@@ -162,7 +166,9 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
                 <div className="climate-metric">
                   <span className="climate-metric-label">Температура камеры</span>
                   <div className="climate-metric-val">
-                    <span className="climate-val-num">{state.climate.temperatureC.toFixed(1)}</span>
+                    <span className="climate-val-num">
+                      <AnimatedNumber value={state.climate.temperatureC} format={(v) => v.toFixed(1)} />
+                    </span>
                     <span className="climate-val-unit">°C</span>
                     {state.climate.targetTempC !== null && (
                       <span className="climate-target">цель {state.climate.targetTempC} °C</span>
@@ -174,7 +180,9 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
                 <div className="climate-metric">
                   <span className="climate-metric-label">Относительная влажность</span>
                   <div className="climate-metric-val">
-                    <span className="climate-val-num">{state.climate.humidityPct.toFixed(1)}</span>
+                    <span className="climate-val-num">
+                      <AnimatedNumber value={state.climate.humidityPct} format={(v) => v.toFixed(1)} />
+                    </span>
                     <span className="climate-val-unit">%</span>
                     {state.climate.targetHumidityPct !== null && (
                       <span className="climate-target">цель {state.climate.targetHumidityPct} %</span>
@@ -186,7 +194,9 @@ export function EquipmentCard({ eq, onClose }: { eq: EquipmentConfig; onClose: (
                 <div className="climate-metric">
                   <span className="climate-metric-label">Сердцевина продукта</span>
                   <div className="climate-metric-val">
-                    <span className="climate-val-num">{state.climate.coreTempC.toFixed(1)}</span>
+                    <span className="climate-val-num">
+                      <AnimatedNumber value={state.climate.coreTempC} format={(v) => v.toFixed(1)} />
+                    </span>
                     <span className="climate-val-unit">°C</span>
                     <span className="climate-target">цель −18 °C</span>
                   </div>

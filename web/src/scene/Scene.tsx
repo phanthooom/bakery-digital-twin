@@ -1,4 +1,4 @@
-import { Suspense, useEffect, useRef, useState } from 'react';
+import { Component, Suspense, useEffect, useRef, useState, type ReactNode } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Bloom, EffectComposer, Outline, Selection } from '@react-three/postprocessing';
 import type { SiteConfig } from '@bakery/shared';
@@ -15,7 +15,45 @@ import { Areas } from './Areas';
 import { GasMeter } from './GasMeter';
 import { Mezzanine } from './Mezzanine';
 import { SceneLights } from './NightLighting';
+import { DimensionalOverlay } from './DimensionalOverlay';
 import type { SupplyTab } from '../ui/supplyView';
+
+class WebGlBoundary extends Component<{ onReady?: () => void; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  componentDidCatch(err: unknown) {
+    console.warn('3D WebGL-контекст недоступен:', err);
+    this.props.onReady?.();
+  }
+  render() {
+    if (this.state.failed) {
+      return (
+        <div
+          role="alert"
+          style={{
+            display: 'grid',
+            placeItems: 'center',
+            height: '100%',
+            padding: 24,
+            textAlign: 'center',
+            color: 'var(--text-secondary, #555)',
+            fontSize: 14,
+          }}
+        >
+          <div>
+            <strong style={{ display: 'block', fontSize: 16, color: 'var(--text-primary, #191918)', marginBottom: 6 }}>
+              3D-сцена временно недоступна
+            </strong>
+            Перезапустите браузер или проверьте аппаратное ускорение WebGL. Список станков, графики, энергия и история продолжают работать.
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 export interface SceneProps {
   config: SiteConfig;
@@ -80,6 +118,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
         onUserInteract?.();
       }}
     >
+      <WebGlBoundary onReady={onReady}>
       <Canvas
         shadows
         dpr={isMobile ? [1, 1.15] : [1, 1.5]}
@@ -108,6 +147,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} isNight={isNight} />}
           {config.areas && <Areas config={config} />}
           <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} />
+          <DimensionalOverlay config={config} selectedId={selectedId} visible={showLabels || Boolean(selectedId)} isNight={isNight} />
           <GasMeter config={config} selected={gasSelected} onSelect={onSelectGas} showLabel={showLabels} />
           <Fallback fallback={null} url="/models/worker.glb">
             <Suspense fallback={null}>
@@ -148,6 +188,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           })}
         </Selection>
       </Canvas>
+      </WebGlBoundary>
     </div>
   );
 }
