@@ -17,6 +17,7 @@ import { Mezzanine } from './Mezzanine';
 import { SceneLights } from './NightLighting';
 import { DimensionalOverlay } from './DimensionalOverlay';
 import { LayoutGrid } from './LayoutGrid';
+import { SpatialSoundscape } from './SpatialSoundscape';
 import type { SupplyTab } from '../ui/supplyView';
 
 class WebGlBoundary extends Component<{ onReady?: () => void; children: ReactNode }, { failed: boolean }> {
@@ -138,6 +139,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
         onCreated={() => requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()))}
       >
         <color attach="background" args={['#ecebe7']} />
+        <SpatialSoundscape config={config} />
         <SceneLights config={config} isNight={isNight} isMobile={isMobile} floorFilter={floorFilter} />
         <CameraRig config={config} focus={focus} viewToken={viewToken} cardOffset={cardOffset} />
         <Selection>

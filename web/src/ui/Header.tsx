@@ -5,6 +5,7 @@ import { STATUS_LABEL, STATUS_ORDER } from './statusMeta';
 import { BrandMark } from './BrandMark';
 import { StatusIcon, WarnIcon } from './StatusIcon';
 import { useNow } from './useNow';
+import { AudioControl } from './AudioControl';
 
 export interface HeaderProps {
   showLabels: boolean;
@@ -153,6 +154,7 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
         <div className="topbar-divider" aria-hidden />
 
         <div className="topbar-group topbar-group-scene">
+          <AudioControl />
           {onFloorChange && (
             <div className="floor-switch" role="group" aria-label="Выбор этажа">
               <button
