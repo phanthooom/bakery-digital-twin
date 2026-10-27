@@ -256,6 +256,24 @@ export function vehicleFocus(config: SiteConfig, id: string): CameraFocus | null
   return { key: `vehicle:${id}`, x: dockX(supply.layout.shippingDocks, i), z: z0 + 2, lookY: 1.5, dist: 12, dir: [-0.12, 0.38, -0.92] };
 }
 
+/**
+ * Нижний край экрана по центру, над безопасной зоной (полоска «домой» в iPhone, панели Telegram Mini App)
+ * и над панелью сквозного цикла «Производство», если она открыта. Раскладку читаем не чаще раза в 0,5 с.
+ */
+const pinCache = { at: 0, bottom: 0 };
+function pinBottom(_el: THREE.Object3D, _camera: THREE.Camera, size: { width: number; height: number }): [number, number] {
+  const now = performance.now();
+  if (now - pinCache.at > 500) {
+    pinCache.at = now;
+    const safe = Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--twa-safe-bottom')) || 0;
+    const panel = document.querySelector<HTMLElement>('.production-control');
+    const canvas = document.querySelector<HTMLElement>('.scene canvas');
+    const panelGap = panel && canvas ? canvas.getBoundingClientRect().bottom - panel.getBoundingClientRect().top + 8 : 0;
+    pinCache.bottom = Math.max(safe, panelGap);
+  }
+  return [size.width / 2, size.height - pinCache.bottom - 34];
+}
+
 /** Подпись фургона по фазе визита к рампе. */
 const VAN_PHASE_LABEL: Record<DockPhase, string> = {
   away: 'в рейсе',
@@ -308,7 +326,8 @@ function ShippingDocks({ config, view, plan, onOpen, showLabels, sel, isNight }:
                   isNight={!!isNight}
                   label={(phase) =>
                     (showLabels || active) && (
-                      <Tag position={[x, phase === 'away' ? 0.8 : 3.7, FRONT_Z + (phase === 'away' ? 3 : 2.2)]} title={`${v.vehicle.name} · ${VAN_PHASE_LABEL[phase]}`} value={when} onClick={() => sel.onSelect(id)} />
+                      // у выбранной машины — только название и фаза: подробности в карточке, а на телефоне длинная подпись не влезает
+                      <Tag position={[x, phase === 'away' ? 0.8 : 3.7, FRONT_Z + (phase === 'away' ? 3 : 2.2)]} title={`${v.vehicle.name} · ${VAN_PHASE_LABEL[phase]}`} value={sel.selected === id ? undefined : when} onClick={() => sel.onSelect(id)} />
                     )
                   }
                 />
@@ -318,9 +337,10 @@ function ShippingDocks({ config, view, plan, onOpen, showLabels, sel, isNight }:
           </group>
         );
       })}
-      {/* демо: все фазы двора за ~6 минут, не дожидаясь расписания; при выбранной машине кнопка не заслоняет её */}
+      {/* демо: все фазы двора за ~6 минут, не дожидаясь расписания. Кнопка закреплена внизу по центру экрана (на телефоне
+          двор не всегда в кадре), над безопасной зоной Telegram; при выбранной машине прячется, чтобы не заслонять её */}
       {!mine(sel.selected) && (
-      <Html position={[(xs[0]! + xs[xs.length - 1]!) / 2, 0.3, FRONT_Z + 11]} center zIndexRange={[19, 0]} style={{ pointerEvents: 'auto' }}>
+      <Html center zIndexRange={[19, 0]} style={{ pointerEvents: 'auto' }} calculatePosition={pinBottom}>
         <button
           type="button"
           className="scene-tag supply-tag"
