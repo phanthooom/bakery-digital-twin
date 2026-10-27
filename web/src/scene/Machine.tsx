@@ -20,13 +20,15 @@ export interface MachineProps {
   onHover: (id: string | null) => void;
   onSelect: (id: string) => void;
   isNight?: boolean;
+  /** В режиме «📐 Планировка» — захват станка для перетаскивания по сетке. */
+  onStartDrag?: (id: string) => void;
 }
 
 /**
  * Станок в сцене: процедурная форма по kind или GLB по полю model,
  * сигнальная колонна, кольцо статуса, подсказка при наведении, контур при выборе.
  */
-export const Machine = memo(function Machine({ eq, selected, hovered, showLabel, onHover, onSelect, isNight = false }: MachineProps) {
+export const Machine = memo(function Machine({ eq, selected, hovered, showLabel, onHover, onSelect, isNight = false, onStartDrag }: MachineProps) {
   const state = useEquipmentState(eq.id);
   const status = state?.status ?? 'offline';
   const powerKw = state?.lastReading?.powerKw ?? 0;
@@ -52,7 +54,14 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
   const out = () => onHover(null);
   const click = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
+    if (onStartDrag) return;
     onSelect(eq.id);
+  };
+  const pointerDown = (e: ThreeEvent<PointerEvent>) => {
+    if (!onStartDrag) return;
+    e.stopPropagation();
+    onSelect(eq.id);
+    onStartDrag(eq.id);
   };
 
   const isHeating = status === 'running' || status === 'alarm';
@@ -60,7 +69,7 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
   return (
     <group position={[eq.position.x, eq.position.y, eq.position.z]} rotation={[0, eq.rotationY ?? 0, 0]}>
       <Select enabled={selected || hovered}>
-        <group onPointerOver={over} onPointerOut={out} onClick={click}>
+        <group onPointerOver={over} onPointerOut={out} onClick={click} onPointerDown={pointerDown}>
           {eq.model ? (
             <GltfModel url={eq.model} scale={eq.modelScale} onHeight={setGlbHeight} live={live} fallback={body}>
               {eq.kind === 'oven' && (

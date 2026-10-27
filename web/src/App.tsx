@@ -23,7 +23,9 @@ import { LoadingScreen } from './ui/LoadingScreen';
 import { setupTelegramBridge } from './data/telegramBridge';
 import { TelegramOrderToast } from './ui/TelegramOrderToast';
 import { ProductionControl } from './ui/ProductionControl';
-import { ProductionCycleManager, type ProductionCycleState, type TelegramOrder } from '@bakery/shared';
+import { LayoutToolbar } from './ui/LayoutToolbar';
+import { rotateStep, snapAndClamp, type EquipmentPlacement } from './scene/layoutMath';
+import { ProductionCycleManager, type ProductionCycleState, type SiteConfig, type TelegramOrder } from '@bakery/shared';
 import type { MockDataSource } from './data/MockDataSource';
 
 const NO_OFFSET: [number, number] = [0, 0];
@@ -52,9 +54,86 @@ export function App() {
   const [loaderGone, setLoaderGone] = useState(false);
   const [floorFilter, setFloorFilter] = useState<'all' | 1 | 2>('all');
   const [isNight, setIsNight] = useState(false);
+  const [layoutMode, setLayoutMode] = useState(false);
+  const [layoutOverrides, setLayoutOverrides] = useState<Record<string, EquipmentPlacement>>({});
   const [customFocus, setCustomFocus] = useState<CameraFocus | null>(null);
   const [latestOrder, setLatestOrder] = useState<TelegramOrder | null>(null);
   const [showOrderToast, setShowOrderToast] = useState(false);
+
+  // Конфигурация цеха с учётом интерактивной перестановки оборудования в режиме «📐 Планировка»
+  const effectiveConfig = useMemo<SiteConfig>(() => {
+    if (Object.keys(layoutOverrides).length === 0) return ds.config;
+    return {
+      ...ds.config,
+      equipment: ds.config.equipment.map((eq) => {
+        const ov = layoutOverrides[eq.id];
+        if (!ov) return eq;
+        return {
+          ...eq,
+          position: { ...eq.position, x: ov.x, z: ov.z },
+          rotationY: ov.rotationY,
+        };
+      }),
+    };
+  }, [ds.config, layoutOverrides]);
+
+  const moveEquipment = useCallback(
+    (id: string, x: number, z: number) => {
+      const baseEq = ds.config.equipment.find((e) => e.id === id);
+      if (!baseEq) return;
+      const snapped = snapAndClamp(x, z, ds.config.site.hall, 0.1);
+      setLayoutOverrides((prev) => ({
+        ...prev,
+        [id]: {
+          x: snapped.x,
+          z: snapped.z,
+          rotationY: prev[id]?.rotationY ?? baseEq.rotationY ?? 0,
+        },
+      }));
+    },
+    [ds.config],
+  );
+
+  const rotateEquipment = useCallback(
+    (id: string, deltaRad: number) => {
+      const eq = effectiveConfig.equipment.find((e) => e.id === id);
+      if (!eq) return;
+      setLayoutOverrides((prev) => ({
+        ...prev,
+        [id]: {
+          x: eq.position.x,
+          z: eq.position.z,
+          rotationY: rotateStep(eq.rotationY ?? 0, deltaRad),
+        },
+      }));
+    },
+    [effectiveConfig.equipment],
+  );
+
+  const nudgeEquipment = useCallback(
+    (id: string, dx: number, dz: number) => {
+      const eq = effectiveConfig.equipment.find((e) => e.id === id);
+      if (!eq) return;
+      const snapped = snapAndClamp(eq.position.x + dx, eq.position.z + dz, ds.config.site.hall, 0.5);
+      setLayoutOverrides((prev) => ({
+        ...prev,
+        [id]: {
+          x: snapped.x,
+          z: snapped.z,
+          rotationY: eq.rotationY ?? 0,
+        },
+      }));
+    },
+    [effectiveConfig.equipment, ds.config.site.hall],
+  );
+
+  const resetEquipment = useCallback((id: string) => {
+    setLayoutOverrides((prev) => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, []);
 
   // Сквозной непрерывный цикл производства «от А до Я»
   const prodManager = useMemo(() => new ProductionCycleManager(), []);
@@ -261,8 +340,8 @@ export function App() {
     setCustomFocus(null);
     setSelection(null);
   }, []);
-  const selected = ds.config.equipment.find((e) => e.id === selectedId) ?? null;
-  const selectedLineEq = ds.config.equipment.find((e) => e.id === selectedLineId) ?? null;
+  const selected = effectiveConfig.equipment.find((e) => e.id === selectedId) ?? null;
+  const selectedLineEq = effectiveConfig.equipment.find((e) => e.id === selectedLineId) ?? null;
 
   const handleFloorChange = useCallback((f: 'all' | 1 | 2) => {
     setFloorFilter(f);
@@ -278,8 +357,9 @@ export function App() {
   }, []);
 
   const focus = useMemo<CameraFocus | null>(() => {
-    if (!selection) return customFocus;
-    const { config } = ds;
+    // В режиме «📐 Планировка» при выборе станка камера не подлетает вплотную, чтобы не мешать перетаскиванию по сетке
+    if (!selection || (layoutMode && selection.kind === 'machine')) return customFocus;
+    const config = effectiveConfig;
     if (selection.kind === 'vehicle') return vehicleFocus(config, selection.id);
     if (selection.kind === 'gas' && config.gas) {
       const m = config.gas.meter.position;
@@ -322,7 +402,7 @@ export function App() {
       };
     }
     return { key: `machine:${eq.id}`, x: eq.position.x, z: eq.position.z, lookY: baseY + h * 0.45, dist: 4.6 + h * 1.6 };
-  }, [ds, selection, customFocus]);
+  }, [effectiveConfig, selection, customFocus, layoutMode]);
 
   return (
     <DataSourceContext.Provider value={ds}>
@@ -344,6 +424,19 @@ export function App() {
           onFloorChange={handleFloorChange}
           isNight={isNight}
           onToggleNight={() => setIsNight((v) => !v)}
+          layoutMode={layoutMode}
+          onToggleLayout={() => {
+            setLayoutMode((v) => {
+              const next = !v;
+              if (next) {
+                setShowLines(true);
+                if (!selectedId && effectiveConfig.equipment[0]) {
+                  setSelection({ kind: 'machine', id: effectiveConfig.equipment[0].id });
+                }
+              }
+              return next;
+            });
+          }}
           latestOrder={latestOrder}
           onOpenOrder={() => setShowOrderToast(true)}
           productionActive={prodState.status === 'running' || prodState.status === 'paused'}
@@ -365,7 +458,7 @@ export function App() {
           }}
         />
         <Scene
-          config={ds.config}
+          config={effectiveConfig}
           selectedId={selected?.id ?? null}
           selectedLineId={selectedLineEq?.id ?? null}
           panelSelected={selection?.kind === 'panel'}
@@ -375,7 +468,7 @@ export function App() {
           onSelectPanel={selectPanel}
           showLabels={showLabels}
           viewToken={viewToken}
-          cardOffset={!selection ? NO_OFFSET : wide ? SIDE_CARD_OFFSET : BOTTOM_SHEET_OFFSET}
+          cardOffset={!selection || layoutMode ? NO_OFFSET : wide ? SIDE_CARD_OFFSET : BOTTOM_SHEET_OFFSET}
           onSelect={select}
           onDeselect={deselect}
           onReady={() => setSceneReady(true)}
@@ -389,7 +482,23 @@ export function App() {
           activeFlourTransfer={prodState.status === 'running' && prodState.currentStepId === 'flour_transfer'}
           onUserInteract={() => setCameraFollowProd(false)}
           isNight={isNight}
+          layoutMode={layoutMode}
+          onMoveEquipment={moveEquipment}
         />
+        {layoutMode && (
+          <LayoutToolbar
+            baseConfig={ds.config}
+            effectiveConfig={effectiveConfig}
+            overrides={layoutOverrides}
+            selectedId={selectedId}
+            onSelectMachine={(id) => setSelection({ kind: 'machine', id })}
+            onRotateMachine={rotateEquipment}
+            onNudgeMachine={nudgeEquipment}
+            onResetMachine={resetEquipment}
+            onResetAll={() => setLayoutOverrides({})}
+            onClose={() => setLayoutMode(false)}
+          />
+        )}
         <ProductionControl
           state={prodState}
           onPause={() => prodManager.pause()}

@@ -30,9 +30,11 @@ export interface HeaderProps {
   onToggleProduction?: () => void;
   isNight?: boolean;
   onToggleNight?: () => void;
+  layoutMode?: boolean;
+  onToggleLayout?: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder, productionActive = false, onToggleProduction, isNight = false, onToggleNight }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder, productionActive = false, onToggleProduction, isNight = false, onToggleNight, layoutMode = false, onToggleLayout }: HeaderProps) {
   const gas = useGas();
   const ds = useDataSource();
   const states = useStates();
@@ -190,6 +192,19 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
               <span>{isNight ? '🌙' : '☀️'}</span>
               <span className="btn-text-full">{isNight ? 'Ночная смена' : 'День / Ночь'}</span>
               <span className="btn-text-short">{isNight ? 'Ночь' : 'День'}</span>
+            </button>
+          )}
+          {onToggleLayout && (
+            <button
+              type="button"
+              className="btn"
+              aria-pressed={layoutMode}
+              onClick={onToggleLayout}
+              title="Интерактивный 3D-конструктор цеха: перетаскивание станков по сетке 0,5 м, поворот на 90°, пересчёт кабельных трасс и ΔU, выгрузка JSON"
+            >
+              <span>📐</span>
+              <span className="btn-text-full">Планировка</span>
+              <span className="btn-text-short">План</span>
             </button>
           )}
           <button className="btn" aria-pressed={linesVisible} onClick={onToggleLines} title="Линии электропитания и ГРЩ">

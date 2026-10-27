@@ -16,6 +16,7 @@ import { GasMeter } from './GasMeter';
 import { Mezzanine } from './Mezzanine';
 import { SceneLights } from './NightLighting';
 import { DimensionalOverlay } from './DimensionalOverlay';
+import { LayoutGrid } from './LayoutGrid';
 import type { SupplyTab } from '../ui/supplyView';
 
 class WebGlBoundary extends Component<{ onReady?: () => void; children: ReactNode }, { failed: boolean }> {
@@ -90,13 +91,17 @@ export interface SceneProps {
   onUserInteract?: () => void;
   /** Ночной режим промышленного освещения */
   isNight?: boolean;
+  /** Режим «📐 Планировка» (перестановка оборудования по сетке 0,5 м) */
+  layoutMode?: boolean;
+  onMoveEquipment?: (id: string, x: number, z: number) => void;
 }
 
 const NOOP = () => {};
 
-export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false, activeFlourTransfer = false, onUserInteract, isNight = false }: SceneProps) {
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false, activeFlourTransfer = false, onUserInteract, isNight = false, layoutMode = false, onMoveEquipment }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
 
   useEffect(() => {
@@ -147,7 +152,17 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} isNight={isNight} />}
           {config.areas && <Areas config={config} />}
           <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} />
-          <DimensionalOverlay config={config} selectedId={selectedId} visible={showLabels || Boolean(selectedId)} isNight={isNight} />
+          <DimensionalOverlay config={config} selectedId={selectedId} visible={showLabels || Boolean(selectedId) || layoutMode} isNight={isNight} />
+          {layoutMode && onMoveEquipment && (
+            <LayoutGrid
+              config={config}
+              selectedId={selectedId}
+              draggingId={draggingId}
+              onMoveEquipment={onMoveEquipment}
+              onEndDrag={() => setDraggingId(null)}
+              isNight={isNight}
+            />
+          )}
           <GasMeter config={config} selected={gasSelected} onSelect={onSelectGas} showLabel={showLabels} />
           <Fallback fallback={null} url="/models/worker.glb">
             <Suspense fallback={null}>
@@ -183,6 +198,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
                 onHover={isMobile ? NOOP : setHoveredId}
                 onSelect={onSelect}
                 isNight={isNight}
+                onStartDrag={layoutMode ? setDraggingId : undefined}
               />
             );
           })}
