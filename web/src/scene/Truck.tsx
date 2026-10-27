@@ -486,7 +486,6 @@ export const Truck = memo(function Truck({ brand, tagline = '', color, plate, ca
             <cylinderGeometry args={[0.09, 0.11, 0.18, 16]} />
             <meshStandardMaterial emissive="#f59e0b" emissiveIntensity={2.5} color="#f59e0b" toneMapped={false} />
           </mesh>
-          <pointLight color="#f59e0b" intensity={2} distance={6} />
         </group>
       )}
 

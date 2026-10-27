@@ -118,7 +118,7 @@ function TrolleyArea({ area, load, item, title }: { area: AreaConfig; load: Trol
   const cols = Math.max(1, Math.floor((z.x1 - z.x0 - 0.8) / 0.8));
   return (
     <group>
-      <MergeStatic>
+      <MergeStatic deps={[n]}>
         {Array.from({ length: n }, (_, i) => (
           <Trolley key={i} x={z.x0 + 0.8 + (i % cols) * 0.8} z={z.z0 + 1.2 + Math.floor(i / cols) * 1.4} item={item} />
         ))}

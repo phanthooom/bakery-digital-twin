@@ -69,20 +69,17 @@ export function App() {
     });
   }, [prodManager, ds]);
 
-  // Анимационный таймер для стейт-машины производства
+  // Анимационный таймер для стейт-машины производства (запускается только при активном цикле, 10 Гц вместо 60 Гц)
   useEffect(() => {
+    if (prodState.status !== 'running') return;
     let lastTime = performance.now();
-    let rafId: number;
-    const loop = (now: number) => {
-      const dt = Math.min(0.2, (now - lastTime) / 1000);
+    const timer = setInterval(() => {
+      const now = performance.now();
+      const dt = Math.min(0.25, (now - lastTime) / 1000);
       lastTime = now;
-      if (prodState.status === 'running') {
-        prodManager.tick(dt);
-      }
-      rafId = requestAnimationFrame(loop);
-    };
-    rafId = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafId);
+      prodManager.tick(dt);
+    }, 100);
+    return () => clearInterval(timer);
   }, [prodManager, prodState.status]);
 
   // Плавное следование камеры за активным этапом

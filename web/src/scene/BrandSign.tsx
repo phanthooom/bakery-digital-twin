@@ -168,7 +168,6 @@ export function BrandSign({ config }: { config: SiteConfig }) {
           <meshBasicMaterial map={tagline.texture} transparent color={new THREE.Color(1.4, 1.4, 1.4)} toneMapped={false} />
         </mesh>
       )}
-      <pointLight position={[0, -1.5, 1.2]} color="#ffe2d6" intensity={2.5} distance={7} decay={2} />
     </group>
   );
 }

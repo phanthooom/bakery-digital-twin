@@ -42,7 +42,7 @@ function Railing({ a, b, openStart = false, openEnd = false }: { a: [number, num
   return (
     <group position={[a[0], Y_ELEV, a[1]]} rotation={[0, ang, 0]}>
       {/* верхний поручень (сигнальный желтый) */}
-      <mesh position={[len / 2, H_RAIL, 0]} material={railYellow} castShadow>
+      <mesh position={[len / 2, H_RAIL, 0]} material={railYellow}>
         <boxGeometry args={[len, 0.045, 0.045]} />
       </mesh>
       {/* средний леер безопасности */}
@@ -57,7 +57,7 @@ function Railing({ a, b, openStart = false, openEnd = false }: { a: [number, num
       {posts.map((x, i) => {
         if ((i === 0 && openStart) || (i === postsCount - 1 && openEnd)) return null;
         return (
-          <mesh key={i} position={[x, H_RAIL / 2, 0]} material={railBlack} castShadow>
+          <mesh key={i} position={[x, H_RAIL / 2, 0]} material={railBlack}>
             <boxGeometry args={[0.04, H_RAIL, 0.04]} />
           </mesh>
         );
@@ -126,21 +126,19 @@ function Deck({ zone, hasPerimeterRails = true, id }: { zone: FloorRect; hasPeri
 
   return (
     <group>
-      <MergeStatic>
-        {cols.map(([x, z], i) => (
-          <mesh key={i} position={[x, (Y_ELEV - T_DECK) / 2, z]} material={M.steelDark} castShadow receiveShadow>
-            <boxGeometry args={[0.22, Y_ELEV - T_DECK, 0.22]} />
-          </mesh>
-        ))}
-
-        <mesh position={[cx, Y_ELEV - T_DECK / 2, cz]} material={M.steelDark} castShadow>
-          <boxGeometry args={[w, T_DECK * 0.7, d]} />
+      {cols.map(([x, z], i) => (
+        <mesh key={i} position={[x, (Y_ELEV - T_DECK) / 2, z]} material={M.steelDark} castShadow receiveShadow>
+          <boxGeometry args={[0.22, Y_ELEV - T_DECK, 0.22]} />
         </mesh>
+      ))}
 
-        <mesh position={[cx, Y_ELEV - 0.02, cz]} material={M.steel} receiveShadow>
-          <boxGeometry args={[w, 0.04, d]} />
-        </mesh>
-      </MergeStatic>
+      <mesh position={[cx, Y_ELEV - T_DECK / 2, cz]} material={M.steelDark} castShadow>
+        <boxGeometry args={[w, T_DECK * 0.7, d]} />
+      </mesh>
+
+      <mesh position={[cx, Y_ELEV - 0.02, cz]} material={M.steel} receiveShadow>
+        <boxGeometry args={[w, 0.04, d]} />
+      </mesh>
 
       {hasPerimeterRails && (
         <>
@@ -158,8 +156,8 @@ function Deck({ zone, hasPerimeterRails = true, id }: { zone: FloorRect; hasPeri
   );
 }
 
-/** Диспетчерская SCADA / операторская над бытовыми помещениями. */
-function ControlRoom({ zone }: { zone: FloorRect }) {
+/** Статические конструкции диспетчерской SCADA (стены, серверные стойки, витраж, экраны). */
+function ControlRoomStatic({ zone }: { zone: FloorRect }) {
   const w = zone.x1 - zone.x0;
   const d = zone.z1 - zone.z0;
   const cx = (zone.x0 + zone.x1) / 2;
@@ -168,44 +166,33 @@ function ControlRoom({ zone }: { zone: FloorRect }) {
 
   return (
     <group>
-      <MergeStatic>
-        {/* задняя и боковые стены кабинета */}
-        <mesh position={[cx, Y_ELEV + roomH / 2, zone.z1 - 0.06]} material={M.wallPanel}>
-          <boxGeometry args={[w, roomH, 0.12]} />
-        </mesh>
-        <mesh position={[zone.x0 + 0.06, Y_ELEV + roomH / 2, cz]} material={M.wallPanel}>
-          <boxGeometry args={[0.12, roomH, d]} />
-        </mesh>
-        <mesh position={[zone.x1 - 0.06, Y_ELEV + roomH / 2, cz]} material={M.wallPanel}>
-          <boxGeometry args={[0.12, roomH, d]} />
-        </mesh>
+      {/* задняя и боковые стены кабинета */}
+      <mesh position={[cx, Y_ELEV + roomH / 2, zone.z1 - 0.06]} material={M.wallPanel}>
+        <boxGeometry args={[w, roomH, 0.12]} />
+      </mesh>
+      <mesh position={[zone.x0 + 0.06, Y_ELEV + roomH / 2, cz]} material={M.wallPanel}>
+        <boxGeometry args={[0.12, roomH, d]} />
+      </mesh>
+      <mesh position={[zone.x1 - 0.06, Y_ELEV + roomH / 2, cz]} material={M.wallPanel}>
+        <boxGeometry args={[0.12, roomH, d]} />
+      </mesh>
 
-        {/* потолок диспетчерской */}
-        <mesh position={[cx, Y_ELEV + roomH, cz]} material={M.steelDark}>
-          <boxGeometry args={[w, 0.1, d]} />
-        </mesh>
+      {/* потолок диспетчерской */}
+      <mesh position={[cx, Y_ELEV + roomH, cz]} material={M.steelDark}>
+        <boxGeometry args={[w, 0.1, d]} />
+      </mesh>
 
-        {/* серверные шкафы 19" SCADA в углу */}
-        {[-1.2, -0.4].map((dx) => (
-          <group key={dx} position={[zone.x1 - 1.2 + dx, Y_ELEV, zone.z1 - 0.7]}>
-            <mesh position={[0, 1.0, 0]} material={M.black} castShadow>
-              <boxGeometry args={[0.65, 2.0, 0.8]} />
-            </mesh>
-            <mesh position={[0, 1.0, -0.41]} material={M.steelDark}>
-              <boxGeometry args={[0.55, 1.85, 0.02]} />
-            </mesh>
-          </group>
-        ))}
-      </MergeStatic>
-
-      {/* Рабочая станция SCADA (NVIDIA SimReady мониторы и кресла операторов) */}
-      <group position={[cx, Y_ELEV, zone.z0 + 2.2]}>
-        <GltfModel url="/models/scada-desk.glb" keepOrigin fallback={null} />
-      </group>
-      {/* Пожарный щит безопасности на мезонине */}
-      <group position={[zone.x0 + 0.65, Y_ELEV, zone.z1 - 0.55]}>
-        <GltfModel url="/models/fire-stand.glb" fallback={null} />
-      </group>
+      {/* серверные шкафы 19" SCADA в углу */}
+      {[-1.2, -0.4].map((dx) => (
+        <group key={dx} position={[zone.x1 - 1.2 + dx, Y_ELEV, zone.z1 - 0.7]}>
+          <mesh position={[0, 1.0, 0]} material={M.black} castShadow>
+            <boxGeometry args={[0.65, 2.0, 0.8]} />
+          </mesh>
+          <mesh position={[0, 1.0, -0.41]} material={M.steelDark}>
+            <boxGeometry args={[0.55, 1.85, 0.02]} />
+          </mesh>
+        </group>
+      ))}
 
       {/* панорамный стеклянный витраж с видом вниз на цех */}
       <group position={[cx, Y_ELEV + roomH / 2, zone.z0 + 0.05]}>
@@ -304,75 +291,58 @@ function FlourFlow({ active = false }: { active?: boolean }) {
   );
 }
 
-/** Трубы пневмотранспорта муки от силосов мезонина вниз в тестомесы цеха. */
-function FlourPipes({ activeFlourTransfer = false }: { activeFlourTransfer?: boolean }) {
+/** Статические трубы пневмотранспорта муки от силосов мезонина вниз в тестомесы цеха. */
+function FlourPipesStatic() {
   return (
     <group>
       {/* Спуск от Силоса №1 (Мука в/с) к Тестомесу 1 (mixer-1) */}
       <group position={[-23.0, 0, -12.75]}>
-        {/* верхний вертикальный участок из конуса силоса */}
         <mesh position={[0, 2.5, 0]} material={M.chrome} castShadow>
-          <cylinderGeometry args={[0.08, 0.08, 1.4, 16]} />
+          <cylinderGeometry args={[0.08, 0.08, 1.4, 12]} />
         </mesh>
-        {/* фланец и пневмозаслонка */}
         <mesh position={[0, 2.3, 0]} material={M.steelDark}>
-          <cylinderGeometry args={[0.13, 0.13, 0.12, 16]} />
+          <cylinderGeometry args={[0.13, 0.13, 0.12, 12]} />
         </mesh>
-        <mesh position={[0.11, 2.3, 0]}>
-          <sphereGeometry args={[0.03, 10, 8]} />
-          <meshStandardMaterial
-            color={activeFlourTransfer ? '#00ff66' : '#888888'}
-            emissive={activeFlourTransfer ? '#00ff66' : '#222222'}
-            emissiveIntensity={activeFlourTransfer ? 1.0 : 0.1}
-          />
-        </mesh>
-
-        {/* смотровое стекло (Sight Glass) */}
         <mesh position={[0, 1.9, 0]} material={sightGlassMat}>
-          <cylinderGeometry args={[0.082, 0.082, 0.4, 16]} />
+          <cylinderGeometry args={[0.082, 0.082, 0.4, 12]} />
         </mesh>
-        {/* динамические частицы муки в стекле */}
-        <FlourFlow active={activeFlourTransfer} />
-
-        {/* нижний наклонный участок прямо в дежу mixer-1 */}
         <mesh position={[0, 1.15, -1.3]} rotation={[0.42, 0, 0]} material={M.chrome} castShadow>
-          <cylinderGeometry args={[0.075, 0.075, 2.2, 16]} />
+          <cylinderGeometry args={[0.075, 0.075, 2.2, 12]} />
         </mesh>
-        {/* выпускной патрубок / тканевый рукав над дежой */}
         <mesh position={[0, 0.72, -2.55]} material={M.sack}>
-          <cylinderGeometry args={[0.16, 0.12, 0.4, 16]} />
+          <cylinderGeometry args={[0.16, 0.12, 0.4, 12]} />
         </mesh>
       </group>
 
       {/* Спуск от Силоса №2 (Мука 1/с) к Тестомесу 2 (mixer-2) */}
       <group position={[-19.75, 0, -12.75]}>
         <mesh position={[0, 2.5, 0]} material={M.chrome} castShadow>
-          <cylinderGeometry args={[0.08, 0.08, 1.4, 16]} />
+          <cylinderGeometry args={[0.08, 0.08, 1.4, 12]} />
         </mesh>
         <mesh position={[0, 2.3, 0]} material={M.steelDark}>
-          <cylinderGeometry args={[0.13, 0.13, 0.12, 16]} />
+          <cylinderGeometry args={[0.13, 0.13, 0.12, 12]} />
         </mesh>
         <mesh position={[0, 1.9, 0]} material={sightGlassMat}>
-          <cylinderGeometry args={[0.082, 0.082, 0.4, 16]} />
+          <cylinderGeometry args={[0.082, 0.082, 0.4, 12]} />
         </mesh>
         <mesh position={[0, 1.15, -1.3]} rotation={[0.42, 0, 0]} material={M.chrome} castShadow>
-          <cylinderGeometry args={[0.075, 0.075, 2.2, 16]} />
+          <cylinderGeometry args={[0.075, 0.075, 2.2, 12]} />
         </mesh>
         <mesh position={[0, 0.72, -2.55]} material={M.sack}>
-          <cylinderGeometry args={[0.16, 0.12, 0.4, 16]} />
+          <cylinderGeometry args={[0.16, 0.12, 0.4, 12]} />
         </mesh>
       </group>
 
       {/* Спуск от Силоса №3 (Мука ржаная) в коллектор */}
       <group position={[-16.5, 0, -12.75]}>
         <mesh position={[0, 2.3, 0]} material={M.chrome} castShadow>
-          <cylinderGeometry args={[0.07, 0.07, 1.8, 16]} />
+          <cylinderGeometry args={[0.07, 0.07, 1.8, 12]} />
         </mesh>
         <mesh position={[-1.6, 2.2, -0.6]} rotation={[0, 0, Math.PI / 2]} material={M.chrome} castShadow>
-          <cylinderGeometry args={[0.065, 0.065, 3.2, 16]} />
+          <cylinderGeometry args={[0.065, 0.065, 3.2, 12]} />
         </mesh>
-        <mesh position={[-3.2, 1.5, -1.95]} rotation={[0.42, 0, 0]} material={M.chrome}>
-          <cylinderGeometry args={[0.065, 0.065, 1.8, 16]} />
+        <mesh position={[-3.2, 1.5, -1.95]} rotation={[0.42, 0, 0]} material={M.chrome} castShadow>
+          <cylinderGeometry args={[0.065, 0.065, 1.8, 12]} />
         </mesh>
       </group>
     </group>
@@ -385,19 +355,19 @@ function HeatRecoveryDucts() {
     <group>
       <group position={[9.2, 0, -14.2]}>
         <mesh position={[0, 3.1, 0.5]} rotation={[0.2, 0, 0]} material={M.pipe} castShadow>
-          <cylinderGeometry args={[0.13, 0.13, 1.2, 20]} />
+          <cylinderGeometry args={[0.13, 0.13, 1.2, 14]} />
         </mesh>
-        <mesh position={[1.1, 3.6, 1.6]} rotation={[0, 0, Math.PI / 2]} material={M.pipe}>
-          <cylinderGeometry args={[0.14, 0.14, 2.4, 20]} />
+        <mesh position={[1.1, 3.6, 1.6]} rotation={[0, 0, Math.PI / 2]} material={M.pipe} castShadow>
+          <cylinderGeometry args={[0.14, 0.14, 2.4, 14]} />
         </mesh>
       </group>
 
       <group position={[13.6, 0, -14.2]}>
         <mesh position={[0, 3.1, 0.5]} rotation={[0.2, 0, 0]} material={M.pipe} castShadow>
-          <cylinderGeometry args={[0.13, 0.13, 1.2, 20]} />
+          <cylinderGeometry args={[0.13, 0.13, 1.2, 14]} />
         </mesh>
-        <mesh position={[-1.1, 3.6, 1.6]} rotation={[0, 0, Math.PI / 2]} material={M.pipe}>
-          <cylinderGeometry args={[0.14, 0.14, 2.4, 20]} />
+        <mesh position={[-1.1, 3.6, 1.6]} rotation={[0, 0, Math.PI / 2]} material={M.pipe} castShadow>
+          <cylinderGeometry args={[0.14, 0.14, 2.4, 14]} />
         </mesh>
       </group>
     </group>
@@ -420,34 +390,53 @@ export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', 
 
   return (
     <group>
-      {/* площадки перекрытия */}
-      {otherDecks.map((d) => (
-        <group key={d.id}>
-          <Deck zone={d.zone} id={d.id} />
-          <FloorLabel text={d.name.toUpperCase()} x={d.zone.x0 + 0.5} z={d.zone.z1 - 0.6} height={0.36} color="#606468" />
-        </group>
-      ))}
+      {/* Все неподвижные металлоконструкции, перила, лестницы, мостики и трубы склеиваются в единые буферы */}
+      <MergeStatic>
+        {otherDecks.map((d) => (
+          <Deck key={d.id} zone={d.zone} id={d.id} />
+        ))}
+        {controlDeck && (
+          <>
+            <Deck zone={controlDeck.zone} hasPerimeterRails={false} />
+            <ControlRoomStatic zone={controlDeck.zone} />
+          </>
+        )}
+        {mez.stairs.map((st) => (
+          <Staircase key={st.id} from={st.from} to={st.to} width={st.width} />
+        ))}
+        {mez.catwalk && <Catwalk points={mez.catwalk.points} width={mez.catwalk.width} />}
+        <FlourPipesStatic />
+        <HeatRecoveryDucts />
+      </MergeStatic>
 
-      {/* площадка диспетчерской SCADA (АБК) */}
+      {/* Подписи площадок и GLB-модели диспетчерской */}
+      {otherDecks.map((d) => (
+        <FloorLabel key={d.id} text={d.name.toUpperCase()} x={d.zone.x0 + 0.5} z={d.zone.z1 - 0.6} height={0.36} color="#606468" />
+      ))}
       {controlDeck && (
         <group>
-          <Deck zone={controlDeck.zone} hasPerimeterRails={false} />
-          <ControlRoom zone={controlDeck.zone} />
+          <group position={[(controlDeck.zone.x0 + controlDeck.zone.x1) / 2, Y_ELEV, controlDeck.zone.z0 + 2.2]}>
+            <GltfModel url="/models/scada-desk.glb" keepOrigin fallback={null} />
+          </group>
+          <group position={[controlDeck.zone.x0 + 0.65, Y_ELEV, controlDeck.zone.z1 - 0.55]}>
+            <GltfModel url="/models/fire-stand.glb" fallback={null} />
+          </group>
           <FloorLabel text="02 ДИСПЕТЧЕРСКАЯ SCADA" x={controlDeck.zone.x0 + 0.5} z={controlDeck.zone.z0 + 0.8} height={0.34} color="#3b6998" />
         </group>
       )}
 
-      {/* лестничные марши с 1-го этажа на 2-й */}
-      {mez.stairs.map((st) => (
-        <Staircase key={st.id} from={st.from} to={st.to} width={st.width} />
-      ))}
-
-      {/* смотровой переходной мостик (Catwalk) */}
-      {mez.catwalk && <Catwalk points={mez.catwalk.points} width={mez.catwalk.width} />}
-
-      {/* технологические коммуникации: спуск муки и рекуперация тепла */}
-      <FlourPipes activeFlourTransfer={activeFlourTransfer} />
-      <HeatRecoveryDucts />
+      {/* Динамическая индикация и поток муки в смотровом стекле */}
+      <group position={[-23.0, 0, -12.75]}>
+        <mesh position={[0.11, 2.3, 0]}>
+          <sphereGeometry args={[0.03, 8, 6]} />
+          <meshStandardMaterial
+            color={activeFlourTransfer ? '#00ff66' : '#888888'}
+            emissive={activeFlourTransfer ? '#00ff66' : '#222222'}
+            emissiveIntensity={activeFlourTransfer ? 1.0 : 0.1}
+          />
+        </mesh>
+        <FlourFlow active={activeFlourTransfer} />
+      </group>
     </group>
   );
 });

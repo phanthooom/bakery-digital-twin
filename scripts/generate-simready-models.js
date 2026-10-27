@@ -615,13 +615,13 @@ function buildSilo(isSmall = false) {
   root.add(ringBeam);
 
   // Разгрузочный конус (бункер)
-  const cone = new THREE.Mesh(new THREE.ConeGeometry(R, CONE_H, 36, 1, false), M.stainlessLight);
+  const cone = new THREE.Mesh(new THREE.ConeGeometry(R, CONE_H, 24, 1, false), M.stainlessLight);
   cone.rotation.x = Math.PI;
   cone.position.set(0, LEG_H + CONE_H / 2, 0);
   root.add(cone);
 
   // Виброднище, шлюзовый роторный питатель и мотор-редуктор внизу конуса
-  const feeder = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.26, 24), M.stainless);
+  const feeder = new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.24, 0.26, 16), M.stainless);
   feeder.position.set(0, LEG_H - 0.05, 0);
   root.add(feeder);
 
@@ -629,39 +629,38 @@ function buildSilo(isSmall = false) {
   motor.position.set(0.26, LEG_H - 0.15, 0);
   root.add(motor);
 
-  const pipeDown = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, LEG_H - 0.1, 18), M.chrome);
+  const pipeDown = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.085, LEG_H - 0.1, 12), M.chrome);
   pipeDown.position.set(0, (LEG_H - 0.1) / 2, 0);
   root.add(pipeDown);
 
   // Основная цилиндрическая обечайка силоса
-  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, CYL_H, 40), M.stainlessLight);
+  const cyl = new THREE.Mesh(new THREE.CylinderGeometry(R, R, CYL_H, 24), M.stainlessLight);
   cyl.position.set(0, cylCenterY, 0);
   root.add(cyl);
 
   // Внешние бандажные кольца жесткости
   for (let i = 0; i < 4; i++) {
     const ry = LEG_H + CONE_H + (i * CYL_H) / 3;
-    const band = new THREE.Mesh(new THREE.TorusGeometry(R + 0.012, 0.02, 10, 40), M.chrome);
-    band.rotation.x = Math.PI / 2;
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.02, R + 0.02, 0.035, 24), M.chrome);
     band.position.set(0, ry, 0);
     root.add(band);
   }
 
   // Декоративный брендовый пояс с цветом сорта муки
-  const gradeBand = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.015, R + 0.015, 0.06, 48), isSmall ? M.siloAmber : M.siloBlue);
+  const gradeBand = new THREE.Mesh(new THREE.CylinderGeometry(R + 0.015, R + 0.015, 0.06, 24), isSmall ? M.siloAmber : M.siloBlue);
   gradeBand.position.set(0, cylCenterY + CYL_H * 0.42, 0);
   root.add(gradeBand);
 
   // Конический купол крыши и рукавный фильтр аспирации на вершине
-  const roof = new THREE.Mesh(new THREE.ConeGeometry(R + 0.03, ROOF_H, 40), M.stainless);
+  const roof = new THREE.Mesh(new THREE.ConeGeometry(R + 0.03, ROOF_H, 24), M.stainless);
   roof.position.set(0, LEG_H + CONE_H + CYL_H + ROOF_H / 2, 0);
   root.add(roof);
 
-  const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.55, 24), M.stainlessDark);
+  const filter = new THREE.Mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.55, 16), M.stainlessDark);
   filter.position.set(0, roofApexY + 0.25, 0);
   root.add(filter);
 
-  const filterCap = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.16, 24), M.orange);
+  const filterCap = new THREE.Mesh(new THREE.ConeGeometry(0.34, 0.16, 16), M.orange);
   filterCap.position.set(0, roofApexY + 0.60, 0);
   root.add(filterCap);
 
@@ -669,15 +668,15 @@ function buildSilo(isSmall = false) {
   const fillPipeX = -R - 0.04;
   const fillPipeZ = -R * 0.3;
   const fillPipeH = totalLegH + CYL_H + 0.2;
-  const standpipe = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, fillPipeH, 16), M.chrome);
+  const standpipe = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, fillPipeH, 10), M.chrome);
   standpipe.position.set(fillPipeX, fillPipeH / 2, fillPipeZ);
   root.add(standpipe);
 
-  const camlock = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.2, 16), M.orange);
+  const camlock = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.2, 10), M.orange);
   camlock.position.set(fillPipeX, 0.5, fillPipeZ);
   root.add(camlock);
 
-  const topElbow = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.36, 16), M.chrome);
+  const topElbow = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.36, 10), M.chrome);
   topElbow.rotation.z = -Math.PI / 4;
   topElbow.position.set(fillPipeX + 0.18, totalLegH + CYL_H + 0.18, fillPipeZ);
   root.add(topElbow);

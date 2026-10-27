@@ -82,9 +82,9 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
     >
       <Canvas
         shadows
-        dpr={isMobile ? [1, 1.25] : [1, 2]}
+        dpr={isMobile ? [1, 1.15] : [1, 1.5]}
         camera={{ fov: isMobile ? 36 : 32, near: 0.1, far: 300, position: [-5, 20, 25] }}
-        gl={{ antialias: isMobile, powerPreference: 'high-performance', preserveDrawingBuffer: false }}
+        gl={{ antialias: true, powerPreference: 'high-performance', preserveDrawingBuffer: false }}
         onPointerMissed={(e) => {
           // клик по пустому месту (не перетаскивание камеры) — закрыть карточку
           const d = down.current;
@@ -98,7 +98,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
         <CameraRig config={config} focus={focus} viewToken={viewToken} cardOffset={cardOffset} />
         <Selection>
           {!isMobile && (
-            <EffectComposer multisampling={2} autoClear={false}>
+            <EffectComposer multisampling={0} autoClear={false}>
               <Outline blur visibleEdgeColor={0x2f7bff} hiddenEdgeColor={0x2f7bff} edgeStrength={10} xRay={false} />
               <Bloom luminanceThreshold={isNight ? 0.82 : 1} luminanceSmoothing={0.22} intensity={isNight ? 1.15 : 0.7} mipmapBlur />
             </EffectComposer>

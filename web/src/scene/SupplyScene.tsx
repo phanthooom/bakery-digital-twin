@@ -117,6 +117,7 @@ function DryRacks({ config, view, onOpen, showLabels }: { config: SiteConfig; vi
     });
     return { r, pallets };
   });
+  const sackKey = groups.map(({ pallets }) => pallets.map((p) => p.sacks).join(',')).join('|');
   const [hover, setHover] = useState(false);
   const open = (e: ThreeEvent<MouseEvent>) => {
     e.stopPropagation();
@@ -124,7 +125,7 @@ function DryRacks({ config, view, onOpen, showLabels }: { config: SiteConfig; vi
   };
   return (
     <group position={[row.x, 0, row.z]} rotation={[0, row.rotationY ?? 0, 0]} onClick={open} onPointerOver={(e) => (e.stopPropagation(), setHover(true))} onPointerOut={() => setHover(false)}>
-      <MergeStatic>
+      <MergeStatic deps={[sackKey]}>
         <RackFrame x0={x0} bays={bays} />
         {groups.flatMap(({ r, pallets }) => pallets.filter((p) => p.sacks > 0).map((p, i) => <Pallet key={`${r.material.id}${i}`} position={[p.x, p.y, 0]} sacks={p.sacks} />))}
       </MergeStatic>
@@ -180,7 +181,7 @@ function GoodsRacks({ config, view, onOpen }: { config: SiteConfig; view: Supply
   const boxes = Math.min(cells.length, Math.round(packed / 10));
   return (
     <group position={[row.x, 0, row.z]} rotation={[0, row.rotationY ?? 0, 0]} onClick={(e) => (e.stopPropagation(), onOpen('goods'))}>
-      <MergeStatic>
+      <MergeStatic deps={[boxes]}>
         <RackFrame x0={x0} bays={bays} levels={levels} height={2.3} />
         {cells.slice(0, boxes).map((p, i) => (
           <group key={i} position={p}>

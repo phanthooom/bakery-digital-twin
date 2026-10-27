@@ -50,12 +50,17 @@ const PowerLine = memo(function PowerLine({ config, eq, route, selected, hovered
   const speed = flowing ? 0.4 + Math.min(1.2, (info.health.loadPct ?? 0) / 100) * 1.6 : 0;
 
   const { geometry, hitGeometry } = useMemo(() => {
-    const segs = Math.max(32, Math.round(route.length * 12));
+    const segs = Math.max(20, Math.round(route.length * 4));
+    const hitSegs = Math.max(12, Math.round(route.length * 2));
     return {
-      geometry: new THREE.TubeGeometry(route.path, segs, 0.022, 8, false),
-      hitGeometry: new THREE.TubeGeometry(route.path, segs, 0.1, 6, false),
+      geometry: new THREE.TubeGeometry(route.path, segs, 0.022, 6, false),
+      hitGeometry: new THREE.TubeGeometry(route.path, hitSegs, 0.1, 4, false),
     };
   }, [route]);
+  const baseColor = useMemo(
+    () => (flowing ? new THREE.Color(color).multiplyScalar(0.35) : new THREE.Color(level === 'offline' ? '#7c7a74' : '#3a3b3d')),
+    [flowing, color, level],
+  );
   const dash = useMemo(() => {
     const t = makeDashTexture();
     t.repeat.set(route.length / DASH_M, 1);
@@ -64,7 +69,9 @@ const PowerLine = memo(function PowerLine({ config, eq, route, selected, hovered
   const mat = useRef<THREE.MeshStandardMaterial>(null);
 
   useFrame((s, dt) => {
-    dash.offset.x -= (dt * speed) / DASH_M;
+    if (flowing) {
+      dash.offset.x -= (dt * speed) / DASH_M;
+    }
     const m = mat.current;
     if (!m) return;
     const blink = level === 'critical' ? 0.6 + 0.4 * Math.sin(s.clock.elapsedTime * 6) : 1;
@@ -83,10 +90,10 @@ const PowerLine = memo(function PowerLine({ config, eq, route, selected, hovered
   return (
     <group>
       <Select enabled={selected || hovered}>
-        <mesh geometry={geometry} castShadow>
+        <mesh geometry={geometry}>
           <meshStandardMaterial
             ref={mat}
-            color={flowing ? new THREE.Color(color).multiplyScalar(0.35) : level === 'offline' ? '#7c7a74' : '#3a3b3d'}
+            color={baseColor}
             emissive={color}
             emissiveMap={dash}
             emissiveIntensity={0}

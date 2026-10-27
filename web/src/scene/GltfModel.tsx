@@ -23,24 +23,33 @@ interface ModelProps {
 function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
   const { scene } = useGLTF(url);
   const object = useMemo(() => {
+    // Выполняем склейку статических мешей (mergeStatic) и расчёт базового bbox один раз на загруженную GLB-сцену,
+    // чтобы при инстансировании (силосы, печи, тестомесы, погрузчики, тележки) не дублировать геометрии в памяти GPU.
+    if (!scene.userData.mergedReady) {
+      scene.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) {
+          o.castShadow = true;
+          o.receiveShadow = true;
+        }
+      });
+      mergeStatic(scene);
+      const dropped: THREE.Object3D[] = [];
+      scene.traverse((o) => (o as THREE.Mesh).isMesh && !o.visible && dropped.push(o));
+      for (const o of dropped) o.removeFromParent();
+      scene.userData.baseBox = new THREE.Box3().setFromObject(scene);
+      scene.userData.mergedReady = true;
+    }
+
     const clone = scene.clone(true);
-    clone.traverse((o) => {
-      if ((o as THREE.Mesh).isMesh) {
-        o.castShadow = true;
-        o.receiveShadow = true;
-      }
-    });
-    mergeStatic(clone);
-    const dropped: THREE.Object3D[] = [];
-    clone.traverse((o) => (o as THREE.Mesh).isMesh && !o.visible && dropped.push(o));
-    for (const o of dropped) o.removeFromParent();
     clone.scale.setScalar(scale);
-    const box = new THREE.Box3().setFromObject(clone);
-    const center = box.getCenter(new THREE.Vector3());
+    const baseBox = (scene.userData.baseBox as THREE.Box3).clone();
+    baseBox.min.multiplyScalar(scale);
+    baseBox.max.multiplyScalar(scale);
+    const center = baseBox.getCenter(new THREE.Vector3());
     if (!keepOrigin) {
       const ox = Math.abs(center.x) > 0.45 ? -center.x : 0;
       const oz = Math.abs(center.z) > 0.45 ? -center.z : 0;
-      clone.position.set(ox, -box.min.y, oz);
+      clone.position.set(ox, -baseBox.min.y, oz);
     }
 
     const rack = clone.getObjectByName('anim_rack');
@@ -58,7 +67,7 @@ function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
       (pulse as THREE.Mesh).material = ((pulse as THREE.Mesh).material as THREE.Material).clone();
     }
 
-    return { clone, height: box.max.y - box.min.y, rack, glow, bowl, hook, fan, roll, beltItems, pulse };
+    return { clone, height: baseBox.max.y - baseBox.min.y, rack, glow, bowl, hook, fan, roll, beltItems, pulse };
   }, [scene, scale, keepOrigin]);
 
   useLayoutEffect(() => onHeight?.(object.height), [object.height, onHeight]);

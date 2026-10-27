@@ -64,14 +64,9 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
           {eq.model ? (
             <GltfModel url={eq.model} scale={eq.modelScale} onHeight={setGlbHeight} live={live} fallback={body}>
               {eq.kind === 'oven' && (
-                <>
-                  <group position={[-0.35, 0, -0.3]}>
-                    <Steam active={isHeating} y={glbHeight ?? 2.95} />
-                  </group>
-                  {isNight && isHeating && (
-                    <pointLight position={[0, 1.15, 0.95]} color="#ff6b1a" intensity={9} distance={6.5} decay={1.8} />
-                  )}
-                </>
+                <group position={[-0.35, 0, -0.3]}>
+                  <Steam active={isHeating} y={glbHeight ?? 2.95} />
+                </group>
               )}
             </GltfModel>
           ) : (
