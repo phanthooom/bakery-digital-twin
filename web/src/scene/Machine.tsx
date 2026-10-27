@@ -19,13 +19,14 @@ export interface MachineProps {
   showLabel: boolean;
   onHover: (id: string | null) => void;
   onSelect: (id: string) => void;
+  isNight?: boolean;
 }
 
 /**
  * Станок в сцене: процедурная форма по kind или GLB по полю model,
  * сигнальная колонна, кольцо статуса, подсказка при наведении, контур при выборе.
  */
-export const Machine = memo(function Machine({ eq, selected, hovered, showLabel, onHover, onSelect }: MachineProps) {
+export const Machine = memo(function Machine({ eq, selected, hovered, showLabel, onHover, onSelect, isNight = false }: MachineProps) {
   const state = useEquipmentState(eq.id);
   const status = state?.status ?? 'offline';
   const powerKw = state?.lastReading?.powerKw ?? 0;
@@ -63,9 +64,14 @@ export const Machine = memo(function Machine({ eq, selected, hovered, showLabel,
           {eq.model ? (
             <GltfModel url={eq.model} scale={eq.modelScale} onHeight={setGlbHeight} live={live} fallback={body}>
               {eq.kind === 'oven' && (
-                <group position={[-0.35, 0, -0.3]}>
-                  <Steam active={isHeating} y={glbHeight ?? 2.95} />
-                </group>
+                <>
+                  <group position={[-0.35, 0, -0.3]}>
+                    <Steam active={isHeating} y={glbHeight ?? 2.95} />
+                  </group>
+                  {isNight && isHeating && (
+                    <pointLight position={[0, 1.15, 0.95]} color="#ff6b1a" intensity={9} distance={6.5} decay={1.8} />
+                  )}
+                </>
               )}
             </GltfModel>
           ) : (

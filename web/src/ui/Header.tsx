@@ -28,9 +28,11 @@ export interface HeaderProps {
   onOpenOrder?: () => void;
   productionActive?: boolean;
   onToggleProduction?: () => void;
+  isNight?: boolean;
+  onToggleNight?: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder, productionActive = false, onToggleProduction }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder, productionActive = false, onToggleProduction, isNight = false, onToggleNight }: HeaderProps) {
   const gas = useGas();
   const ds = useDataSource();
   const states = useStates();
@@ -176,6 +178,19 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
                 2 эт.
               </button>
             </div>
+          )}
+          {onToggleNight && (
+            <button
+              type="button"
+              className="btn"
+              aria-pressed={isNight}
+              onClick={onToggleNight}
+              title={isNight ? 'Включить дневное освещение цеха' : 'Включить режим «Ночная смена» (прожекторы High-Bay LED, фары фургонов, подсветка печей и SCADA)'}
+            >
+              <span>{isNight ? '🌙' : '☀️'}</span>
+              <span className="btn-text-full">{isNight ? 'Ночная смена' : 'День / Ночь'}</span>
+              <span className="btn-text-short">{isNight ? 'Ночь' : 'День'}</span>
+            </button>
           )}
           <button className="btn" aria-pressed={linesVisible} onClick={onToggleLines} title="Линии электропитания и ГРЩ">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

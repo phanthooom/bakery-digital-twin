@@ -50,6 +50,7 @@ export function App() {
   const [sceneReady, setSceneReady] = useState(false);
   const [loaderGone, setLoaderGone] = useState(false);
   const [floorFilter, setFloorFilter] = useState<'all' | 1 | 2>('all');
+  const [isNight, setIsNight] = useState(false);
   const [customFocus, setCustomFocus] = useState<CameraFocus | null>(null);
   const [latestOrder, setLatestOrder] = useState<TelegramOrder | null>(null);
   const [showOrderToast, setShowOrderToast] = useState(false);
@@ -343,6 +344,8 @@ export function App() {
           onOpenGas={ds.config.gas ? selectGas : undefined}
           floorFilter={floorFilter}
           onFloorChange={handleFloorChange}
+          isNight={isNight}
+          onToggleNight={() => setIsNight((v) => !v)}
           latestOrder={latestOrder}
           onOpenOrder={() => setShowOrderToast(true)}
           productionActive={prodState.status === 'running' || prodState.status === 'paused'}
@@ -387,6 +390,7 @@ export function App() {
           isMobile={!wide}
           activeFlourTransfer={prodState.status === 'running' && prodState.currentStepId === 'flour_transfer'}
           onUserInteract={() => setCameraFollowProd(false)}
+          isNight={isNight}
         />
         <ProductionControl
           state={prodState}

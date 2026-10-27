@@ -14,6 +14,7 @@ import { Staff } from './Staff';
 import { Areas } from './Areas';
 import { GasMeter } from './GasMeter';
 import { Mezzanine } from './Mezzanine';
+import { SceneLights } from './NightLighting';
 import type { SupplyTab } from '../ui/supplyView';
 
 export interface SceneProps {
@@ -49,36 +50,13 @@ export interface SceneProps {
   activeFlourTransfer?: boolean;
   /** Вмешательство пользователя в камеру */
   onUserInteract?: () => void;
-}
-
-function Lights({ isMobile }: { isMobile?: boolean }) {
-  const mapSize: [number, number] = isMobile ? [1024, 1024] : [2048, 2048];
-  return (
-    <>
-      <hemisphereLight args={['#ffffff', '#b9b4a8', 1.15]} />
-      <ambientLight intensity={0.25} />
-      <directionalLight
-        position={[9, 18, 12]}
-        intensity={1.9}
-        castShadow
-        shadow-mapSize={mapSize}
-        shadow-bias={-0.0008}
-        shadow-normalBias={0.04}
-        shadow-camera-left={-40}
-        shadow-camera-right={40}
-        shadow-camera-top={22}
-        shadow-camera-bottom={-22}
-        shadow-camera-near={1}
-        shadow-camera-far={80}
-      />
-      <directionalLight position={[-12, 9, 6]} intensity={0.45} />
-    </>
-  );
+  /** Ночной режим промышленного освещения */
+  isNight?: boolean;
 }
 
 const NOOP = () => {};
 
-export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false, activeFlourTransfer = false, onUserInteract }: SceneProps) {
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false, activeFlourTransfer = false, onUserInteract, isNight = false }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
@@ -116,18 +94,18 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
         onCreated={() => requestAnimationFrame(() => requestAnimationFrame(() => onReady?.()))}
       >
         <color attach="background" args={['#ecebe7']} />
-        <Lights isMobile={isMobile} />
+        <SceneLights config={config} isNight={isNight} isMobile={isMobile} floorFilter={floorFilter} />
         <CameraRig config={config} focus={focus} viewToken={viewToken} cardOffset={cardOffset} />
         <Selection>
           {!isMobile && (
             <EffectComposer multisampling={2} autoClear={false}>
               <Outline blur visibleEdgeColor={0x2f7bff} hiddenEdgeColor={0x2f7bff} edgeStrength={10} xRay={false} />
-              <Bloom luminanceThreshold={1} luminanceSmoothing={0.2} intensity={0.7} mipmapBlur />
+              <Bloom luminanceThreshold={isNight ? 0.82 : 1} luminanceSmoothing={0.22} intensity={isNight ? 1.15 : 0.7} mipmapBlur />
             </EffectComposer>
           )}
           <Hall config={config} />
           <BrandSign config={config} />
-          {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} />}
+          {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} isNight={isNight} />}
           {config.areas && <Areas config={config} />}
           <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} />
           <GasMeter config={config} selected={gasSelected} onSelect={onSelectGas} showLabel={showLabels} />
@@ -164,6 +142,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
                 showLabel={showLabels}
                 onHover={isMobile ? NOOP : setHoveredId}
                 onSelect={onSelect}
+                isNight={isNight}
               />
             );
           })}

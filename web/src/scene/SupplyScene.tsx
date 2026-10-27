@@ -15,6 +15,7 @@ import { MergeStatic } from './MergeStatic';
 import { makeStripeTexture } from './textures';
 import type { CameraFocus } from './CameraRig';
 import { BrandLivery, TRUCK_LENGTH, Truck } from './Truck';
+import { VehicleNightLights } from './NightLighting';
 
 /** Склады, упаковка, рампы и машины: приход сырья → склад сырья … склад готовой продукции → отгрузка. */
 
@@ -290,7 +291,7 @@ function DockedVehicle({ id, x, front, sel, children }: { id: string; x: number;
 
 const VEHICLE_LABEL: Record<VehicleRow['status'], string> = { at_dock: 'у рампы', loading: 'погрузка', en_route: 'в рейсе' };
 
-function ShippingDocks({ config, view, onOpen, showLabels, sel }: { config: SiteConfig; view: SupplyView; onOpen: Open; showLabels: boolean; sel: VehicleSelect }) {
+function ShippingDocks({ config, view, onOpen, showLabels, sel, isNight }: { config: SiteConfig; view: SupplyView; onOpen: Open; showLabels: boolean; sel: VehicleSelect; isNight?: boolean }) {
   const docks = config.supply!.layout.shippingDocks;
   const xs = docks.map((d) => d.x);
   const FRONT_Z = frontOf(config);
@@ -311,6 +312,7 @@ function ShippingDocks({ config, view, onOpen, showLabels, sel }: { config: Site
             {present ? (
               <DockedVehicle id={id} x={x} front={FRONT_Z} sel={sel}>
                 <Truck cab="semi" brand={config.site.brand?.name ?? 'Bakery'} tagline={config.site.brand?.tagline} color={color} plate={v.vehicle.plate} loading={v.status === 'loading'} />
+                {isNight && <VehicleNightLights frontZ={TRUCK_LENGTH.semi} width={2.1} headlightY={0.95} roofY={3.08} />}
               </DockedVehicle>
             ) : (
               // машина в рейсе — пустое место у рампы, по нему тоже можно выбрать машину
@@ -343,7 +345,7 @@ function ShippingDocks({ config, view, onOpen, showLabels, sel }: { config: Site
   );
 }
 
-function ReceivingDock({ config, view, now, sel }: { config: SiteConfig; view: SupplyView; now: number; sel: VehicleSelect }) {
+function ReceivingDock({ config, view, now, sel, isNight }: { config: SiteConfig; view: SupplyView; now: number; sel: VehicleSelect; isNight?: boolean }) {
   const x = config.supply!.layout.receivingDock.x;
   const FRONT_Z = frontOf(config);
   const tz = config.site.timezone;
@@ -362,6 +364,7 @@ function ReceivingDock({ config, view, now, sel }: { config: SiteConfig; view: S
         <GltfModel url={SEMI_URL} keepOrigin fallback={<Truck color="#7c8a7b" plate={SUPPLIER_PLATE} />}>
           <BrandLivery brand={config.site.brand?.name ?? 'Bakery'} tagline={config.site.brand?.tagline ?? ''} color={config.site.brand?.color ?? '#B71F3E'} {...TRAILER} px={480} center />
         </GltfModel>
+        {isNight && <VehicleNightLights frontZ={SEMI_LENGTH} width={2.45} headlightY={1.08} roofY={3.96} isSemiTrailer />}
       </DockedVehicle>
       <Tag
         position={[x, SEMI_HEIGHT + 0.6, FRONT_Z + 2.2]}
@@ -380,9 +383,11 @@ export interface SupplySceneProps {
   /** Выбранная машина (id фургона или SUPPLIER_VEHICLE). */
   selectedVehicle: string | null;
   onSelectVehicle: (id: string) => void;
+  /** Ночной режим промышленного освещения */
+  isNight?: boolean;
 }
 
-export const SupplyScene = memo(function SupplyScene({ config, onOpen, showLabels, selectedVehicle, onSelectVehicle }: SupplySceneProps) {
+export const SupplyScene = memo(function SupplyScene({ config, onOpen, showLabels, selectedVehicle, onSelectVehicle, isNight = false }: SupplySceneProps) {
   const snap = useSupply();
   const view = useMemo(() => (snap ? supplyView(snap, config, SupplySim.localMidnight(snap.now, config.site.timezone)) : null), [snap, config]);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -400,8 +405,8 @@ export const SupplyScene = memo(function SupplyScene({ config, onOpen, showLabel
       <DryRacks config={config} view={view} onOpen={onOpen} showLabels={showLabels} />
       <GoodsRacks config={config} view={view} onOpen={onOpen} />
       <PackingQueue config={config} view={view} onOpen={onOpen} />
-      <ReceivingDock config={config} view={view} now={snap.now} sel={sel} />
-      <ShippingDocks config={config} view={view} onOpen={onOpen} showLabels={showLabels} sel={sel} />
+      <ReceivingDock config={config} view={view} now={snap.now} sel={sel} isNight={isNight} />
+      <ShippingDocks config={config} view={view} onOpen={onOpen} showLabels={showLabels} sel={sel} isNight={isNight} />
       {/* Вилочные погрузчики (NVIDIA SimReady vehicle_forklift_orange_a01), паллета приёмки и пожарные посты */}
       <group position={[-23.2, 0, 13.5]} rotation={[0, 0.35, 0]}>
         <GltfModel url="/models/forklift.glb" fallback={null} />
