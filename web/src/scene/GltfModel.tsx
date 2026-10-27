@@ -98,12 +98,17 @@ function Model({ url, scale = 1, keepOrigin, onHeight, live }: ModelProps) {
 
     // Движение продукции по ленте конвейера и упаковщика
     if (object.beltItems && isRunning) {
-      const span = 2.5;
-      const count = object.beltItems.children.length || 1;
-      const t = (state.clock.elapsedTime * 0.35 * Math.max(0.4, live.load)) % (span / count);
-      object.beltItems.children.forEach((child, idx) => {
-        child.position.x = -span / 2 + (((idx * span) / count + t) % span);
-      });
+      if (object.beltItems.children.length > 0) {
+        const span = 2.5;
+        const count = object.beltItems.children.length;
+        const t = (state.clock.elapsedTime * 0.35 * Math.max(0.4, live.load)) % (span / count);
+        object.beltItems.children.forEach((child, idx) => {
+          child.position.x = -span / 2 + (((idx * span) / count + t) % span);
+        });
+      } else {
+        const step = 0.42;
+        object.beltItems.position.x = ((state.clock.elapsedTime * 0.32 * Math.max(0.4, live.load)) % step) - step / 2;
+      }
     }
 
     // Пульсация индикатора уровня и пневморазгрузки силоса

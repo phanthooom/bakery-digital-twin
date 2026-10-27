@@ -5,6 +5,7 @@ import type { FloorRect, SiteConfig } from '@bakery/shared';
 import { M } from './materials';
 import { MergeStatic } from './MergeStatic';
 import { FloorLabel } from './Hall';
+import { GltfModel } from './GltfModel';
 
 const H_RAIL = 1.1; // высота перил, м
 const Y_ELEV = 3.2; // отметка верха перекрытия 2-го этажа, м
@@ -216,29 +217,6 @@ function ControlRoom({ zone }: { zone: FloorRect }) {
           <boxGeometry args={[w, 0.1, d]} />
         </mesh>
 
-        {/* стол операторов SCADA с мониторами */}
-        <group position={[cx, Y_ELEV, zone.z0 + 2.2]}>
-          <mesh position={[0, 0.74, 0]} material={M.steel}>
-            <boxGeometry args={[3.2, 0.05, 1.1]} />
-          </mesh>
-          {[-1.4, 1.4].map((x) => (
-            <mesh key={x} position={[x, 0.36, 0]} material={M.steelDark}>
-              <boxGeometry args={[0.08, 0.72, 0.9]} />
-            </mesh>
-          ))}
-          {/* 3 стойки мониторов */}
-          {[-0.9, 0, 0.9].map((mx) => (
-            <group key={mx} position={[mx, 0.78, -0.15]}>
-              <mesh position={[0, 0.3, 0]} material={M.black}>
-                <boxGeometry args={[0.7, 0.45, 0.04]} />
-              </mesh>
-              <mesh position={[0, 0.1, 0]} material={M.steelDark}>
-                <cylinderGeometry args={[0.03, 0.03, 0.2, 10]} />
-              </mesh>
-            </group>
-          ))}
-        </group>
-
         {/* серверные шкафы 19" SCADA в углу */}
         {[-1.2, -0.4].map((dx) => (
           <group key={dx} position={[zone.x1 - 1.2 + dx, Y_ELEV, zone.z1 - 0.7]}>
@@ -251,6 +229,15 @@ function ControlRoom({ zone }: { zone: FloorRect }) {
           </group>
         ))}
       </MergeStatic>
+
+      {/* Рабочая станция SCADA (NVIDIA SimReady table_packing_heavyduty + 3x computer_monitor_office + 2x chair_office) */}
+      <group position={[cx, Y_ELEV, zone.z0 + 2.2]}>
+        <GltfModel url="/models/scada-desk.glb" fallback={null} />
+      </group>
+      {/* Пожарный щит безопасности на мезонине */}
+      <group position={[zone.x0 + 0.65, Y_ELEV, zone.z1 - 0.55]}>
+        <GltfModel url="/models/fire-stand.glb" fallback={null} />
+      </group>
 
       {/* фигурка дежурного оператора за пультом */}
       <TechnologistOperator position={[cx, Y_ELEV, zone.z0 + 2.75]} />

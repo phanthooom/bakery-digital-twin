@@ -68,25 +68,17 @@ function RackFrame({ x0, bays, levels = LEVELS, height = 2.55 }: { x0: number; b
   );
 }
 
-/** Поддон с мешками: sacks — сколько мешков из 20 (5 в слое × 4 слоя). */
+/** Поддон с сырьём (NVIDIA SimReady pallet_composition_a13): высота масштабируется по заполнению sacks (из 20). */
 function Pallet({ position, sacks }: { position: [number, number, number]; sacks: number }) {
-  const cells: [number, number, number][] = [];
-  for (let i = 0; i < sacks; i++) {
-    const layer = Math.floor(i / 5);
-    const k = i % 5;
-    const rot = layer % 2;
-    const x = k < 4 ? (k % 2 ? 0.24 : -0.24) : 0;
-    const z = k < 4 ? (k < 2 ? -0.18 : 0.18) : 0;
-    cells.push([rot ? z : x, 0.22 + layer * 0.17 + (k === 4 ? 0.0 : 0), rot ? x : z]);
-  }
+  const fillScale = 0.42 + (Math.max(1, sacks) / 20) * 0.58;
+  const fallback = (
+    <mesh position={[0, 0.35, 0]} material={M.wood} castShadow receiveShadow>
+      <boxGeometry args={[1.1, 0.7, 0.9]} />
+    </mesh>
+  );
   return (
-    <group position={position}>
-      <mesh position={[0, 0.07, 0]} material={M.wood} castShadow receiveShadow>
-        <boxGeometry args={[1.1, 0.14, 0.9]} />
-      </mesh>
-      {cells.map((p, i) => (
-        <mesh key={i} geometry={sackGeo} material={M.sack} position={p} rotation={[0, Math.floor(i / 5) % 2 ? Math.PI / 2 : 0, 0]} castShadow />
-      ))}
+    <group position={position} scale={[1, fillScale, 1]}>
+      <GltfModel url="/models/pallet-loaded.glb" fallback={fallback} />
     </group>
   );
 }
@@ -125,8 +117,8 @@ function DryRacks({ config, view, onOpen, showLabels }: { config: SiteConfig; vi
     <group position={[row.x, 0, row.z]} rotation={[0, row.rotationY ?? 0, 0]} onClick={open} onPointerOver={(e) => (e.stopPropagation(), setHover(true))} onPointerOut={() => setHover(false)}>
       <MergeStatic>
         <RackFrame x0={x0} bays={bays} />
-        {groups.flatMap(({ r, pallets }) => pallets.filter((p) => p.sacks > 0).map((p, i) => <Pallet key={`${r.material.id}${i}`} position={[p.x, p.y, 0]} sacks={p.sacks} />))}
       </MergeStatic>
+      {groups.flatMap(({ r, pallets }) => pallets.filter((p) => p.sacks > 0).map((p, i) => <Pallet key={`${r.material.id}${i}`} position={[p.x, p.y, 0]} sacks={p.sacks} />))}
       {groups.map(({ r, pallets }) => (
         <group key={r.material.id}>
           {pallets.length > 0 && (showLabels || hover) && (
@@ -199,34 +191,16 @@ function GoodsRacks({ config, view, onOpen }: { config: SiteConfig; view: Supply
   );
 }
 
-/** Тележки с продукцией, которая ждёт упаковки. */
+/** Тележки с продукцией (NVIDIA SimReady trolley_catering_a01 + багеты и круассаны), ждущие упаковки. */
 function PackingQueue({ config, view, onOpen }: { config: SiteConfig; view: SupplyView; onOpen: Open }) {
   const { x, z } = config.supply!.layout.packingQueue;
   const waiting = view.goods.reduce((a, g) => a + g.waiting, 0);
-  const carts = Math.min(3, Math.ceil(waiting / 80));
+  const carts = Math.max(2, Math.min(3, Math.ceil(waiting / 80)));
   return (
     <group onClick={(e) => (e.stopPropagation(), onOpen('goods'))}>
       {Array.from({ length: carts }, (_, i) => (
-        <group key={i} position={[x - 0.4 + i * 0.75, 0, z]}>
-          {[-0.25, 0.25].map((dx) =>
-            [-0.3, 0.3].map((dz) => (
-              <mesh key={`${dx}${dz}`} position={[dx, 0.85, dz]} material={M.steel} castShadow>
-                <boxGeometry args={[0.03, 1.6, 0.03]} />
-              </mesh>
-            )),
-          )}
-          {[0.25, 0.55, 0.85, 1.15, 1.45].map((y) => (
-            <group key={y} position={[0, y, 0]}>
-              <mesh material={M.steelLight}>
-                <boxGeometry args={[0.52, 0.02, 0.62]} />
-              </mesh>
-              {[-0.15, 0.0, 0.15].map((dz) => (
-                <mesh key={dz} position={[0, 0.04, dz * 1.4]} material={M.dough} scale={[1, 0.55, 0.7]}>
-                  <sphereGeometry args={[0.09, 10, 8]} />
-                </mesh>
-              ))}
-            </group>
-          ))}
+        <group key={i} position={[x - 0.5 + i * 0.9, 0, z]}>
+          <GltfModel url="/models/bakery-trolley.glb" fallback={null} />
         </group>
       ))}
       {waiting > 0 && <Tag position={[x + 0.35, 2.0, z]} title="Ждёт упаковки" value={fmtMass(waiting)} onClick={() => onOpen('goods')} />}
@@ -420,6 +394,19 @@ export const SupplyScene = memo(function SupplyScene({ config, onOpen, showLabel
       <PackingQueue config={config} view={view} onOpen={onOpen} />
       <ReceivingDock config={config} view={view} now={snap.now} sel={sel} />
       <ShippingDocks config={config} view={view} onOpen={onOpen} showLabels={showLabels} sel={sel} />
+      {/* Вилочные погрузчики (NVIDIA SimReady vehicle_forklift_orange_a01) и пожарные посты (fireExtinguisher_stand_a01) */}
+      <group position={[-17.8, 0, 12.6]} rotation={[0, 0.42, 0]}>
+        <GltfModel url="/models/forklift.glb" fallback={null} />
+      </group>
+      <group position={[17.6, 0, 11.8]} rotation={[0, -0.52, 0]}>
+        <GltfModel url="/models/forklift.glb" fallback={null} />
+      </group>
+      <group position={[-15.2, 0, 16.4]}>
+        <GltfModel url="/models/fire-stand.glb" fallback={null} />
+      </group>
+      <group position={[15.2, 0, 16.4]}>
+        <GltfModel url="/models/fire-stand.glb" fallback={null} />
+      </group>
     </group>
   );
 });
