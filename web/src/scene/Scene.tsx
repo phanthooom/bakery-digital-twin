@@ -163,9 +163,9 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           <BrandSign config={config} />
           {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} isNight={isNight} />}
           {config.areas && <Areas config={config} />}
-          <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} yOffset={yOffsetFloor2} />
-          <MultistoryHvacLab config={config} floorFilter={floorFilter} yOffset={yOffsetFloor3} isNight={isNight} />
-          <RooftopEnergyHub config={config} floorFilter={floorFilter} yOffset={yOffsetFloor4} isNight={isNight} />
+          <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} yOffset={yOffsetFloor2} explodedView={explodedView} />
+          <MultistoryHvacLab config={config} floorFilter={floorFilter} yOffset={yOffsetFloor3} isNight={isNight} explodedView={explodedView} />
+          <RooftopEnergyHub config={config} floorFilter={floorFilter} yOffset={yOffsetFloor4} isNight={isNight} explodedView={explodedView} />
           <DimensionalOverlay config={config} selectedId={selectedId} visible={showLabels || Boolean(selectedId) || layoutMode} isNight={isNight} />
           {layoutMode && onMoveEquipment && (
             <LayoutGrid

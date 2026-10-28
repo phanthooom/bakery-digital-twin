@@ -379,12 +379,17 @@ export interface MezzanineProps {
   floorFilter?: 'all' | 1 | 2 | 3 | 4;
   activeFlourTransfer?: boolean;
   yOffset?: number;
+  explodedView?: boolean;
 }
 
 /** 3D-конструкция 2-го этажа (мезонина): перекрытия, лестницы, диспетчерская, мостики, трубы. */
-export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', activeFlourTransfer = false, yOffset = 0 }: MezzanineProps) {
+export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', activeFlourTransfer = false, yOffset = 0, explodedView = false }: MezzanineProps) {
   const mez = config.mezzanine;
   if (!mez || (floorFilter !== 'all' && floorFilter !== 2)) return null;
+
+  const { width: W, depth: D } = config.site.hall;
+  const halfW = W / 2;
+  const halfD = D / 2;
 
   const controlDeck = mez.decks.find((d) => d.id === 'deck-control');
   const otherDecks = mez.decks.filter((d) => d.id !== 'deck-control');
@@ -393,6 +398,39 @@ export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', 
     <group position={[0, yOffset, 0]}>
       {/* Все неподвижные металлоконструкции, перила, лестницы, мостики и трубы склеиваются в единые буферы */}
       <MergeStatic>
+        {/* При режиме «Слои» или изолированном выборе 2-го этажа — полноразмерная плита перекрытия 54 × 35 м как на 1-м этаже */}
+        {(explodedView || floorFilter === 2) && (
+          <>
+            <mesh position={[0, Y_ELEV - T_DECK / 2, 0]} material={M.floor}>
+              <boxGeometry args={[W, T_DECK, D]} />
+            </mesh>
+            {/* Ограждения периметра перекрытия 2-го этажа */}
+            <mesh position={[0, Y_ELEV + H_RAIL, halfD]} material={railYellow}>
+              <boxGeometry args={[W, 0.045, 0.045]} />
+            </mesh>
+            <mesh position={[0, Y_ELEV + H_RAIL * 0.55, halfD]} material={railBlack}>
+              <boxGeometry args={[W, 0.03, 0.03]} />
+            </mesh>
+            <mesh position={[0, Y_ELEV + H_RAIL, -halfD]} material={railYellow}>
+              <boxGeometry args={[W, 0.045, 0.045]} />
+            </mesh>
+            <mesh position={[0, Y_ELEV + H_RAIL * 0.55, -halfD]} material={railBlack}>
+              <boxGeometry args={[W, 0.03, 0.03]} />
+            </mesh>
+            <mesh position={[-halfW, Y_ELEV + H_RAIL, 0]} material={railYellow}>
+              <boxGeometry args={[0.045, 0.045, D]} />
+            </mesh>
+            <mesh position={[-halfW, Y_ELEV + H_RAIL * 0.55, 0]} material={railBlack}>
+              <boxGeometry args={[0.03, 0.03, D]} />
+            </mesh>
+            <mesh position={[halfW, Y_ELEV + H_RAIL, 0]} material={railYellow}>
+              <boxGeometry args={[0.045, 0.045, D]} />
+            </mesh>
+            <mesh position={[halfW, Y_ELEV + H_RAIL * 0.55, 0]} material={railBlack}>
+              <boxGeometry args={[0.03, 0.03, D]} />
+            </mesh>
+          </>
+        )}
         {otherDecks.map((d) => (
           <Deck key={d.id} zone={d.zone} id={d.id} />
         ))}

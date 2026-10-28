@@ -32,12 +32,15 @@ export interface RooftopEnergyHubProps {
   floorFilter?: 'all' | 1 | 2 | 3 | 4;
   yOffset?: number; // Смещение для режима Exploded View
   isNight?: boolean;
+  explodedView?: boolean;
 }
 
 export const RooftopEnergyHub = memo(function RooftopEnergyHub({
+  config,
   floorFilter = 'all',
   yOffset = 0,
   isNight = false,
+  explodedView = false,
 }: RooftopEnergyHubProps) {
   const beaconRef = useRef<THREE.PointLight>(null);
 
@@ -50,34 +53,37 @@ export const RooftopEnergyHub = memo(function RooftopEnergyHub({
   });
 
   if (floorFilter !== 'all' && floorFilter !== 4) return null;
+  if (floorFilter === 'all' && !explodedView) return null;
 
-  const y = Y_ELEV_4 + yOffset;
+  const { width: W, depth: D } = config.site.hall;
+  const halfW = W / 2;
+  const halfD = D / 2;
 
   return (
     <group position={[0, yOffset, 0]}>
       {/* Статические конструкции кровли (плита, парапет, фермы СЭС, чиллеры, ДГУ, фонари) */}
       <MergeStatic>
-        {/* Кровельная плита (x от -24 до +24, z от -15 до +15) */}
+        {/* Кровельная плита на всю ширину и глубину здания (54 × 35 м) */}
         <mesh position={[0, Y_ELEV_4 - T_ROOF / 2, 0]} material={M.floor}>
-          <boxGeometry args={[48, T_ROOF, 30]} />
+          <boxGeometry args={[W, T_ROOF, D]} />
         </mesh>
 
         {/* Защитные парапеты по периметру кровли (высота 0.9 м) */}
-        {/* Задний парапет (z = -15) */}
-        <mesh position={[0, Y_ELEV_4 + 0.45, -15]} material={parapetMat}>
-          <boxGeometry args={[48, 0.9, 0.3]} />
+        {/* Задний парапет (z = -halfD) */}
+        <mesh position={[0, Y_ELEV_4 + 0.45, -halfD]} material={parapetMat}>
+          <boxGeometry args={[W, 0.9, 0.3]} />
         </mesh>
-        {/* Передний парапет (z = +15) */}
-        <mesh position={[0, Y_ELEV_4 + 0.45, 15]} material={parapetMat}>
-          <boxGeometry args={[48, 0.9, 0.3]} />
+        {/* Передний парапет (z = +halfD) */}
+        <mesh position={[0, Y_ELEV_4 + 0.45, halfD]} material={parapetMat}>
+          <boxGeometry args={[W, 0.9, 0.3]} />
         </mesh>
-        {/* Левый парапет (x = -24) */}
-        <mesh position={[-24, Y_ELEV_4 + 0.45, 0]} material={parapetMat}>
-          <boxGeometry args={[0.3, 0.9, 30]} />
+        {/* Левый парапет (x = -halfW) */}
+        <mesh position={[-halfW, Y_ELEV_4 + 0.45, 0]} material={parapetMat}>
+          <boxGeometry args={[0.3, 0.9, D]} />
         </mesh>
-        {/* Правый парапет (x = +24) */}
-        <mesh position={[24, Y_ELEV_4 + 0.45, 0]} material={parapetMat}>
-          <boxGeometry args={[0.3, 0.9, 30]} />
+        {/* Правый парапет (x = +halfW) */}
+        <mesh position={[halfW, Y_ELEV_4 + 0.45, 0]} material={parapetMat}>
+          <boxGeometry args={[0.3, 0.9, D]} />
         </mesh>
 
         {/* ── 1. Солнечная электростанция (СЭС / Rooftop Solar PV) ── */}

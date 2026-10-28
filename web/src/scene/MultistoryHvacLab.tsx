@@ -31,24 +31,30 @@ export interface MultistoryHvacLabProps {
   floorFilter?: 'all' | 1 | 2 | 3 | 4;
   yOffset?: number; // Смещение для режима Exploded View
   isNight?: boolean;
+  explodedView?: boolean;
 }
 
 export const MultistoryHvacLab = memo(function MultistoryHvacLab({
+  config,
   floorFilter = 'all',
   yOffset = 0,
   isNight = false,
+  explodedView = false,
 }: MultistoryHvacLabProps) {
   if (floorFilter !== 'all' && floorFilter !== 3) return null;
+  if (floorFilter === 'all' && !explodedView) return null;
 
-  const y = Y_ELEV_3 + yOffset;
+  const { width: W, depth: D } = config.site.hall;
+  const halfW = W / 2;
+  const halfD = D / 2;
 
   return (
     <group position={[0, yOffset, 0]}>
       {/* Статические конструкции 3-го этажа (перекрытие, колонны, оборудование, лаборатория) */}
       <MergeStatic>
-        {/* Основное перекрытие 3-го этажа (x от -22 до +22, z от -14 до +8) */}
-        <mesh position={[0, Y_ELEV_3 - T_DECK / 2, -3]} material={M.floor}>
-          <boxGeometry args={[44, T_DECK, 22]} />
+        {/* Основное перекрытие 3-го этажа на всю ширину и глубину здания (54 × 35 м) */}
+        <mesh position={[0, Y_ELEV_3 - T_DECK / 2, 0]} material={M.floor}>
+          <boxGeometry args={[W, T_DECK, D]} />
         </mesh>
 
         {/* Чистый эпоксидный пол зоны лаборатории (x от -20 до -10, z от -2 до +7) */}
@@ -57,8 +63,8 @@ export const MultistoryHvacLab = memo(function MultistoryHvacLab({
         </mesh>
 
         {/* Стальные колонны поддержки 3-го этажа от 2-го этажа (+3.2 м до +6.4 м) */}
-        {[-18, -6, 6, 18].map((cx) => (
-          [-12, -2, 6].map((cz) => (
+        {[-18, -12, -6, 0, 6, 12, 18].map((cx) => (
+          [-10, 0, 10].map((cz) => (
             <mesh key={`col3-${cx}-${cz}`} position={[cx, (Y_ELEV_3 + 3.2) / 2, cz]} material={M.column}>
               <boxGeometry args={[0.35, 3.2, 0.35]} />
             </mesh>
@@ -66,15 +72,39 @@ export const MultistoryHvacLab = memo(function MultistoryHvacLab({
         ))}
 
         {/* Ограждения периметра перекрытия 3-го этажа */}
-        {/* Передний край (z = +8) */}
-        <mesh position={[0, Y_ELEV_3 + H_RAIL, 8]} material={railYellow}>
-          <boxGeometry args={[44, 0.045, 0.045]} />
+        {/* Передний край (z = +halfD) */}
+        <mesh position={[0, Y_ELEV_3 + H_RAIL, halfD]} material={railYellow}>
+          <boxGeometry args={[W, 0.045, 0.045]} />
         </mesh>
-        <mesh position={[0, Y_ELEV_3 + H_RAIL * 0.55, 8]} material={railBlack}>
-          <boxGeometry args={[44, 0.03, 0.03]} />
+        <mesh position={[0, Y_ELEV_3 + H_RAIL * 0.55, halfD]} material={railBlack}>
+          <boxGeometry args={[W, 0.03, 0.03]} />
         </mesh>
-        <mesh position={[0, Y_ELEV_3 + 0.08, 8]} material={railYellow}>
-          <boxGeometry args={[44, 0.14, 0.02]} />
+        <mesh position={[0, Y_ELEV_3 + 0.08, halfD]} material={railYellow}>
+          <boxGeometry args={[W, 0.14, 0.02]} />
+        </mesh>
+
+        {/* Задний край (z = -halfD) */}
+        <mesh position={[0, Y_ELEV_3 + H_RAIL, -halfD]} material={railYellow}>
+          <boxGeometry args={[W, 0.045, 0.045]} />
+        </mesh>
+        <mesh position={[0, Y_ELEV_3 + H_RAIL * 0.55, -halfD]} material={railBlack}>
+          <boxGeometry args={[W, 0.03, 0.03]} />
+        </mesh>
+
+        {/* Левый край (x = -halfW) */}
+        <mesh position={[-halfW, Y_ELEV_3 + H_RAIL, 0]} material={railYellow}>
+          <boxGeometry args={[0.045, 0.045, D]} />
+        </mesh>
+        <mesh position={[-halfW, Y_ELEV_3 + H_RAIL * 0.55, 0]} material={railBlack}>
+          <boxGeometry args={[0.03, 0.03, D]} />
+        </mesh>
+
+        {/* Правый край (x = +halfW) */}
+        <mesh position={[halfW, Y_ELEV_3 + H_RAIL, 0]} material={railYellow}>
+          <boxGeometry args={[0.045, 0.045, D]} />
+        </mesh>
+        <mesh position={[halfW, Y_ELEV_3 + H_RAIL * 0.55, 0]} material={railBlack}>
+          <boxGeometry args={[0.03, 0.03, D]} />
         </mesh>
 
         {/* ── 1. Венткомплекс AHU-1 с рекуператором тепла (x = +6.5, z = -10.5) ── */}
