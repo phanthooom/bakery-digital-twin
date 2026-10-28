@@ -376,20 +376,21 @@ function HeatRecoveryDucts() {
 
 export interface MezzanineProps {
   config: SiteConfig;
-  floorFilter?: 'all' | 1 | 2;
+  floorFilter?: 'all' | 1 | 2 | 3 | 4;
   activeFlourTransfer?: boolean;
+  yOffset?: number;
 }
 
 /** 3D-конструкция 2-го этажа (мезонина): перекрытия, лестницы, диспетчерская, мостики, трубы. */
-export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', activeFlourTransfer = false }: MezzanineProps) {
+export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', activeFlourTransfer = false, yOffset = 0 }: MezzanineProps) {
   const mez = config.mezzanine;
-  if (!mez || floorFilter === 1) return null;
+  if (!mez || (floorFilter !== 'all' && floorFilter !== 2)) return null;
 
   const controlDeck = mez.decks.find((d) => d.id === 'deck-control');
   const otherDecks = mez.decks.filter((d) => d.id !== 'deck-control');
 
   return (
-    <group>
+    <group position={[0, yOffset, 0]}>
       {/* Все неподвижные металлоконструкции, перила, лестницы, мостики и трубы склеиваются в единые буферы */}
       <MergeStatic>
         {otherDecks.map((d) => (

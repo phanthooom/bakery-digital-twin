@@ -19,6 +19,7 @@ import {
   MixerSynth,
   OvenSynth,
   ReverseBeeperSynth,
+  RooftopFanSynth,
   type DisposableSynth,
 } from '../audio/synthesizers';
 
@@ -60,6 +61,9 @@ export function SpatialSoundscape({ config }: SpatialSoundscapeProps) {
       } else if (eq.kind === 'mixer') {
         const mixer = new MixerSynth(ctx, panner);
         synths.set(eq.id, mixer);
+      } else if (eq.kind === 'drycooler' || eq.kind === 'chiller') {
+        const fan = new RooftopFanSynth(ctx, panner);
+        synths.set(eq.id, fan);
       }
     });
 
@@ -114,6 +118,8 @@ export function SpatialSoundscape({ config }: SpatialSoundscapeProps) {
         synth.setActive(state.status === 'running', state.pctOfNominal ?? 100);
       } else if (synth instanceof MixerSynth) {
         synth.setActive(state.status === 'running');
+      } else if (synth instanceof RooftopFanSynth) {
+        synth.setActive(state.status === 'running', state.pctOfNominal ?? 100);
       }
     }
 

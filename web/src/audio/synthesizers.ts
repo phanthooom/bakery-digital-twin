@@ -336,3 +336,60 @@ export class AlarmSirenSynth implements DisposableSynth {
     }
   }
 }
+
+/**
+ * Синтезатор вентиляторов драйкулеров и чиллера на кровле (Bandpass 280–380 Гц).
+ */
+export class RooftopFanSynth implements DisposableSynth {
+  private readonly noiseSource: AudioBufferSourceNode;
+  private readonly filter: BiquadFilterNode;
+  private readonly gain: GainNode;
+  private isDisposed = false;
+
+  constructor(private readonly ctx: AudioContext, panner: PannerNode) {
+    this.gain = ctx.createGain();
+    this.gain.gain.value = 0;
+    this.gain.connect(panner);
+
+    const noiseBuffer = createNoiseBuffer(ctx, 3);
+    this.noiseSource = ctx.createBufferSource();
+    this.noiseSource.buffer = noiseBuffer;
+    this.noiseSource.loop = true;
+
+    this.filter = ctx.createBiquadFilter();
+    this.filter.type = 'bandpass';
+    this.filter.frequency.value = 320;
+    this.filter.Q.value = 0.9;
+
+    const noiseGain = ctx.createGain();
+    noiseGain.gain.value = 0.15;
+    this.noiseSource.connect(this.filter);
+    this.filter.connect(noiseGain);
+    noiseGain.connect(this.gain);
+
+    try {
+      this.noiseSource.start();
+    } catch {
+      // noop
+    }
+  }
+
+  setActive(active: boolean, pct = 100): void {
+    if (this.isDisposed || this.ctx.state === 'closed') return;
+    const target = active ? Math.min(0.25, 0.16 * (Math.max(10, pct) / 100)) : 0;
+    this.gain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.5);
+  }
+
+  dispose(): void {
+    if (this.isDisposed) return;
+    this.isDisposed = true;
+    try {
+      this.gain.gain.setValueAtTime(0, this.ctx.currentTime);
+      this.noiseSource.stop();
+      this.noiseSource.disconnect();
+      this.gain.disconnect();
+    } catch {
+      // noop
+    }
+  }
+}

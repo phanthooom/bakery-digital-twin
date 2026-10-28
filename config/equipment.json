@@ -252,6 +252,18 @@
         "x1": 26.8,
         "z1": 17.2
       }
+    },
+    {
+      "id": "energy_hub",
+      "order": 8,
+      "label": "08 КЛИМАТ · ЭНЕРГОЦЕНТР",
+      "name": "Климатический комплекс, лаборатория и крышная СЭС",
+      "zone": {
+        "x0": -26.0,
+        "z0": -16.0,
+        "x1": 26.0,
+        "z1": 16.0
+      }
     }
   ],
   "equipment": [
@@ -573,6 +585,91 @@
       "rotationY": 0,
       "meterId": "ESP32_SIM_HVAC1",
       "model": "/models/hvac.glb"
+    },
+    {
+      "id": "hvac-ahu-1",
+      "name": "Центральный венткомплекс AHU-1",
+      "vendorModel": "Венткомплекс 14500 м³/ч с пластинчатым рекуператором тепла печей",
+      "kind": "hvac",
+      "stage": "energy_hub",
+      "floor": 3,
+      "nominalKw": 18.5,
+      "phases": 3,
+      "position": {
+        "x": 6.5,
+        "y": 6.4,
+        "z": -10.5
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_AHU1"
+    },
+    {
+      "id": "chiller-1",
+      "name": "Чиллерная станция ледяной воды (+2 °C)",
+      "vendorModel": "Винтовой чиллер 95 кВт с насосной группой Grundfos Hydro",
+      "kind": "chiller",
+      "stage": "energy_hub",
+      "floor": 3,
+      "nominalKw": 32.0,
+      "phases": 3,
+      "position": {
+        "x": -6.5,
+        "y": 6.4,
+        "z": -10.5
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_CHL1"
+    },
+    {
+      "id": "solar-inv-1",
+      "name": "Сетевой инвертор СЭС 60 кВт",
+      "vendorModel": "Huawei SUN2000-60KTL-M0 (3 MPPT)",
+      "kind": "solar_inverter",
+      "stage": "energy_hub",
+      "floor": 4,
+      "nominalKw": 60.0,
+      "phases": 3,
+      "position": {
+        "x": -14.0,
+        "y": 9.6,
+        "z": 0.0
+      },
+      "rotationY": 1.5708,
+      "meterId": "ESP32_SIM_SOL1"
+    },
+    {
+      "id": "drycooler-1",
+      "name": "Сухая градирня чиллера ДК-1",
+      "vendorModel": "Драйкулер V-образный 120 кВт с EC-вентиляторами",
+      "kind": "drycooler",
+      "stage": "energy_hub",
+      "floor": 4,
+      "nominalKw": 8.5,
+      "phases": 3,
+      "position": {
+        "x": -6.5,
+        "y": 9.6,
+        "z": -9.0
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_DC1"
+    },
+    {
+      "id": "dgu-backup-1",
+      "name": "Резервный дизель-генератор 250 кВА",
+      "vendorModel": "Cummins C250D5e в шумозащитном кожухе с АВР",
+      "kind": "generator",
+      "stage": "energy_hub",
+      "floor": 4,
+      "nominalKw": 200.0,
+      "phases": 3,
+      "position": {
+        "x": 16.0,
+        "y": 9.6,
+        "z": -8.0
+      },
+      "rotationY": 0,
+      "meterId": "ESP32_SIM_DGU1"
     }
   ],
   "supply": {
@@ -1064,5 +1161,130 @@
       "heatRecoveryKw": 24.5,
       "efficiencyPct": 78
     }
+  },
+  "multistory": {
+    "floors": [
+      {
+        "floor": 1,
+        "name": "1-й этаж",
+        "title": "Основной цех и склад",
+        "elevationM": 0.0,
+        "heightM": 3.2,
+        "description": "Линия выпечки (печи, формовка, расстойка, шоковая заморозка), упаковочный участок, рампа отгрузки"
+      },
+      {
+        "floor": 2,
+        "name": "2-й этаж",
+        "title": "Антресоль / Мезонин",
+        "elevationM": 3.2,
+        "heightM": 3.2,
+        "description": "Силосы муки бестарного хранения 65 т, инспекционный мостик, диспетчерская SCADA"
+      },
+      {
+        "floor": 3,
+        "name": "3-й этаж",
+        "title": "Инженерно-климатический комплекс и QC Lab",
+        "elevationM": 6.4,
+        "heightM": 3.2,
+        "description": "AHU с пластинчатым рекуператором тепла печей, чиллер ледяной воды +2 °C, лаборатория контроля муки ГОСТ"
+      },
+      {
+        "floor": 4,
+        "name": "4-й этаж",
+        "title": "Кровля-энергоцентр СЭС",
+        "elevationM": 9.6,
+        "heightM": 2.8,
+        "description": "Солнечная электростанция 60 кВт, инверторы, сухие градирни-драйкулеры, метеостанция, ДГУ 250 кВА"
+      }
+    ],
+    "explodedSpacingM": 5.0
+  },
+  "hvacFloor": {
+    "floor": 3,
+    "elevationM": 6.4,
+    "ahu": {
+      "id": "hvac-ahu-1",
+      "airflowM3h": 14500,
+      "exhaustTempC": 180,
+      "stackTempC": 65,
+      "recoveryEfficiencyPct": 76,
+      "flueAirflowM3h": 4500
+    },
+    "chiller": {
+      "id": "chiller-1",
+      "coolingCapacityKw": 95,
+      "cop": 3.8,
+      "supplyWaterTempC": 2.0,
+      "returnWaterTempC": 12.0,
+      "tankVolumeLiters": 3500,
+      "pumps": {
+        "model": "Grundfos Hydro MPC 2 CR 15-5",
+        "count": 2,
+        "nominalKw": 7.5
+      }
+    }
+  },
+  "solarRoof": {
+    "floor": 4,
+    "installedCapacityKwp": 60,
+    "panelAreaM2": 280,
+    "panelEfficiencyPct": 21.5,
+    "inverterEfficiencyPct": 98.0,
+    "tiltDeg": 15,
+    "azimuthDeg": 180,
+    "co2FactorKgPerKwh": 0.45,
+    "inverters": [
+      {
+        "id": "solar-inv-1",
+        "name": "Сетевой инвертор Huawei SUN2000-60KTL",
+        "capacityKw": 60,
+        "efficiencyPct": 98.6
+      }
+    ],
+    "weatherStation": {
+      "anemometer": true,
+      "pyranometer": true,
+      "mastHeightM": 4.5,
+      "hasAviationBeacons": true
+    }
+  },
+  "lab": {
+    "floor": 3,
+    "name": "Производственная лаборатория контроля качества сырья и готовой продукции",
+    "standards": ["ГОСТ 26574-2017", "ГОСТ 27668-88", "ГОСТ 27676-88"],
+    "equipment": [
+      { "id": "lab-scales", "name": "Аналитические весы OHAUS Pioneer (точность 0.0001 г)" },
+      { "id": "lab-oven", "name": "Сушильный лабораторный шкаф СЭШ-3М" },
+      { "id": "lab-idk", "name": "Измеритель деформации клейковины ИДК-7" },
+      { "id": "lab-farinograph", "name": "Фаринограф Брабендера (Brabender Farinograph-TS)" },
+      { "id": "lab-falling-number", "name": "Прибор определения числа падения ПЧП-7" }
+    ],
+    "sampleFlour": {
+      "batchId": "ПАРТИЯ-М-1028/01",
+      "grade": "extra",
+      "moisturePct": 13.8,
+      "glutenPct": 29.5,
+      "glutenIdk": 62,
+      "fallingNumberSec": 265,
+      "ashPct": 0.52,
+      "farinograph": {
+        "waterAbsorptionPct": 61.2,
+        "developmentTimeMin": 3.2,
+        "stabilityMin": 8.0,
+        "softeningFU": 45,
+        "qualityNumber": 86
+      }
+    }
+  },
+  "generator": {
+    "floor": 4,
+    "id": "dgu-backup-1",
+    "name": "Резервный дизель-генератор Cummins C250D5e 250 кВА",
+    "capacityKva": 250,
+    "nominalKw": 200,
+    "fuelTankLiters": 650,
+    "fuelConsumptionLh": 48.5,
+    "cableDropToSwitchboard": "ВВГнг 4×150 мм² к ГРЩ-1",
+    "autoTransferSwitch": true
   }
 }

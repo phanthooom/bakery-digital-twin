@@ -24,6 +24,7 @@ import { setupTelegramBridge } from './data/telegramBridge';
 import { TelegramOrderToast } from './ui/TelegramOrderToast';
 import { ProductionControl } from './ui/ProductionControl';
 import { LayoutToolbar } from './ui/LayoutToolbar';
+import { SolarHvacModal } from './ui/SolarHvacModal';
 import { rotateStep, snapAndClamp, type EquipmentPlacement } from './scene/layoutMath';
 import { ProductionCycleManager, type ProductionCycleState, type SiteConfig, type TelegramOrder } from '@bakery/shared';
 import type { MockDataSource } from './data/MockDataSource';
@@ -52,7 +53,9 @@ export function App() {
   const [wide, setWide] = useState(() => window.innerWidth > 760);
   const [sceneReady, setSceneReady] = useState(false);
   const [loaderGone, setLoaderGone] = useState(false);
-  const [floorFilter, setFloorFilter] = useState<'all' | 1 | 2>('all');
+  const [floorFilter, setFloorFilter] = useState<'all' | 1 | 2 | 3 | 4>('all');
+  const [explodedView, setExplodedView] = useState(false);
+  const [solarHvacOpen, setSolarHvacOpen] = useState(false);
   const [isNight, setIsNight] = useState(false);
   const [layoutMode, setLayoutMode] = useState(false);
   const [layoutOverrides, setLayoutOverrides] = useState<Record<string, EquipmentPlacement>>({});
@@ -343,10 +346,14 @@ export function App() {
   const selected = effectiveConfig.equipment.find((e) => e.id === selectedId) ?? null;
   const selectedLineEq = effectiveConfig.equipment.find((e) => e.id === selectedLineId) ?? null;
 
-  const handleFloorChange = useCallback((f: 'all' | 1 | 2) => {
+  const handleFloorChange = useCallback((f: 'all' | 1 | 2 | 3 | 4) => {
     setFloorFilter(f);
     setSelection(null);
-    if (f === 2) {
+    if (f === 4) {
+      setCustomFocus({ key: `roof-${Date.now()}`, x: 0, z: -2, lookY: 10.5, dist: 35, dir: [-0.15, 0.7, 0.7] });
+    } else if (f === 3) {
+      setCustomFocus({ key: `floor3-${Date.now()}`, x: 2, z: -2, lookY: 7.2, dist: 32, dir: [-0.15, 0.65, 0.75] });
+    } else if (f === 2) {
       setCustomFocus({ key: `mezzanine-${Date.now()}`, x: -10, z: -2, lookY: 3.5, dist: 30, dir: [-0.15, 0.65, 0.75] });
     } else if (f === 1) {
       setCustomFocus({ key: `floor1-${Date.now()}`, x: 0, z: 0, lookY: 1.0, dist: 38, dir: [-0.14, 0.7, 0.7] });
@@ -422,6 +429,9 @@ export function App() {
           onOpenGas={ds.config.gas ? selectGas : undefined}
           floorFilter={floorFilter}
           onFloorChange={handleFloorChange}
+          explodedView={explodedView}
+          onToggleExploded={() => setExplodedView((v) => !v)}
+          onOpenSolarHvac={() => setSolarHvacOpen(true)}
           isNight={isNight}
           onToggleNight={() => setIsNight((v) => !v)}
           layoutMode={layoutMode}
@@ -478,6 +488,7 @@ export function App() {
           gasSelected={selection?.kind === 'gas'}
           onSelectGas={selectGas}
           floorFilter={floorFilter}
+          explodedView={explodedView}
           isMobile={!wide}
           activeFlourTransfer={prodState.status === 'running' && prodState.currentStepId === 'flour_transfer'}
           onUserInteract={() => setCameraFollowProd(false)}
@@ -514,6 +525,7 @@ export function App() {
           onSetSpeed={(spd) => prodManager.setSpeed(spd)}
         />
         {energyOpen && <EnergyPanel onClose={() => setEnergyOpen(false)} />}
+        {solarHvacOpen && <SolarHvacModal config={effectiveConfig} onClose={() => setSolarHvacOpen(false)} />}
         {supplyTab && <SupplyPanel initialTab={supplyTab} onClose={() => setSupplyTab(null)} />}
         {!loaderGone && <LoadingScreen leaving={sceneReady} />}
         {selected && <EquipmentCard key={selected.id} eq={selected} onClose={deselect} />}

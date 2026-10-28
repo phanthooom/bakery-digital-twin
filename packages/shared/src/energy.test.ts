@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { EnergyLedger, shiftAt, summarizeEnergy, tariffAt } from './energy';
+import { EnergyLedger, shiftAt, summarizeEnergy, summarizeEnergyBalance, tariffAt, type EnergyEntry } from './energy';
 import type { EnergyConfig } from './types';
 
 const TZ = 'Asia/Tashkent'; // UTC+5
@@ -102,5 +102,21 @@ describe('summarizeEnergy — сводка по сменам, дням и мес
       ['2026-05', 'Май 2026', 20],
       ['2026-06', 'Июнь 2026', 4],
     ]);
+  });
+
+  it('summarizeEnergyBalance разделяет потребление и солнечную генерацию, рассчитывает сальдо', () => {
+    const mixedEntries: EnergyEntry[] = [
+      { equipmentId: 'oven-1', hour: local('2026-05-31T12:00:00'), kwh: 50 },
+      { equipmentId: 'solar-inv-1', hour: local('2026-05-31T12:00:00'), kwh: 30 },
+    ];
+    const rows = summarizeEnergyBalance(mixedEntries, ENERGY, TZ, 'day', new Set(['solar-inv-1']));
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.kwhConsumed).toBe(50);
+    expect(rows[0]!.kwhSolar).toBe(30);
+    expect(rows[0]!.kwhNet).toBe(20);
+    expect(rows[0]!.greenSharePct).toBe(60);
+    expect(rows[0]!.grossCost).toBe(50_000);
+    expect(rows[0]!.solarSavingsCost).toBe(30_000);
+    expect(rows[0]!.netCost).toBe(20_000);
   });
 });

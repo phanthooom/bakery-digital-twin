@@ -174,7 +174,7 @@ export interface SceneLightsProps {
   config: SiteConfig;
   isNight: boolean;
   isMobile?: boolean;
-  floorFilter?: 'all' | 1 | 2;
+  floorFilter?: 'all' | 1 | 2 | 3 | 4;
 }
 
 const bgDay = new THREE.Color('#ecebe7');

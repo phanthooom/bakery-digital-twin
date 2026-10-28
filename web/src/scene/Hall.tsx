@@ -11,11 +11,11 @@ import { Walls } from './Walls';
 /** Шаг стрелок на линии потока, м. */
 const CHEVRON_STEP = 4;
 
-export function FloorLabel({ text, x, z, height = 0.62, color = '#3d3d3a', align = 'left', font }: { text: string; x: number; z: number; height?: number; color?: string; align?: 'left' | 'center'; font?: string }) {
+export function FloorLabel({ text, x, y = 0.013, z, height = 0.62, color = '#3d3d3a', align = 'left', font }: { text: string; x: number; y?: number; z: number; height?: number; color?: string; align?: 'left' | 'center'; font?: string }) {
   const { texture, aspect } = useMemo(() => makeLabelTexture(text, { fontSize: 110, weight: 650, color, letterSpacing: font ? 2 : 10, font }), [text, color, font]);
   // x — левый край подписи
   return (
-    <mesh position={[align === 'left' ? x + (height * aspect) / 2 : x, 0.013, z]} rotation={[-Math.PI / 2, 0, 0]}>
+    <mesh position={[align === 'left' ? x + (height * aspect) / 2 : x, y, z]} rotation={[-Math.PI / 2, 0, 0]}>
       <planeGeometry args={[height * aspect, height]} />
       <meshBasicMaterial map={texture} transparent depthWrite={false} toneMapped={false} />
     </mesh>

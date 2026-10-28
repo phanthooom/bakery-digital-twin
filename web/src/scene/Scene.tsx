@@ -14,6 +14,9 @@ import { Staff } from './Staff';
 import { Areas } from './Areas';
 import { GasMeter } from './GasMeter';
 import { Mezzanine } from './Mezzanine';
+import { MultistoryHvacLab } from './MultistoryHvacLab';
+import { RooftopEnergyHub } from './RooftopEnergyHub';
+import { getExplodedFloorOffset, isFloorVisible } from '@bakery/shared';
 import { SceneLights } from './NightLighting';
 import { DimensionalOverlay } from './DimensionalOverlay';
 import { LayoutGrid } from './LayoutGrid';
@@ -83,7 +86,9 @@ export interface SceneProps {
   /** Первый кадр сцены отрисован. */
   onReady?: () => void;
   /** Текущий выбранный этаж */
-  floorFilter?: 'all' | 1 | 2;
+  floorFilter?: 'all' | 1 | 2 | 3 | 4;
+  /** Режим архитектурного среза / раскрытия слоев этажей (Exploded View) */
+  explodedView?: boolean;
   /** Мобильный/компактный экран — облегчённый рендер для 60 FPS без перегрева */
   isMobile?: boolean;
   /** Активна ли перекачка муки в производственном цикле */
@@ -99,11 +104,16 @@ export interface SceneProps {
 
 const NOOP = () => {};
 
-export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', isMobile = false, activeFlourTransfer = false, onUserInteract, isNight = false, layoutMode = false, onMoveEquipment }: SceneProps) {
+export function Scene({ config, selectedId, selectedLineId, panelSelected, showLines, focus, showLabels, viewToken, cardOffset, onSelect, onSelectLine, onSelectPanel, onDeselect, onReady, onOpenSupply, selectedVehicle, onSelectVehicle, gasSelected, onSelectGas, floorFilter = 'all', explodedView = false, isMobile = false, activeFlourTransfer = false, onUserInteract, isNight = false, layoutMode = false, onMoveEquipment }: SceneProps) {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const [hoveredLineId, setHoveredLineId] = useState<string | null>(null);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const down = useRef<{ x: number; y: number } | null>(null);
+
+  const explodedFactor = explodedView ? 1.0 : 0.0;
+  const yOffsetFloor2 = getExplodedFloorOffset(2, explodedFactor, 5.0);
+  const yOffsetFloor3 = getExplodedFloorOffset(3, explodedFactor, 5.0);
+  const yOffsetFloor4 = getExplodedFloorOffset(4, explodedFactor, 5.0);
 
   useEffect(() => {
     if (isMobile) return;
@@ -153,7 +163,9 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
           <BrandSign config={config} />
           {onOpenSupply && <SupplyScene config={config} onOpen={onOpenSupply} showLabels={showLabels} selectedVehicle={selectedVehicle} onSelectVehicle={onSelectVehicle} isNight={isNight} />}
           {config.areas && <Areas config={config} />}
-          <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} />
+          <Mezzanine config={config} floorFilter={floorFilter} activeFlourTransfer={activeFlourTransfer} yOffset={yOffsetFloor2} />
+          <MultistoryHvacLab config={config} floorFilter={floorFilter} yOffset={yOffsetFloor3} isNight={isNight} />
+          <RooftopEnergyHub config={config} floorFilter={floorFilter} yOffset={yOffsetFloor4} isNight={isNight} />
           <DimensionalOverlay config={config} selectedId={selectedId} visible={showLabels || Boolean(selectedId) || layoutMode} isNight={isNight} />
           {layoutMode && onMoveEquipment && (
             <LayoutGrid
@@ -188,12 +200,15 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
             />
           )}
           {config.equipment.map((eq) => {
-            const isVisible = floorFilter === 'all' || (floorFilter === 2 ? eq.floor === 2 : eq.floor !== 2);
+            const isVisible = isFloorVisible(eq.floor, floorFilter);
             if (!isVisible) return null;
+            const eqFloor = (eq.floor ?? 1) as 1 | 2 | 3 | 4;
+            const eqYOffset = eqFloor === 1 ? 0 : eqFloor === 2 ? yOffsetFloor2 : eqFloor === 3 ? yOffsetFloor3 : yOffsetFloor4;
+            const adjustedEq = eqYOffset !== 0 ? { ...eq, position: { ...eq.position, y: eq.position.y + eqYOffset } } : eq;
             return (
               <Machine
                 key={eq.id}
-                eq={eq}
+                eq={adjustedEq}
                 selected={selectedId === eq.id}
                 hovered={hoveredId === eq.id}
                 showLabel={showLabels}

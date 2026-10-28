@@ -5,7 +5,23 @@ import type { GasConfig } from './gas';
 
 export type StageId = string;
 
-export type MachineKind = 'mixer' | 'moulder' | 'conveyor' | 'proofer' | 'oven' | 'icemaker' | 'blastfreezer' | 'coldroom' | 'packer' | 'silo' | 'hvac' | 'generic';
+export type MachineKind =
+  | 'mixer'
+  | 'moulder'
+  | 'conveyor'
+  | 'proofer'
+  | 'oven'
+  | 'icemaker'
+  | 'blastfreezer'
+  | 'coldroom'
+  | 'packer'
+  | 'silo'
+  | 'hvac'
+  | 'chiller'
+  | 'solar_inverter'
+  | 'generator'
+  | 'drycooler'
+  | 'generic';
 
 export interface Vec3 {
   x: number;
@@ -25,8 +41,8 @@ export interface EquipmentConfig {
   phases: 1 | 3;
   position: Vec3;
   rotationY?: number;
-  /** Этаж размещения: 1 — цех (отметка 0.0 м), 2 — антресоль/мезонин (+3.2 м). По умолчанию 1. */
-  floor?: 1 | 2;
+  /** Этаж размещения: 1 — цех (0.0 м), 2 — антресоль (+3.2 м), 3 — венткомплекс и лаборатория (+6.4 м), 4 — кровля-СЭС (+9.6 м). По умолчанию 1. */
+  floor?: 1 | 2 | 3 | 4;
   /** Идентификатор счётчика (ESP32), который шлёт данные по этому станку. */
   meterId?: string;
   /** Путь к GLB-модели (например `/models/oven.glb`). null — процедурная форма. */
@@ -75,10 +91,6 @@ export interface StageConfig {
   zone: FloorRect;
 }
 
-/**
- * Персонал: у станков (at) — стоит перед станком (side — сдвиг вдоль его фронта, м) лицом к нему,
- * если станков несколько — ходит между ними; или на месте без станка (spot) — весовая, мойка, офис.
- */
 export interface StaffConfig {
   role: string;
   at?: string[];
@@ -88,7 +100,6 @@ export interface StaffConfig {
 }
 
 export const AREA_KINDS = ['weighing', 'ovenQueue', 'cooling', 'washing', 'office', 'amenities', 'controlRoom'] as const;
-/** Помещение или участок без счётчиков: весовая, тележки перед печами, остывание, мойка, офис мастера, бытовые, диспетчерская. */
 export type AreaKind = (typeof AREA_KINDS)[number];
 
 export interface AreaConfig {
@@ -98,19 +109,27 @@ export interface AreaConfig {
   zone: FloorRect;
 }
 
-/** Силос бестарного хранения муки на 2-м этаже (мезонине). */
+/** Силос бестарного хранения муки на антресоли (2-й этаж). */
 export interface SiloConfig {
   id: string;
   name: string;
-  /** Сорт муки: например "Мука пшеничная в/с", "Мука 1/с", "Мука ржаная". */
   grade: string;
   capacityTons: number;
   currentTons: number;
   position: { x: number; z: number };
   diameter: number;
   height: number;
-  /** К каким тестомесам спускаются пневмотрубы подачи. */
   connectedMixers: string[];
+}
+
+/** Приточно-вытяжная вентиляция с рекуперацией тепла печей. */
+export interface HvacUnitConfig {
+  id: string;
+  name: string;
+  position: { x: number; z: number };
+  airflowM3h: number;
+  heatRecoveryKw: number;
+  efficiencyPct: number;
 }
 
 /** Площадка / настил на антресоли. */
@@ -120,22 +139,11 @@ export interface MezzanineDeckConfig {
   zone: FloorRect;
 }
 
-/** Лестница на мезонин. */
 export interface MezzanineStairConfig {
   id: string;
-  from: [number, number];
-  to: [number, number];
+  from: FloorPoint;
+  to: FloorPoint;
   width: number;
-}
-
-/** Инженерная установка ПВУ / рекуперации тепла. */
-export interface HvacUnitConfig {
-  id: string;
-  name: string;
-  position: { x: number; z: number };
-  airflowM3h: number;
-  heatRecoveryKw: number;
-  efficiencyPct: number;
 }
 
 /** Конфигурация 2-го этажа (мезонина / антресоли). */
@@ -148,18 +156,134 @@ export interface MezzanineConfig {
   decks: MezzanineDeckConfig[];
   /** Лестничные марши. */
   stairs: MezzanineStairConfig[];
-  /** Смотровой инспекционный мостик (Catwalk) с перилами. */
   catwalk?: {
     points: FloorPoint[];
     width: number;
   };
-  /** Силосы бестарного хранения муки. */
   silos?: SiloConfig[];
-  /** Приточно-вытяжная вентиляция с рекуперацией тепла печей. */
   hvac?: HvacUnitConfig;
 }
 
-/** Ряд стеллажей: центр ряда, число пролётов по 2,7 м, поворот (0 — ряд вдоль x лицом к +z). */
+/* ── 3-й и 4-й этажи (Multistory, HVAC, Solar, Lab) ── */
+
+export interface FloorSpec {
+  floor: 1 | 2 | 3 | 4;
+  name: string;
+  title: string;
+  elevationM: number;
+  heightM: number;
+  description?: string;
+}
+
+export interface MultistoryConfig {
+  floors: FloorSpec[];
+  explodedSpacingM: number;
+}
+
+export interface HvacRecoveryConfig {
+  id: string;
+  airflowM3h: number;
+  exhaustTempC: number;
+  stackTempC: number;
+  recoveryEfficiencyPct: number;
+  flueAirflowM3h: number;
+}
+
+export interface ChillerPumpsConfig {
+  model: string;
+  count: number;
+  nominalKw: number;
+}
+
+export interface ChillerConfig {
+  id: string;
+  coolingCapacityKw: number;
+  cop: number;
+  supplyWaterTempC: number;
+  returnWaterTempC: number;
+  tankVolumeLiters: number;
+  pumps?: ChillerPumpsConfig;
+}
+
+export interface HvacFloorConfig {
+  floor: 3;
+  elevationM: number;
+  ahu: HvacRecoveryConfig;
+  chiller: ChillerConfig;
+}
+
+export interface SolarInverterConfig {
+  id: string;
+  name: string;
+  capacityKw: number;
+  efficiencyPct: number;
+}
+
+export interface SolarConfig {
+  floor?: 4;
+  installedCapacityKwp: number;
+  panelAreaM2: number;
+  panelEfficiencyPct: number;
+  inverterEfficiencyPct: number;
+  tiltDeg: number;
+  azimuthDeg: number;
+  co2FactorKgPerKwh: number;
+  inverters?: SolarInverterConfig[];
+  weatherStation?: {
+    anemometer: boolean;
+    pyranometer: boolean;
+    mastHeightM: number;
+    hasAviationBeacons: boolean;
+  };
+}
+
+export interface LabEquipmentItem {
+  id: string;
+  name: string;
+  model?: string;
+}
+
+export type FlourGrade = 'extra' | 'first' | 'second';
+
+export interface FarinographData {
+  waterAbsorptionPct: number;
+  developmentTimeMin: number;
+  stabilityMin: number;
+  softeningFU: number;
+  qualityNumber?: number;
+}
+
+export interface FlourSample {
+  batchId: string;
+  grade: FlourGrade;
+  moisturePct: number;
+  glutenPct: number;
+  glutenIdk: number;
+  fallingNumberSec: number;
+  ashPct?: number;
+  farinograph?: FarinographData;
+}
+
+export interface LabConfig {
+  floor: 3;
+  name: string;
+  standards: string[];
+  equipment: LabEquipmentItem[];
+  sampleFlour?: FlourSample;
+}
+
+export interface GeneratorConfig {
+  floor: 4;
+  id: string;
+  name: string;
+  capacityKva: number;
+  nominalKw: number;
+  fuelTankLiters: number;
+  fuelConsumptionLh: number;
+  cableDropToSwitchboard?: string;
+  autoTransferSwitch?: boolean;
+}
+
 export interface RackRow {
   x: number;
   z: number;
@@ -168,9 +292,7 @@ export interface RackRow {
 }
 
 export interface AiThresholds {
-  /** Окно усреднения текущего потребления, мин. */
   windowMin: number;
-  /** Минимум минутных отсчётов в часовой корзине базовой линии. */
   minBaselineSamples: number;
   deviationWarnPct: number;
   anomalyPct: number;
@@ -186,7 +308,6 @@ export interface Thresholds {
   ai: AiThresholds;
 }
 
-/** Зона суток дифференцированного тарифа: цена = базовая × coef (часы по местному времени, HH:MM). */
 export interface TariffZone {
   name: string;
   from: string;
@@ -194,12 +315,9 @@ export interface TariffZone {
   coef: number;
 }
 
-/** Тариф на электроэнергию, действующий с даты from (YYYY-MM-DD по местному времени). */
 export interface Tariff {
   from: string;
-  /** Цена 1 кВт·ч, в валюте energy.currency (для Узбекистана — сум, с НДС). */
   pricePerKwh: number;
-  /** Основание: постановление, письмо энергосбыта. */
   basis?: string;
   zones?: TariffZone[];
 }
@@ -207,38 +325,28 @@ export interface Tariff {
 export interface ShiftConfig {
   id: string;
   name: string;
-  /** Начало и конец смены по местному времени, HH:MM; конец может быть на следующий день (22:00–06:00). */
   from: string;
   to: string;
 }
 
-/** Учёт энергии: тарифы (история изменений) и смены. */
 export interface EnergyConfig {
   currency: string;
-  /** Тарифная группа потребителя (для подписи; I — крупные, II — остальные юрлица). */
   tariffGroup?: string;
   tariffs: Tariff[];
   shifts: ShiftConfig[];
 }
 
-/** Цепочка поставок: сырьё, продукция с рецептурами, поставщики, машины, где что стоит в цехе. */
 export interface SupplyConfig {
   materials: MaterialConfig[];
   products: ProductConfig[];
-  /** Поставщик по id сырья (для партий прихода). */
   suppliers: Record<string, string>;
   vehicles: VehicleConfig[];
-  /** Где что стоит. Рампы — у передней стены (z = depth / 2, к двору). */
   layout: {
-    /** Место разгрузки поставщика, x. */
     receivingDock: { x: number };
-    /** Места отгрузки (по одному на машину). */
     shippingDocks: { x: number }[];
     dryRacks: RackRow;
     goodsRacks: RackRow;
-    /** Тележки с продукцией, ждущей упаковки. */
     packingQueue: { x: number; z: number };
-    /** Маршруты рабочих с рохлями: туда-обратно по точкам; offset — сдвиг по времени, с. */
     routes?: { points: FloorPoint[]; offset: number }[];
   };
 }
@@ -247,71 +355,53 @@ export interface SiteConfig {
   site: {
     name: string;
     timezone: string;
-    /** Корпус: x от −width/2 до width/2, z от −depth/2 (задняя стена) до depth/2 (к двору); колонны — сетка по осям. */
     hall: { width: number; depth: number; height: number; columns?: { xs: number[]; zs: number[] } };
-    /** Линия потока продукции по полу: от приёмки до отгрузки. */
     flow?: FloorPoint[];
-    /** Вывеска на стене цеха и логотип в шапке. logo — путь к SVG/PNG в web/public (например /brand/logo.svg). */
     brand?: { name: string; tagline?: string; color?: string; logo?: string | null };
   };
-  /** Электроснабжение цеха: щит, от которого идут линии к станкам. */
   power?: {
     panel: { id: string; name: string; inputBreakerA: number; position: { x: number; z: number } };
-    /** Кабельный лоток под потолком — ломаная по полу цеха; кабели идут от щита по нему к станкам. */
     tray?: FloorPoint[];
   };
-  /** Учёт энергии в деньгах. */
   energy?: EnergyConfig;
-  /** Газ: счётчик на вводе, сигнализатор загазованности, пороги выявления утечки. */
   gas?: GasConfig;
-  /** Цепочка: приёмка сырья → производство → упаковка → склад готовой продукции → доставка. */
   supply?: SupplyConfig;
   thresholds: Thresholds;
   stages: StageConfig[];
   equipment: EquipmentConfig[];
-  /** Персонал на рабочих местах. */
   staff?: StaffConfig[];
-  /** Участки и помещения без счётчиков. */
   areas?: AreaConfig[];
-  /** Второй этаж (антресоль / мезонин): отметка +3.2 м, лестницы, силосы муки, диспетчерская SCADA. */
   mezzanine?: MezzanineConfig;
+  multistory?: MultistoryConfig;
+  hvacFloor?: HvacFloorConfig;
+  solarRoof?: SolarConfig;
+  lab?: LabConfig;
+  generator?: GeneratorConfig;
 }
 
-/** Нормализованное показание счётчика (после parseReading). */
 export interface Reading {
   equipmentId: string;
-  /** Время измерения, мс с эпохи (UTC). */
   ts: number;
   powerKw: number;
-  /** Токи по фазам, А. Длина 1 (однофазный) или 3. */
   currentsA: number[];
   voltageV?: number[];
   energyKwh?: number;
   powerFactor?: number;
   meterId?: string;
-  /** Текущий заказ/партия, если прошивка или MES её передаёт. */
   order?: string;
-  /** Температура в камере/зоне, °C. */
   temperatureC?: number;
-  /** Заданная целевая уставка температуры, °C. */
   targetTempC?: number;
-  /** Относительная влажность, %. */
   humidityPct?: number;
-  /** Заданная целевая влажность, %. */
   targetHumidityPct?: number;
-  /** Температура в сердцевине продукта (для шоковой заморозки), °C. */
   coreTempC?: number;
 }
 
 export type MachineStatus = 'running' | 'idle' | 'alarm' | 'offline';
-
 export type StatusReason = 'no_data' | 'overload' | 'phase_loss' | 'imbalance' | 'ai_anomaly';
-
 export type AiState = 'learning' | 'ok' | 'deviation' | 'anomaly';
 
 export interface AiCheck {
   state: AiState;
-  /** Отклонение текущего потребления от нормы, %. null — пока нет базовой линии. */
   deviationPct: number | null;
   baselineKw: number | null;
   currentKw: number | null;
@@ -331,12 +421,10 @@ export interface ClimateState {
   alert: string | null;
 }
 
-/** Состояние станка, которое API отдаёт фронту. */
 export interface EquipmentState {
   id: string;
   status: MachineStatus;
   reasons: StatusReason[];
-  /** С какого момента держится текущий статус, мс. */
   statusSince: number;
   lastReading: Reading | null;
   pctOfNominal: number | null;
@@ -351,4 +439,3 @@ export interface PowerPoint {
   t: number;
   kw: number;
 }
-

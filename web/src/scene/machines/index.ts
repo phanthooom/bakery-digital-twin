@@ -27,6 +27,10 @@ export const BODIES: Record<MachineKind, ComponentType<BodyProps>> = {
   packer: Packer,
   silo: Silo,
   hvac: Hvac,
+  chiller: Hvac,
+  solar_inverter: Generic,
+  generator: Hvac,
+  drycooler: Hvac,
   generic: Generic,
 };
 

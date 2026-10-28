@@ -19,3 +19,7 @@ export * from './gas';
 export * from './alarm';
 export * from './telegramOrder';
 export * from './productionCycle';
+export * from './solar';
+export * from './hvac';
+export * from './lab';
+export * from './multistory';

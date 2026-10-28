@@ -1,0 +1,316 @@
+.solar-hvac-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(4px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  animation: fadeIn 0.15s ease-out;
+}
+
+.solar-hvac-modal {
+  width: 100%;
+  max-width: 680px;
+  background: var(--surface-primary, #ffffff);
+  border-radius: 12px;
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  max-height: 90vh;
+}
+
+.solar-hvac-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.solar-hvac-title-group h2 {
+  margin: 4px 0 0;
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-primary, #0f172a);
+}
+
+.solar-hvac-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #f1f5f9;
+  color: #475569;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.solar-hvac-close {
+  background: none;
+  border: none;
+  font-size: 16px;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+
+.solar-hvac-close:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.solar-hvac-tabs {
+  display: flex;
+  background: #f8fafc;
+  border-bottom: 1px solid var(--border-subtle, #e2e8f0);
+  padding: 0 12px;
+  gap: 6px;
+}
+
+.solar-tab-btn {
+  background: none;
+  border: none;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease;
+}
+
+.solar-tab-btn:hover {
+  color: #0f172a;
+}
+
+.solar-tab-btn.is-active {
+  color: #0284c7;
+  border-bottom-color: #0284c7;
+  font-weight: 600;
+}
+
+.solar-hvac-content {
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.solar-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.solar-kpi-card {
+  padding: 14px;
+  border-radius: 8px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.solar-kpi-card.highlight {
+  background: #f0f9ff;
+  border-color: #bae6fd;
+}
+
+.solar-kpi-card.highlight-orange {
+  background: #fff7ed;
+  border-color: #ffedd5;
+}
+
+.solar-kpi-card.highlight-blue {
+  background: #eff6ff;
+  border-color: #dbeafe;
+}
+
+.solar-kpi-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.solar-kpi-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 4px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+
+.solar-kpi-value small {
+  font-size: 13px;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.solar-kpi-value.green {
+  color: #16a34a;
+}
+
+.solar-kpi-value.orange {
+  color: #ea580c;
+}
+
+.solar-kpi-value.blue {
+  color: #2563eb;
+}
+
+.solar-kpi-sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.solar-diagram-box,
+.hvac-details-box {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.solar-diagram-box h4,
+.hvac-details-box h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.solar-bars {
+  display: flex;
+  align-items: flex-end;
+  height: 90px;
+  gap: 8px;
+  padding-top: 10px;
+  border-bottom: 1px solid #cbd5e1;
+}
+
+.solar-bar-col {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100%;
+  justify-content: flex-end;
+}
+
+.solar-bar-fill {
+  width: 100%;
+  max-width: 28px;
+  background: linear-gradient(180deg, #f59e0b 0%, #fbbf24 100%);
+  border-radius: 4px 4px 0 0;
+  transition: height 0.3s ease;
+}
+
+.solar-bar-time {
+  font-size: 10px;
+  color: #64748b;
+  margin-top: 6px;
+}
+
+.lab-passport-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  background: #ffffff;
+}
+
+.lab-passport-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.lab-batch-num {
+  font-size: 11px;
+  font-weight: 700;
+  color: #0284c7;
+}
+
+.lab-passport-header h3 {
+  margin: 2px 0 0;
+  font-size: 15px;
+  color: #0f172a;
+}
+
+.lab-status-badge {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+}
+
+.lab-status-badge.approved {
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.lab-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.lab-metric-item {
+  background: #f8fafc;
+  padding: 10px 12px;
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.lab-metric-title {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.lab-metric-val {
+  font-size: 16px;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 2px 0;
+}
+
+.lab-metric-norm {
+  font-size: 10px;
+  color: #16a34a;
+}
+
+.lab-farinograph-box h4 {
+  margin: 0 0 10px;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: #475569;
+}
+
+.farinograph-chips {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.f-chip {
+  background: #f1f5f9;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 11px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.f-chip.highlight {
+  grid-column: span 2;
+  background: #f0fdf4;
+  color: #166534;
+}

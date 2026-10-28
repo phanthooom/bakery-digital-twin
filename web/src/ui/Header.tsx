@@ -1,4 +1,5 @@
 import type { MachineStatus, TelegramOrder } from '@bakery/shared';
+import { assessSolarGeneration } from '@bakery/shared';
 import { useDataSource, useGas, useStates } from '../data/store';
 import { fmtAgo, fmtKw, fmtNum } from './format';
 import { STATUS_LABEL, STATUS_ORDER } from './statusMeta';
@@ -23,8 +24,13 @@ export interface HeaderProps {
   gasOpen?: boolean;
   onOpenGas?: () => void;
   /** Текущий этаж */
-  floorFilter?: 'all' | 1 | 2;
-  onFloorChange?: (floor: 'all' | 1 | 2) => void;
+  floorFilter?: 'all' | 1 | 2 | 3 | 4;
+  onFloorChange?: (floor: 'all' | 1 | 2 | 3 | 4) => void;
+  /** Режим архитектурного среза (Exploded View) */
+  explodedView?: boolean;
+  onToggleExploded?: () => void;
+  /** Открыть модальное окно СЭС и климатического комплекса */
+  onOpenSolarHvac?: () => void;
   latestOrder?: TelegramOrder | null;
   onOpenOrder?: () => void;
   productionActive?: boolean;
@@ -35,7 +41,7 @@ export interface HeaderProps {
   onToggleLayout?: () => void;
 }
 
-export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, latestOrder, onOpenOrder, productionActive = false, onToggleProduction, isNight = false, onToggleNight, layoutMode = false, onToggleLayout }: HeaderProps) {
+export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, explodedView = false, onToggleExploded, onOpenSolarHvac, latestOrder, onOpenOrder, productionActive = false, onToggleProduction, isNight = false, onToggleNight, layoutMode = false, onToggleLayout }: HeaderProps) {
   const gas = useGas();
   const ds = useDataSource();
   const states = useStates();
@@ -48,6 +54,9 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
     if (s.status !== 'offline') total += s.lastReading?.powerKw ?? 0;
     lastTs = Math.max(lastTs, s.lastReading?.ts ?? 0);
   }
+
+  const solarCfg = ds.config.solarRoof;
+  const solarGen = solarCfg ? assessSolarGeneration(now, total, solarCfg) : null;
 
   return (
     <header className="topbar">
@@ -138,6 +147,18 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
               <span>Энергия, сум</span>
             </button>
           )}
+          {ds.config.solarRoof && onOpenSolarHvac && (
+            <button
+              type="button"
+              className="btn btn-solar"
+              onClick={onOpenSolarHvac}
+              title={`Кровля-СЭС и климатический комплекс (3-4 эт.): выработка ${solarGen?.powerKw.toFixed(1) ?? 0} кВт, чистая энергия ${solarGen?.greenSharePct.toFixed(0) ?? 0}%, рекуперация тепла печей, QC лаборатория ГОСТ`}
+            >
+              <span>☀️</span>
+              <span className="btn-text-full">СЭС: {solarGen?.powerKw.toFixed(0)} кВт ({solarGen?.greenSharePct.toFixed(0)}%)</span>
+              <span className="btn-text-short">СЭС {solarGen?.powerKw.toFixed(0)}кВт</span>
+            </button>
+          )}
           {onToggleProduction && (
             <button
               type="button"
@@ -181,7 +202,36 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
               >
                 2 эт.
               </button>
+              <button
+                type="button"
+                className={`btn-floor${floorFilter === 3 ? ' is-active' : ''}`}
+                onClick={() => onFloorChange(3)}
+                title="3-й этаж: климатика AHU, чиллер, QC лаборатория ГОСТ"
+              >
+                3 эт.
+              </button>
+              <button
+                type="button"
+                className={`btn-floor${floorFilter === 4 ? ' is-active' : ''}`}
+                onClick={() => onFloorChange(4)}
+                title="4-й этаж: кровля-энергоцентр, СЭС 60 кВт, ДГУ Cummins"
+              >
+                4 эт.
+              </button>
             </div>
+          )}
+          {onToggleExploded && (
+            <button
+              type="button"
+              className={`btn${explodedView ? ' is-active' : ''}`}
+              aria-pressed={explodedView}
+              onClick={onToggleExploded}
+              title="Архитектурный срез этажей (Exploded View / Слои здания)"
+            >
+              <span>🥞</span>
+              <span className="btn-text-full">Слои</span>
+              <span className="btn-text-short">Слои</span>
+            </button>
           )}
           {onToggleNight && (
             <button

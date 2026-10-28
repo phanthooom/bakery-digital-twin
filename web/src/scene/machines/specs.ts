@@ -23,6 +23,10 @@ export const SPECS: Record<MachineKind, MachineSpec> = {
   packer: { depth: 0.72, height: 1.8, ringRadius: 1.6, tower: [0.25, 1.46, -0.2] },
   silo: { depth: 2.3, height: 4.8, ringRadius: 1.5, tower: [0, 5.25, 0] },
   hvac: { depth: 2.2, height: 1.8, ringRadius: 2.0, tower: [-1.05, 1.65, 0.6] },
+  chiller: { depth: 1.8, height: 1.9, ringRadius: 1.6, tower: [-0.8, 1.85, 0.4] },
+  solar_inverter: { depth: 0.5, height: 1.2, ringRadius: 0.8, tower: [0, 1.25, 0.2] },
+  generator: { depth: 2.2, height: 2.1, ringRadius: 2.1, tower: [0.8, 2.05, 0.5] },
+  drycooler: { depth: 2.0, height: 1.6, ringRadius: 1.8, tower: [0, 1.65, 0] },
   generic: { depth: 0.8, height: 1.2, ringRadius: 0.8, tower: [0.3, 1.2, 0.3] },
 };
 

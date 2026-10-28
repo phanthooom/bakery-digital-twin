@@ -144,3 +144,63 @@ export function summarizeEnergy(entries: EnergyEntry[], energy: EnergyConfig, ti
     }))
     .sort((a, b) => a.from - b.from);
 }
+
+/* ── Энергобаланс с учётом генерации СЭС ── */
+
+export interface EnergyBalanceRow extends EnergyRow {
+  kwhConsumed: number;
+  kwhSolar: number;
+  kwhNet: number;
+  grossCost: number;
+  solarSavingsCost: number;
+  netCost: number;
+  greenSharePct: number;
+}
+
+/**
+ * Сводка энергопотребления и выработки СЭС по сменам, дням или месяцам.
+ * kwhNet = max(0, kwhConsumed - kwhSolar).
+ * solarSavingsCost — сэкономленные деньги по дифференцированному тарифу каждого часа.
+ */
+export function summarizeEnergyBalance(
+  entries: EnergyEntry[],
+  energy: EnergyConfig,
+  timezone: string,
+  by: EnergyGrouping,
+  solarEquipmentIds: ReadonlySet<string> = new Set(['solar-inv-1']),
+): EnergyBalanceRow[] {
+  const baseRows = summarizeEnergy(entries, energy, timezone, by);
+  return baseRows.map((r) => {
+    let kwhSolar = 0;
+    let solarSavingsCost = 0;
+    let kwhConsumed = 0;
+    let grossCost = 0;
+
+    for (const [eqId, item] of Object.entries(r.byEquipment)) {
+      if (solarEquipmentIds.has(eqId)) {
+        kwhSolar += item.kwh;
+        solarSavingsCost += item.cost;
+      } else {
+        kwhConsumed += item.kwh;
+        grossCost += item.cost;
+      }
+    }
+
+    const kwhNet = Math.max(0, kwhConsumed - kwhSolar);
+    const netCost = Math.max(0, grossCost - solarSavingsCost);
+    const greenSharePct = kwhConsumed > 0 ? Math.min(100, Math.round((kwhSolar / kwhConsumed) * 1000) / 10) : (kwhSolar > 0 ? 100 : 0);
+
+    return {
+      ...r,
+      kwh: round(kwhConsumed, 3),
+      cost: round(grossCost, 0),
+      kwhConsumed: round(kwhConsumed, 3),
+      kwhSolar: round(kwhSolar, 3),
+      kwhNet: round(kwhNet, 3),
+      grossCost: round(grossCost, 0),
+      solarSavingsCost: round(solarSavingsCost, 0),
+      netCost: round(netCost, 0),
+      greenSharePct,
+    };
+  });
+}
