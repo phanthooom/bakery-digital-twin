@@ -103,23 +103,10 @@ export const RooftopEnergyHub = memo(function RooftopEnergyHub({
           ))
         ))}
 
-        {/* Стринговые инверторы Huawei SUN2000 на стене лифтовой шахты */}
-        <mesh position={[-14, Y_ELEV_4 + 1.2, 0]} material={M.steelLight}>
-          <boxGeometry args={[0.4, 1.2, 1.8]} />
+        {/* Опорный железобетонный фундамент под сухие градирни ДК-1 / ДК-2 */}
+        <mesh position={[-6.5, Y_ELEV_4 + 0.1, -9.0]} material={parapetMat}>
+          <boxGeometry args={[4.8, 0.2, 3.0]} />
         </mesh>
-
-        {/* ── 2. Драйкулеры чиллеров ДК-1 и ДК-2 (x = -6.5, z = -9.0) ── */}
-        <group position={[-6.5, Y_ELEV_4, -9.0]}>
-          <mesh position={[0, 0.9, 0]} material={solarFrameMat}>
-            <boxGeometry args={[4.2, 1.8, 2.4]} />
-          </mesh>
-          {/* Диффузоры вентиляторов верхнего выброса */}
-          {[-1.2, 0, 1.2].map((fx, i) => (
-            <mesh key={`fan-${i}`} position={[fx, 1.85, 0]} material={M.steelDark}>
-              <cylinderGeometry args={[0.45, 0.45, 0.25, 18]} />
-            </mesh>
-          ))}
-        </group>
 
         {/* ── 3. Зенитные световые пирамидальные фонари (Skylights) ── */}
         {[-3, 4, 11].map((sx, i) => (
@@ -133,17 +120,10 @@ export const RooftopEnergyHub = memo(function RooftopEnergyHub({
           </group>
         ))}
 
-        {/* ── 4. Резервный дизель-генератор ДГУ 250 кВА (x = +16.0, z = -8.0) ── */}
-        <group position={[16.0, Y_ELEV_4, -8.0]}>
-          {/* Контейнер в шумозащитном кожухе */}
-          <mesh position={[0, 1.3, 0]} material={dguGreen}>
-            <boxGeometry args={[4.6, 2.6, 2.4]} />
-          </mesh>
-          {/* Выхлопной глушитель с коленом */}
-          <mesh position={[1.6, 2.9, 0]} material={M.steelDark}>
-            <cylinderGeometry args={[0.15, 0.15, 0.8, 16]} />
-          </mesh>
-        </group>
+        {/* ── 4. Опорный фундамент и кабельный ввод резервного ДГУ 250 кВА (x = +16.0, z = -8.0) ── */}
+        <mesh position={[16.0, Y_ELEV_4 + 0.1, -8.0]} material={parapetMat}>
+          <boxGeometry args={[5.0, 0.2, 2.8]} />
+        </mesh>
 
         {/* ── 5. Метеостанция цеха (мачта 4.5 м, x = -21, z = 12) ── */}
         <group position={[-21, Y_ELEV_4, 12]}>

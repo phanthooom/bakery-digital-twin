@@ -450,7 +450,7 @@ export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', 
 
       {/* Подписи площадок и GLB-модели диспетчерской */}
       {otherDecks.map((d) => (
-        <FloorLabel key={d.id} text={d.name.toUpperCase()} x={d.zone.x0 + 0.5} z={d.zone.z1 - 0.6} height={0.36} color="#606468" />
+        <FloorLabel key={d.id} text={d.name.toUpperCase()} x={d.zone.x0 + 0.5} y={Y_ELEV + 0.013} z={d.zone.z1 - 0.6} height={0.36} color="#606468" />
       ))}
       {controlDeck && (
         <group>
@@ -460,7 +460,7 @@ export const Mezzanine = memo(function Mezzanine({ config, floorFilter = 'all', 
           <group position={[controlDeck.zone.x0 + 0.65, Y_ELEV, controlDeck.zone.z1 - 0.55]}>
             <GltfModel url="/models/fire-stand.glb" fallback={null} />
           </group>
-          <FloorLabel text="02 ДИСПЕТЧЕРСКАЯ SCADA" x={controlDeck.zone.x0 + 0.5} z={controlDeck.zone.z0 + 0.8} height={0.34} color="#3b6998" />
+          <FloorLabel text="02 ДИСПЕТЧЕРСКАЯ SCADA" x={controlDeck.zone.x0 + 0.5} y={Y_ELEV + 0.013} z={controlDeck.zone.z0 + 0.8} height={0.34} color="#3b6998" />
         </group>
       )}
 

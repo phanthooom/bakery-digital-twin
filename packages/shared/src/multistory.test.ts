@@ -51,13 +51,22 @@ describe('getExplodedFloorOffset — расчёт раскрытия слоев 
 });
 
 describe('isFloorVisible — фильтрация видимости по этажам', () => {
-  it('режим all показывает всё', () => {
-    expect(isFloorVisible(1, 'all')).toBe(true);
-    expect(isFloorVisible(3, 'all')).toBe(true);
-    expect(isFloorVisible(undefined, 'all')).toBe(true);
+  it('в режиме all без Exploded View показывает только 1-й и 2-й этажи, исключая висящее в воздухе оборудование 3-го и 4-го этажей', () => {
+    expect(isFloorVisible(1, 'all', false)).toBe(true);
+    expect(isFloorVisible(2, 'all', false)).toBe(true);
+    expect(isFloorVisible(3, 'all', false)).toBe(false);
+    expect(isFloorVisible(4, 'all', false)).toBe(false);
+    expect(isFloorVisible(undefined, 'all', false)).toBe(true);
   });
 
-  it('селектор конкретного этажа фильтрует корректно (с дефолтом floor = 1)', () => {
+  it('в режиме all с Exploded View (exploded = true) показывает абсолютно все этажи', () => {
+    expect(isFloorVisible(1, 'all', true)).toBe(true);
+    expect(isFloorVisible(2, 'all', true)).toBe(true);
+    expect(isFloorVisible(3, 'all', true)).toBe(true);
+    expect(isFloorVisible(4, 'all', true)).toBe(true);
+  });
+
+  it('селектор конкретного этажа фильтрует строго по этажу (с дефолтом floor = 1)', () => {
     expect(isFloorVisible(3, 3)).toBe(true);
     expect(isFloorVisible(2, 3)).toBe(false);
     expect(isFloorVisible(undefined, 1)).toBe(true);

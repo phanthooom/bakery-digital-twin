@@ -66,8 +66,11 @@ export function getFloorElevation(floor: 1 | 2 | 3 | 4, explodedFactor = 0, spac
 
 /**
  * Проверка видимости элемента при фильтрации по этажам ('all' | 1 | 2 | 3 | 4).
+ * В режиме 'all' без Exploded View отображаются только 1-й и 2-й этажи (цех и антресоль),
+ * чтобы оборудование 3-го и 4-го этажей не висело в воздухе над цехом.
  */
-export function isFloorVisible(itemFloor: number | undefined, filter: 'all' | 1 | 2 | 3 | 4): boolean {
-  if (filter === 'all') return true;
+export function isFloorVisible(itemFloor: number | undefined, filter: 'all' | 1 | 2 | 3 | 4, exploded = false): boolean {
+  if (exploded) return true;
+  if (filter === 'all') return (itemFloor ?? 1) <= 2;
   return (itemFloor ?? 1) === filter;
 }

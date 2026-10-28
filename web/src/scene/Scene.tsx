@@ -200,7 +200,7 @@ export function Scene({ config, selectedId, selectedLineId, panelSelected, showL
             />
           )}
           {config.equipment.map((eq) => {
-            const isVisible = isFloorVisible(eq.floor, floorFilter);
+            const isVisible = isFloorVisible(eq.floor, floorFilter, explodedView);
             if (!isVisible) return null;
             const eqFloor = (eq.floor ?? 1) as 1 | 2 | 3 | 4;
             const eqYOffset = eqFloor === 1 ? 0 : eqFloor === 2 ? yOffsetFloor2 : eqFloor === 3 ? yOffsetFloor3 : yOffsetFloor4;

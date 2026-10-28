@@ -108,40 +108,26 @@ export const MultistoryHvacLab = memo(function MultistoryHvacLab({
         </mesh>
 
         {/* ── 1. Венткомплекс AHU-1 с рекуператором тепла (x = +6.5, z = -10.5) ── */}
-        <group position={[6.5, Y_ELEV_3, -10.5]}>
-          {/* Корпус центрального кондиционера AHU */}
-          <mesh position={[0, 1.4, 0]} material={hvacSilver}>
-            <boxGeometry args={[5.2, 2.4, 2.8]} />
-          </mesh>
-          {/* Секция рекуператора тепла уходящих газов печей (оранжевая индикация утилизации) */}
-          <mesh position={[1.4, 1.4, 0]} material={heatOrange}>
-            <boxGeometry args={[1.8, 2.1, 2.6]} />
-          </mesh>
-          {/* Вытяжные вентиляционные короба вниз к печам 1-го этажа */}
-          <mesh position={[1.4, -1.6, 0]} material={hvacSilver}>
-            <boxGeometry args={[1.2, 3.2, 1.2]} />
-          </mesh>
-        </group>
+        {/* Вытяжные вентиляционные короба вниз к печам 1-го этажа */}
+        <mesh position={[6.5, Y_ELEV_3 - 1.6, -10.5]} material={hvacSilver}>
+          <boxGeometry args={[1.2, 3.2, 1.2]} />
+        </mesh>
 
         {/* ── 2. Чиллерная станция ледяной воды +2 °C (x = -6.5, z = -10.5) ── */}
         <group position={[-6.5, Y_ELEV_3, -10.5]}>
-          {/* Рама и корпус водоохладителя */}
-          <mesh position={[0, 1.2, 0]} material={chillerBlue}>
-            <boxGeometry args={[4.4, 2.0, 2.6]} />
-          </mesh>
           {/* Буферные цилиндрические баки-аккумуляторы ледяной воды (+2 °C) */}
-          <mesh position={[-1.4, 1.4, 0]} material={pipeInsulatedBlue}>
-            <cylinderGeometry args={[0.7, 0.7, 2.4, 24]} />
+          <mesh position={[-2.4, 1.4, 0]} material={pipeInsulatedBlue}>
+            <cylinderGeometry args={[0.65, 0.65, 2.4, 24]} />
           </mesh>
-          <mesh position={[-0.1, 1.4, 0]} material={pipeInsulatedBlue}>
-            <cylinderGeometry args={[0.7, 0.7, 2.4, 24]} />
+          <mesh position={[-1.0, 1.4, 0]} material={pipeInsulatedBlue}>
+            <cylinderGeometry args={[0.65, 0.65, 2.4, 24]} />
           </mesh>
           {/* Сдвоенная насосная группа Grundfos Hydro MPC */}
-          <mesh position={[1.4, 0.6, 0.6]} material={M.steelDark}>
-            <boxGeometry args={[0.9, 0.9, 0.9]} />
+          <mesh position={[2.2, 0.5, 0.6]} material={M.steelDark}>
+            <boxGeometry args={[0.8, 0.8, 0.8]} />
           </mesh>
-          <mesh position={[1.4, 0.6, -0.6]} material={M.steelDark}>
-            <boxGeometry args={[0.9, 0.9, 0.9]} />
+          <mesh position={[2.2, 0.5, -0.6]} material={M.steelDark}>
+            <boxGeometry args={[0.8, 0.8, 0.8]} />
           </mesh>
         </group>
 
