@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { velohubSpring } from './animationMath';
 
 export interface AnimatedNumberProps {
   /** Числовое значение для отображения */
@@ -41,8 +42,8 @@ export function AnimatedNumber({
     const startTime = performance.now();
     const step = (now: number) => {
       const t = Math.min(1, (now - startTime) / durationMs);
-      // easeOutCubic — быстрое начало и мягкая доводка как у стрелочного/цифрового прибора
-      const eased = 1 - Math.pow(1 - t, 3);
+      // velohubSpring — органичная пружинная доводка cubic-bezier(0.16, 1, 0.3, 1)
+      const eased = velohubSpring(t);
       const current = startVal + delta * eased;
       fromRef.current = current;
       setDisplay(current);

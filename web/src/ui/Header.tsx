@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef, useState } from 'react';
 import type { MachineStatus, TelegramOrder } from '@bakery/shared';
 import { assessSolarGeneration } from '@bakery/shared';
 import { useDataSource, useGas, useStates } from '../data/store';
@@ -7,6 +8,8 @@ import { BrandMark } from './BrandMark';
 import { StatusIcon, WarnIcon } from './StatusIcon';
 import { useNow } from './useNow';
 import { AudioControl } from './AudioControl';
+import { AnimatedNumber } from './AnimatedNumber';
+import { FLOOR_TABS, type FloorTabKey, formatOdometer, getSlidingPillOffset } from './animationMath';
 
 export interface HeaderProps {
   showLabels: boolean;
@@ -39,6 +42,93 @@ export interface HeaderProps {
   onToggleNight?: () => void;
   layoutMode?: boolean;
   onToggleLayout?: () => void;
+}
+
+function FloorSwitch({
+  floorFilter,
+  onFloorChange,
+}: {
+  floorFilter: FloorTabKey;
+  onFloorChange: (floor: FloorTabKey) => void;
+}) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [measurements, setMeasurements] = useState<Partial<Record<FloorTabKey, { left: number; width: number }>>>({});
+
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const btns = el.querySelectorAll<HTMLButtonElement>('.btn-floor');
+    const containerLeft = el.getBoundingClientRect().left;
+    const next: Partial<Record<FloorTabKey, { left: number; width: number }>> = {};
+    FLOOR_TABS.forEach((key, idx) => {
+      const b = btns[idx];
+      if (b) {
+        const rect = b.getBoundingClientRect();
+        next[key] = {
+          left: rect.left - containerLeft,
+          width: rect.width,
+        };
+      }
+    });
+    setMeasurements(next);
+  }, []);
+
+  const pill = getSlidingPillOffset(floorFilter, measurements);
+
+  return (
+    <div ref={containerRef} className="floor-switch" role="group" aria-label="Выбор этажа">
+      {pill.width > 0 && (
+        <span
+          className="floor-switch-pill"
+          style={{
+            transform: `translateX(${pill.left}px)`,
+            width: `${pill.width}px`,
+          }}
+          aria-hidden
+        />
+      )}
+      <button
+        type="button"
+        className={`btn-floor${floorFilter === 'all' ? ' is-active' : ''}`}
+        onClick={() => onFloorChange('all')}
+        title="Показать все этажи"
+      >
+        Все
+      </button>
+      <button
+        type="button"
+        className={`btn-floor${floorFilter === 1 ? ' is-active' : ''}`}
+        onClick={() => onFloorChange(1)}
+        title="1-й этаж: цех"
+      >
+        1 эт.
+      </button>
+      <button
+        type="button"
+        className={`btn-floor${floorFilter === 2 ? ' is-active' : ''}`}
+        onClick={() => onFloorChange(2)}
+        title="2-й этаж: антресоль, силосы, SCADA"
+      >
+        2 эт.
+      </button>
+      <button
+        type="button"
+        className={`btn-floor${floorFilter === 3 ? ' is-active' : ''}`}
+        onClick={() => onFloorChange(3)}
+        title="3-й этаж: климатика AHU, чиллер, QC лаборатория ГОСТ"
+      >
+        3 эт.
+      </button>
+      <button
+        type="button"
+        className={`btn-floor${floorFilter === 4 ? ' is-active' : ''}`}
+        onClick={() => onFloorChange(4)}
+        title="4-й этаж: кровля-энергоцентр, СЭС 60 кВт, ДГУ Cummins"
+      >
+        4 эт.
+      </button>
+    </div>
+  );
 }
 
 export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onResetView, energyOpen, onOpenEnergy, supplyOpen, onOpenSupply, linesVisible, onToggleLines, gasOpen, onOpenGas, floorFilter = 'all', onFloorChange, explodedView = false, onToggleExploded, onOpenSolarHvac, latestOrder, onOpenOrder, productionActive = false, onToggleProduction, isNight = false, onToggleNight, layoutMode = false, onToggleLayout }: HeaderProps) {
@@ -78,7 +168,9 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
         <div className="topbar-stats" aria-label="Сводка по цеху">
           <div className="stat-total">
             <span className="label">Цех сейчас</span>
-            <span className="value">{fmtKw(total)}</span>
+            <span className="value">
+              <AnimatedNumber value={total} format={fmtKw} durationMs={450} />
+            </span>
             <span className="unit">кВт</span>
           </div>
           {gas && onOpenGas && (
@@ -91,7 +183,13 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
             >
               {(gas.level === 'warning' || gas.level === 'critical') && <WarnIcon level={gas.level} />}
               <span className="stat-gas-label">{gas.level === 'critical' ? 'Утечка газа' : 'Газ'}</span>
-              <strong>{gas.lastReading && gas.level !== 'offline' ? fmtNum(gas.lastReading.flowM3h, 1) : '—'}</strong>
+              <strong>
+                {gas.lastReading && gas.level !== 'offline' ? (
+                  <AnimatedNumber value={gas.lastReading.flowM3h} format={(v) => formatOdometer(v, 1)} durationMs={450} />
+                ) : (
+                  '—'
+                )}
+              </strong>
               <span className="stat-gas-unit">м³/ч</span>
             </button>
           )}
@@ -100,7 +198,9 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
               <span key={st} className={`chip${st === 'alarm' && counts.alarm > 0 ? ' is-alert' : ''}`} title={`${STATUS_LABEL[st]}: ${counts[st]}`}>
                 <StatusIcon status={st} size={12} />
                 <span className="chip-label">{STATUS_LABEL[st]}</span>
-                <strong>{counts[st]}</strong>
+                <strong>
+                  <AnimatedNumber value={counts[st]} format={(v) => formatOdometer(v, 0)} durationMs={350} />
+                </strong>
               </span>
             ))}
           </div>
@@ -155,8 +255,14 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
               title={`Кровля-СЭС и климатический комплекс (3-4 эт.): выработка ${solarGen?.powerKw.toFixed(1) ?? 0} кВт, чистая энергия ${solarGen?.greenSharePct.toFixed(0) ?? 0}%, рекуперация тепла печей, QC лаборатория ГОСТ`}
             >
               <span>☀️</span>
-              <span className="btn-text-full">СЭС: {solarGen?.powerKw.toFixed(0)} кВт ({solarGen?.greenSharePct.toFixed(0)}%)</span>
-              <span className="btn-text-short">СЭС {solarGen?.powerKw.toFixed(0)}кВт</span>
+              <span className="btn-text-full">
+                СЭС: <AnimatedNumber value={solarGen?.powerKw ?? 0} format={(v) => formatOdometer(v, 0)} durationMs={450} suffix=" кВт" /> (
+                <AnimatedNumber value={solarGen?.greenSharePct ?? 0} format={(v) => formatOdometer(v, 0)} durationMs={450} suffix="%" />
+                )
+              </span>
+              <span className="btn-text-short">
+                СЭС <AnimatedNumber value={solarGen?.powerKw ?? 0} format={(v) => formatOdometer(v, 0)} durationMs={450} suffix="кВт" />
+              </span>
             </button>
           )}
           {onToggleProduction && (
@@ -176,50 +282,7 @@ export function Header({ showLabels, listOpen, onToggleLabels, onToggleList, onR
 
         <div className="topbar-group topbar-group-scene">
           <AudioControl />
-          {onFloorChange && (
-            <div className="floor-switch" role="group" aria-label="Выбор этажа">
-              <button
-                type="button"
-                className={`btn-floor${floorFilter === 'all' ? ' is-active' : ''}`}
-                onClick={() => onFloorChange('all')}
-                title="Показать все этажи"
-              >
-                Все
-              </button>
-              <button
-                type="button"
-                className={`btn-floor${floorFilter === 1 ? ' is-active' : ''}`}
-                onClick={() => onFloorChange(1)}
-                title="1-й этаж: цех"
-              >
-                1 эт.
-              </button>
-              <button
-                type="button"
-                className={`btn-floor${floorFilter === 2 ? ' is-active' : ''}`}
-                onClick={() => onFloorChange(2)}
-                title="2-й этаж: антресоль, силосы, SCADA"
-              >
-                2 эт.
-              </button>
-              <button
-                type="button"
-                className={`btn-floor${floorFilter === 3 ? ' is-active' : ''}`}
-                onClick={() => onFloorChange(3)}
-                title="3-й этаж: климатика AHU, чиллер, QC лаборатория ГОСТ"
-              >
-                3 эт.
-              </button>
-              <button
-                type="button"
-                className={`btn-floor${floorFilter === 4 ? ' is-active' : ''}`}
-                onClick={() => onFloorChange(4)}
-                title="4-й этаж: кровля-энергоцентр, СЭС 60 кВт, ДГУ Cummins"
-              >
-                4 эт.
-              </button>
-            </div>
-          )}
+          {onFloorChange && <FloorSwitch floorFilter={floorFilter} onFloorChange={onFloorChange} />}
           {onToggleExploded && (
             <button
               type="button"

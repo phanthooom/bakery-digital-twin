@@ -63,8 +63,8 @@ export default defineConfig({
     port: 5173,
     host: true,
     allowedHosts: true,
-    // README обещает именно :5173 — если порт занят, лучше явная ошибка, чем тихий переезд
-    strictPort: true,
+    // При занятом порте автоматически выбираем следующий свободный (5174, 5175...)
+    strictPort: false,
     open: false,
     // config/equipment.json лежит в корне репозитория
     fs: { allow: [repoRoot] },
