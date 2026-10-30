@@ -178,6 +178,12 @@ button { font: inherit; color: inherit; }
 .scene-tag.is-warning, .supply-tag.is-warning {
   animation: radar-ping-warning 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
 }
+
+@media (prefers-reduced-motion: reduce) {
+  .floor-switch-pill { transition: none; }
+  .card { animation: none; transition: none; }
+  .chip.is-alert, .scene-tag.is-critical, .scene-tag.is-warning, .supply-tag.is-critical, .supply-tag.is-warning { animation: none; }
+}
 .scene-tag-name { color: var(--text-primary); font-weight: 600; }
 .scene-tag-value { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
 .scene-tag:not(.is-hovered) { opacity: 0.9; }
